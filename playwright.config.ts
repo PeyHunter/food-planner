@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import "./e2e/passwords.ts";
 
 // Set E2E_PORT to a unique value when several checkouts run browser tests at once.
 const port = Number(process.env.E2E_PORT ?? 4173);

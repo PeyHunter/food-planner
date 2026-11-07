@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { expect, test } from "vitest";
 import { ensureHousehold } from "../src/server/household.ts";
 import { hashPassword } from "../src/server/passwords.ts";
@@ -16,15 +17,17 @@ test("startup creates peyton and ronja in one shared kitchen", async () => {
 
 test("starting again never overwrites a password and never adds a second kitchen", async () => {
   const app = await createTestApp();
-  await app.query("update users set password_hash = $1 where username = 'peyton'", [await hashPassword("changed-later")]);
+  const changedLater = randomUUID();
+  const newEnvValue = randomUUID();
+  await app.query("update users set password_hash = $1 where username = 'peyton'", [await hashPassword(changedLater)]);
 
   await ensureHousehold(app.database, [
-    { username: "peyton", password: "new-env-value" },
-    { username: "ronja", password: "new-env-value" },
+    { username: "peyton", password: newEnvValue },
+    { username: "ronja", password: newEnvValue },
   ]);
 
-  expect((await app.logIn("peyton", "changed-later")).response.status).toBe(204);
-  expect((await app.logIn("peyton", "new-env-value")).response.status).toBe(401);
+  expect((await app.logIn("peyton", changedLater)).response.status).toBe(204);
+  expect((await app.logIn("peyton", newEnvValue)).response.status).toBe(401);
   expect((await app.logIn("ronja", startingUsers[1]!.password)).response.status).toBe(204);
   expect(await app.query("select * from kitchens")).toHaveLength(1);
   expect(await app.query("select * from kitchen_members")).toHaveLength(2);

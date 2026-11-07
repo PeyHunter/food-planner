@@ -6,8 +6,8 @@ import { connectDatabase, migrate } from "../../src/server/db.ts";
 import { ensureHousehold, type StartingUser } from "../../src/server/household.ts";
 
 export const startingUsers: StartingUser[] = [
-  { username: "peyton", password: "peyton-test-password" },
-  { username: "ronja", password: "ronja-test-password" },
+  { username: "peyton", password: randomUUID() },
+  { username: "ronja", password: randomUUID() },
 ];
 
 /**
