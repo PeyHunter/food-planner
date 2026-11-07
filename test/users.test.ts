@@ -21,10 +21,10 @@ test("starting again never overwrites a password and never adds a second kitchen
   const newEnvValue = randomUUID();
   await app.query("update users set password_hash = $1 where username = 'peyton'", [await hashPassword(changedLater)]);
 
-  await ensureHousehold(app.database, [
-    { username: "peyton", password: newEnvValue },
-    { username: "ronja", password: newEnvValue },
-  ]);
+  await ensureHousehold(
+    app.database,
+    startingUsers.map(({ username }) => ({ username, password: newEnvValue })),
+  );
 
   expect((await app.logIn("peyton", changedLater)).response.status).toBe(204);
   expect((await app.logIn("peyton", newEnvValue)).response.status).toBe(401);
