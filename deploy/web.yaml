@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  labels:
+    app: web
+spec:
+  replicas: 1
+  # The app migrates the database on start and the photos volume is ReadWriteOnce, so two versions never run at once.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      # Next to PostgreSQL on k3s-2. The photos volume is created on the node of the first pod that mounts it.
+      nodeSelector:
+        kubernetes.io/hostname: k3s-2
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: web
+          # Kustomize sets the sha-<commit> tag (kustomization.yaml).
+          image: ghcr.io/peyhunter/food-planner
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: PORT
+              value: "3000"
+            - name: PUBLIC_URL
+              value: https://food-planner.peytonhunter.com
+            - name: PHOTOS_DIR
+              value: /data/photos
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: food-planner-secrets
+                  key: POSTGRES_PASSWORD
+            - name: DATABASE_URL
+              value: postgres://food_planner:$(POSTGRES_PASSWORD)@postgres:5432/food_planner
+            - name: PEYTON_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: food-planner-secrets
+                  key: PEYTON_PASSWORD
+            - name: RONJA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: food-planner-secrets
+                  key: RONJA_PASSWORD
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+          # /api/health turns 503 while the database is away, and a restart would not bring it back.
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 25m
+              memory: 96Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: photos
+              mountPath: /data/photos
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: photos
+          persistentVolumeClaim:
+            claimName: photos
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+spec:
+  selector:
+    app: web
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

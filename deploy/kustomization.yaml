@@ -1,0 +1,16 @@
+# Argo CD syncs this folder (prune + selfHeal).
+# Secret this folder reads, never committed (sealed in k3s-gitops):
+#   food-planner-secrets: POSTGRES_PASSWORD, SESSION_SECRET, PEYTON_PASSWORD, RONJA_PASSWORD, ANTHROPIC_API_KEY
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: food-planner
+resources:
+  - namespace.yaml
+  - postgres.yaml
+  - storage.yaml
+  - web.yaml
+  - ingress.yaml
+# CI rewrites newTag to the sha-<commit> it just pushed.
+images:
+  - name: ghcr.io/peyhunter/food-planner
+    newTag: "latest"
