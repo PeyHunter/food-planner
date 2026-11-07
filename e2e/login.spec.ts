@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { e2eLogins } from "./logins.ts";
 
 test("Peyton logs in, stays logged in after a reload, and logs out", async ({ page }) => {
   await page.goto("/");
@@ -7,7 +8,7 @@ test("Peyton logs in, stays logged in after a reload, and logs out", async ({ pa
   await page.getByRole("button", { name: "Log in" }).click();
   await expect(page.getByRole("alert")).toHaveText("That username or password is wrong.");
 
-  await page.getByLabel("Password").fill("e2e-peyton");
+  await page.getByLabel("Password").fill(e2eLogins().peyton);
   await page.getByRole("button", { name: "Log in" }).click();
   await expect(page.getByRole("heading", { name: "Hi Peyton" })).toBeVisible();
 
