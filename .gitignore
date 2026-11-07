@@ -3,3 +3,4 @@ dist/
 .peystack/
 .env
 test-results/
+playwright-report/

@@ -1,0 +1,105 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: food-planner-photos
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: food-planner
+spec:
+  selector:
+    app: food-planner
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: food-planner
+spec:
+  replicas: 1
+  # The app migrates the database on start, so two versions never run at once.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: food-planner
+  template:
+    metadata:
+      labels:
+        app: food-planner
+    spec:
+      # The photos volume is created on the node of the first pod that mounts it, so the pod must always land there.
+      nodeSelector:
+        kubernetes.io/hostname: k3s-2
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: app
+          image: ghcr.io/peyhunter/food-planner:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: food-planner-secrets
+                  key: POSTGRES_PASSWORD
+            - name: DATABASE_URL
+              value: postgres://food_planner:$(POSTGRES_PASSWORD)@postgres:5432/food_planner
+            - name: PHOTOS_DIR
+              value: /data/photos
+            - name: PEYTON_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: food-planner-secrets
+                  key: PEYTON_PASSWORD
+            - name: RONJA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: food-planner-secrets
+                  key: RONJA_PASSWORD
+          volumeMounts:
+            - name: photos
+              mountPath: /data/photos
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            periodSeconds: 10
+          # /healthz turns 503 while the database is away, and a restart would not bring it back.
+          livenessProbe:
+            tcpSocket:
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+      volumes:
+        - name: photos
+          persistentVolumeClaim:
+            claimName: food-planner-photos

@@ -1,0 +1,15 @@
+# Argo CD app "food-planner" syncs this folder into namespace food-planner (it creates the namespace).
+# Secret this folder reads, sealed in k3s-gitops and never committed:
+#   food-planner-secrets: POSTGRES_PASSWORD, SESSION_SECRET, PEYTON_PASSWORD, RONJA_PASSWORD, ANTHROPIC_API_KEY
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: food-planner
+resources:
+  - postgres.yaml
+  - app.yaml
+  - ingress.yaml
+  - network-policy.yaml
+# CI rewrites newTag to the sha-<commit> it just pushed.
+images:
+  - name: ghcr.io/peyhunter/food-planner
+    newTag: "latest"
