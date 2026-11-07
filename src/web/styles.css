@@ -1,0 +1,62 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  color-scheme: light;
+  font-family: system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  color: #1f2328;
+  background: #ffffff;
+}
+
+body {
+  margin: 0;
+}
+
+.page {
+  max-width: 28rem;
+  margin: 0 auto;
+  padding: max(2rem, env(safe-area-inset-top)) 1.25rem 2rem;
+}
+
+.login {
+  display: grid;
+  gap: 1rem;
+}
+
+label {
+  display: grid;
+  gap: 0.25rem;
+  font-weight: 600;
+}
+
+input,
+button {
+  font: inherit;
+  font-size: 1rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+}
+
+input {
+  border: 1px solid #c8ccd1;
+}
+
+button {
+  border: none;
+  background: #1f2328;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+button:disabled {
+  opacity: 0.6;
+}
+
+.error {
+  margin: 0;
+  color: #b42318;
+}
