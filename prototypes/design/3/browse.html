@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>Browse · Food Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Instrument+Sans:wght@400;500;600;700&family=Young+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="app">
+  <header class="masthead">
+    <span class="brand">The Kitchen <em>&amp;</em> Co.</span>
+    <span class="issue">48 recipes</span>
+  </header>
+
+  <div class="browse-head">
+    <span class="kicker">What's for dinner?</span>
+    <h1>Flip through <em>the book</em></h1>
+  </div>
+
+  <div class="chips full-width" role="group" aria-label="Filter recipes">
+    <button class="chip" aria-pressed="true" type="button"><span class="dot" style="color:oklch(65% 0.1 230)"></span>Fish</button>
+    <button class="chip" aria-pressed="false" type="button">Meat</button>
+    <button class="chip" aria-pressed="false" type="button">Chicken</button>
+    <button class="chip" aria-pressed="false" type="button">Vegetarian</button>
+    <button class="chip" aria-pressed="false" type="button">Vegetables</button>
+    <button class="chip" aria-pressed="false" type="button">❄ freezable</button>
+  </div>
+
+  <div class="deck">
+    <div class="ghost ghost--1" aria-hidden="true"></div>
+    <div class="ghost ghost--2" aria-hidden="true"></div>
+    <article class="swipe-card">
+      <div class="photo">
+        <div class="dish" aria-hidden="true">
+          <svg viewBox="0 0 300 300" fill="none" stroke="#3b2a22" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <!-- fork and knife -->
+            <g transform="rotate(-8 30 150)">
+              <rect x="14" y="70" width="12" height="170" rx="6" fill="#f5efe2"/>
+              <path d="M10 70v-30M20 70v-34M30 70v-30" />
+              <path d="M8 66q12 12 24 0" fill="#f5efe2"/>
+            </g>
+            <g transform="rotate(8 272 150)">
+              <path d="M266 240V90q0-34 14-48v198z" fill="#f5efe2"/>
+            </g>
+            <!-- plate -->
+            <circle cx="150" cy="152" r="118" fill="#3b2a22" opacity=".12" stroke="none"/>
+            <circle cx="148" cy="148" r="118" fill="#fbf6ec"/>
+            <circle cx="148" cy="148" r="92" fill="#f4ecdc" stroke-width="1.5" opacity=".9"/>
+            <!-- potatoes -->
+            <g fill="#f0cf73">
+              <ellipse cx="100" cy="190" rx="24" ry="20"/>
+              <ellipse cx="136" cy="214" rx="22" ry="18"/>
+              <ellipse cx="88" cy="150" rx="20" ry="17"/>
+            </g>
+            <path d="M92 184q6-4 12 0M130 210q5-3 10 0M84 146q5-3 9 0" stroke-width="2"/>
+            <!-- salmon fillet -->
+            <path d="M118 96q46-26 92 4q20 18 6 50q-22 34-76 26q-38-10-36-46q2-22 14-34z" fill="#f08a5d"/>
+            <path d="M140 104q-8 24 2 62M164 98q-10 30 2 74M188 104q-8 26 4 62" stroke="#fbd3b6" stroke-width="5"/>
+            <path d="M118 96q46-26 92 4q20 18 6 50q-22 34-76 26q-38-10-36-46q2-22 14-34z" />
+            <!-- crispy edge -->
+            <path d="M210 100q20 18 6 50" stroke="#b9532c" stroke-width="5"/>
+            <!-- lemon -->
+            <circle cx="208" cy="196" r="26" fill="#f7e27a"/>
+            <circle cx="208" cy="196" r="19" fill="#fbf1b0" stroke-width="1.5"/>
+            <path d="M208 177v38M189 196h38M195 183l26 26M221 183l-26 26" stroke-width="1.5"/>
+            <!-- dill -->
+            <g stroke="#4f8a46" stroke-width="2.5">
+              <path d="M160 140q16-14 34-14"/>
+              <path d="M170 132l-4-8M178 128l-2-9M186 126l1-9M176 131l6 4M184 128l6 3"/>
+              <path d="M112 200q10 10 4 24M114 206l-7 3M115 213l-7 4M114 206l6 4"/>
+              <path d="M174 222q8-6 18-4M180 219l-2-6M186 218l2-6"/>
+            </g>
+            <!-- pepper -->
+            <g fill="#3b2a22" stroke="none">
+              <circle cx="150" cy="120" r="1.8"/><circle cx="182" cy="116" r="1.6"/><circle cx="196" cy="140" r="1.8"/>
+              <circle cx="132" cy="150" r="1.6"/><circle cx="104" cy="168" r="1.4"/><circle cx="160" cy="190" r="1.5"/>
+            </g>
+          </svg>
+        </div>
+        <span class="stamp" aria-label="Freezable">freez-<br>able!</span>
+        <span class="page-no">p. 12 / 48</span>
+      </div>
+      <div class="body">
+        <h2><a href="recipe.html">Lemony baked salmon with dill potatoes</a></h2>
+        <div class="meta">
+          <span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="6.5"/><path d="M8 4v4l3 2"/></svg>35 min</span>
+          <span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="5" r="2.5"/><path d="M1.5 14q0-5 4.5-5t4.5 5"/><circle cx="12" cy="6" r="2"/><path d="M11 9.5q4 0 4 4.5"/></svg>feeds 4</span>
+          <span>Made 3×</span>
+        </div>
+        <div class="tags">
+          <span class="tag tag--fish">Fish</span>
+          <span class="tag tag--freeze">❄ freezable</span>
+          <span class="tag tag--kid">kid-friendly</span>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <div class="swipe-hint">
+    <svg class="flip" viewBox="0 0 44 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M42 12q-14-8-36-2M6 10l7-6M6 10l8 5"/></svg>
+    <span class="hand">swipe for the next page</span>
+    <svg viewBox="0 0 44 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12q14-8 36-2M38 10l-7-6M38 10l-8 5"/></svg>
+  </div>
+
+  <div class="action-row">
+    <button class="icon-btn" type="button" aria-label="Show as list">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+    </button>
+    <button class="btn btn--primary" type="button">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="1.5" y="2.5" width="13" height="12" rx="2"/><path d="M1.5 6.5h13M5 1v3M11 1v3M8 9v4M6 11h4"/></svg>
+      <span>Add to week</span>
+    </button>
+  </div>
+</main>
+
+<nav class="tabbar" aria-label="Main">
+  <a href="browse.html" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 5q4-2 9 1v14q-5-3-9-1zM21 5q-4-2-9 1v14q5-3 9-1z"/></svg>Recipes</a>
+  <a href="week.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Week</a>
+  <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Shopping</a>
+</nav>
+</body>
+</html>
