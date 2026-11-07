@@ -1,0 +1,118 @@
+/* Placeholder look until the design battle (P2) picks one. */
+:root {
+  --paper: #fff8ef;
+  --ink: #2b2118;
+  --muted: #7a6a5c;
+  --accent: #e8603c;
+  --accent-ink: #fff;
+  --line: #ead9c6;
+  --radius: 14px;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--paper);
+}
+
+.page {
+  max-width: 32rem;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top) + 1.5rem) 1rem calc(env(safe-area-inset-bottom) + 1.5rem);
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  letter-spacing: -0.02em;
+}
+
+.login {
+  display: grid;
+  justify-items: center;
+  gap: 1rem;
+  padding-top: calc(env(safe-area-inset-top) + 4rem);
+}
+
+.logo {
+  border-radius: 24px;
+}
+
+form {
+  display: grid;
+  gap: 1rem;
+  width: 100%;
+}
+
+label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 600;
+}
+
+input {
+  font: inherit;
+  font-size: 1rem;
+  padding: 0.8rem 0.9rem;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+button {
+  font: inherit;
+  font-weight: 700;
+  padding: 0.85rem 1rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+button:disabled {
+  opacity: 0.6;
+}
+
+button.quiet {
+  background: transparent;
+  color: var(--muted);
+  padding: 0.5rem;
+}
+
+[role="alert"] {
+  margin: 0;
+  color: #b3261e;
+}
+
+.home header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.empty {
+  margin-top: 3rem;
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--muted);
+  border: 2px dashed var(--line);
+  border-radius: var(--radius);
+}
+
+.empty .big {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--ink);
+}

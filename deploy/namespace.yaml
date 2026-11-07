@@ -1,0 +1,5 @@
+# Everything for food-planner lives in one namespace.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: food-planner
