@@ -1,0 +1,35 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light"><title>Browse</title><link rel="stylesheet" href="styles.css">
+<style>
+.hero{aspect-ratio:4/3.3;border-radius:2rem;box-shadow:6px 6px 0 var(--ink)}
+.hero svg{block-size:100%}
+.dishcard{display:grid;gap:.9rem}
+.dishcard .meta{display:flex;flex-wrap:wrap;gap:.5rem}
+.hint{display:flex;align-items:center;justify-content:center;gap:.8rem;font-weight:800;color:var(--muted)}
+.hint .arrow{display:grid;place-items:center;inline-size:2.4rem;block-size:2.4rem;border:var(--line) solid var(--ink);border-radius:50%;background:var(--paper);color:var(--ink)}
+.dots{display:flex;gap:.35rem}.dots i{inline-size:.6rem;block-size:.6rem;border-radius:50%;border:2px solid var(--ink);background:var(--paper)}.dots i:first-child{background:var(--ink);inline-size:1.4rem;border-radius:99px}
+.actions{display:grid;grid-template-columns:auto 1fr;gap:.75rem}
+.stk{position:relative;z-index:1}
+</style></head><body><main class="app">
+<header class="top"><span class="logo">F</span><span class="title">food planner</span><span class="sticker mint end">Week 45</span></header>
+<div class="chips" role="group" aria-label="Filter">
+  <button class="chip" aria-pressed="false">Fish</button><button class="chip" aria-pressed="false">Meat</button><button class="chip" aria-pressed="false">Chicken</button><button class="chip" aria-pressed="true">Vegetarian</button><button class="chip" aria-pressed="false">Vegetables</button><button class="chip" aria-pressed="false">freezable</button>
+</div>
+<article class="dishcard">
+  <div class="photo hero">
+<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Pasta illustration"><rect width="400" height="300" fill="oklch(80% .11 300)"/><circle cx="340" cy="50" r="55" fill="oklch(89% .16 95)"/><circle cx="50" cy="260" r="70" fill="oklch(68% .2 30)"/><ellipse cx="200" cy="170" rx="150" ry="105" fill="#fff" stroke="oklch(21% .04 285)" stroke-width="5"/><g fill="none" stroke-width="14" stroke-linecap="round" stroke="oklch(88% .12 90)"><path d="M110 170 Q150 110 200 150 T290 150"/><path d="M115 195 Q170 140 215 185 T295 175"/><path d="M130 150 Q180 200 230 140 T285 190"/></g><g fill="oklch(68% .2 30)" stroke="oklch(21% .04 285)" stroke-width="4"><circle cx="170" cy="165" r="17"/><circle cx="235" cy="180" r="15"/><circle cx="215" cy="140" r="13"/></g></svg>
+    <div class="stickers"><span class="sticker tomato tilt-l">Vegetarian</span><span class="sticker white tilt-r">freezable</span></div>
+  </div>
+  <div>
+    <h1>Slow tomato &amp; basil pasta</h1>
+    <div class="meta" style="margin-block-start:.7rem"><span class="sticker lilac">feeds 4</span><span class="sticker sky">35 min</span><span class="sticker mint">kid-friendly</span></div>
+  </div>
+</article>
+<div class="hint"><span class="arrow" aria-hidden="true">←</span><span>Swipe for the next dish</span><span class="arrow" aria-hidden="true">→</span></div>
+<div class="actions"><button class="btn white" aria-label="Open recipe">Recipe</button><button class="btn">＋ Add to week</button></div>
+</main>
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="browse.html" aria-current="page"><span class="ic">🍽</span>Browse</a>
+  <a class="tab" href="week.html" ><span class="ic">📅</span>Week</a>
+  <a class="tab" href="recipe.html" ><span class="ic">📖</span>Recipe</a>
+</nav>
+</body></html>

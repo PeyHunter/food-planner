@@ -1,0 +1,56 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light"><title>Recipe</title><link rel="stylesheet" href="styles.css">
+<style>
+.hero{aspect-ratio:16/10;box-shadow:6px 6px 0 var(--ink)}
+.tags{display:flex;flex-wrap:wrap;gap:.5rem}
+.feeds{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.8rem 1rem;border:var(--line) solid var(--ink);border-radius:1.25rem;background:var(--lilac-soft)}
+.feeds b{font-size:1.1rem}
+.stepper{display:flex;align-items:center;gap:.6rem}
+.step-btn{inline-size:3rem;block-size:3rem;border:var(--line) solid var(--ink);border-radius:50%;background:var(--sun);box-shadow:2px 2px 0 var(--ink);font-size:1.6rem;font-weight:800;line-height:1;padding:0}
+.step-btn:active{translate:2px 2px;box-shadow:none}
+.stepper output{min-inline-size:2.2rem;text-align:center;font-size:1.9rem;font-weight:800;font-variant-numeric:tabular-nums}
+.panel{border:var(--line) solid var(--ink);border-radius:1.5rem;background:var(--paper);box-shadow:var(--pop);padding:1.1rem 1.1rem 1.2rem;display:grid;gap:.9rem}
+.panel h2{display:flex;align-items:center;gap:.6rem}
+.ing{list-style:none;margin:0;padding:0;display:grid}
+.ing li{display:grid;grid-template-columns:5.2rem 1fr;gap:.75rem;align-items:baseline;padding-block:.6rem;border-block-end:2px dashed color-mix(in oklch,var(--ink) 25%,white)}
+.ing li:last-child{border:0}
+.amt{justify-self:start;padding:.1em .6em;border-radius:.6rem;background:var(--sun-soft);border:2px solid var(--ink);font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.note{color:var(--muted);font-weight:600}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:1rem;counter-reset:s}
+.steps li{display:grid;grid-template-columns:2.4rem 1fr;gap:.8rem;counter-increment:s;font-weight:600}
+.steps li::before{content:counter(s);display:grid;place-items:center;inline-size:2.4rem;block-size:2.4rem;border:var(--line) solid var(--ink);border-radius:50%;background:var(--mint);font-weight:800}
+.steps li:nth-child(even)::before{background:var(--tomato-soft)}
+.cta{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.back{display:inline-flex;align-items:center;justify-content:center;inline-size:2.75rem;block-size:2.75rem;border:var(--line) solid var(--ink);border-radius:50%;background:var(--paper);box-shadow:2px 2px 0 var(--ink);text-decoration:none;font-weight:800}
+</style></head><body><main class="app">
+<header class="top"><a class="back" href="browse.html" aria-label="Back">←</a><span class="title">Recipe</span><span class="sticker white end">cooked 3×</span></header>
+<div class="photo hero">
+<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Illustration of a salmon rice bowl"><rect width="400" height="300" fill="oklch(89% .16 95)"/><circle cx="60" cy="50" r="60" fill="oklch(85% .14 165)"/><circle cx="360" cy="260" r="80" fill="oklch(84% .1 235)"/><ellipse cx="200" cy="170" rx="150" ry="105" fill="#fff" stroke="oklch(21% .04 285)" stroke-width="5"/><ellipse cx="200" cy="165" rx="118" ry="80" fill="oklch(95% .05 95)" stroke="oklch(21% .04 285)" stroke-width="4"/><path d="M105 160 Q150 110 250 130 Q300 145 290 180 Q230 210 140 195 Z" fill="oklch(72% .17 40)" stroke="oklch(21% .04 285)" stroke-width="5" stroke-linejoin="round"/><path d="M135 165 Q190 140 265 160 M140 182 Q200 165 270 178" stroke="oklch(92% .06 50)" stroke-width="5" fill="none" stroke-linecap="round"/><circle cx="125" cy="205" r="20" fill="oklch(78% .17 135)" stroke="oklch(21% .04 285)" stroke-width="4"/><circle cx="310" cy="195" r="16" fill="oklch(78% .17 135)" stroke="oklch(21% .04 285)" stroke-width="4"/><path d="M280 120 l12 -14 l12 14 z" fill="oklch(89% .16 95)" stroke="oklch(21% .04 285)" stroke-width="4" stroke-linejoin="round"/></svg>
+<div class="stickers"><span class="sticker tomato tilt-l">Fish</span><span class="sticker white tilt-r">kid-friendly</span></div></div>
+<h1>Sticky ginger salmon rice bowl</h1>
+<div class="feeds"><b>Feeds 4</b><div class="stepper" role="group" aria-label="Servings"><button class="step-btn" aria-label="Fewer">−</button><output>4</output><button class="step-btn" aria-label="More">+</button></div></div>
+<section class="panel"><h2>Ingredients <span class="sticker sky">8 items</span></h2>
+<ul class="ing">
+<li><span class="amt">600 g</span><span>Salmon fillet <span class="note">skin off, in chunks</span></span></li>
+<li><span class="amt">300 g</span><span>Jasmine rice</span></li>
+<li><span class="amt">3 tbsp</span><span>Soy sauce</span></li>
+<li><span class="amt">2 tbsp</span><span>Honey</span></li>
+<li><span class="amt">1 pcs</span><span>Ginger <span class="note">thumb-size, grated</span></span></li>
+<li><span class="amt">2 pcs</span><span>Cucumber <span class="note">thinly sliced</span></span></li>
+<li><span class="amt">200 g</span><span>Edamame beans</span></li>
+<li><span class="amt">2 tsp</span><span>Sesame seeds</span></li>
+</ul></section>
+<section class="panel"><h2>Steps</h2>
+<ol class="steps">
+<li><span>Rinse the rice and cook it with 600 ml water for 12 minutes, then rest with the lid on.</span></li>
+<li><span>Stir soy, honey and ginger in a bowl. Toss the salmon in half of it.</span></li>
+<li><span>Fry the salmon 2 minutes per side, pour in the rest and let it turn sticky.</span></li>
+<li><span>Serve over rice with cucumber and edamame, finish with sesame.</span></li>
+</ol></section>
+<div class="cta"><button class="btn mint">✓ I made this</button><button class="btn lilac">Share ↗</button></div>
+</main>
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="browse.html" ><span class="ic">🍽</span>Browse</a>
+  <a class="tab" href="week.html" ><span class="ic">📅</span>Week</a>
+  <a class="tab" href="recipe.html" aria-current="page"><span class="ic">📖</span>Recipe</a>
+</nav>
+</body></html>

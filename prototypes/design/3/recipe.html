@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>Lemony baked salmon · Food Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Instrument+Sans:wght@400;500;600;700&family=Young+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="app" style="padding-block-start:0">
+  <div class="recipe-hero full-width">
+    <div class="dish" aria-hidden="true">
+<svg viewBox="0 0 300 300" fill="none" stroke="#3b2a22" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <!-- fork and knife -->
+            <g transform="rotate(-8 30 150)">
+              <rect x="14" y="70" width="12" height="170" rx="6" fill="#f5efe2"/>
+              <path d="M10 70v-30M20 70v-34M30 70v-30" />
+              <path d="M8 66q12 12 24 0" fill="#f5efe2"/>
+            </g>
+            <g transform="rotate(8 272 150)">
+              <path d="M266 240V90q0-34 14-48v198z" fill="#f5efe2"/>
+            </g>
+            <!-- plate -->
+            <circle cx="150" cy="152" r="118" fill="#3b2a22" opacity=".12" stroke="none"/>
+            <circle cx="148" cy="148" r="118" fill="#fbf6ec"/>
+            <circle cx="148" cy="148" r="92" fill="#f4ecdc" stroke-width="1.5" opacity=".9"/>
+            <!-- potatoes -->
+            <g fill="#f0cf73">
+              <ellipse cx="100" cy="190" rx="24" ry="20"/>
+              <ellipse cx="136" cy="214" rx="22" ry="18"/>
+              <ellipse cx="88" cy="150" rx="20" ry="17"/>
+            </g>
+            <path d="M92 184q6-4 12 0M130 210q5-3 10 0M84 146q5-3 9 0" stroke-width="2"/>
+            <!-- salmon fillet -->
+            <path d="M118 96q46-26 92 4q20 18 6 50q-22 34-76 26q-38-10-36-46q2-22 14-34z" fill="#f08a5d"/>
+            <path d="M140 104q-8 24 2 62M164 98q-10 30 2 74M188 104q-8 26 4 62" stroke="#fbd3b6" stroke-width="5"/>
+            <path d="M118 96q46-26 92 4q20 18 6 50q-22 34-76 26q-38-10-36-46q2-22 14-34z" />
+            <!-- crispy edge -->
+            <path d="M210 100q20 18 6 50" stroke="#b9532c" stroke-width="5"/>
+            <!-- lemon -->
+            <circle cx="208" cy="196" r="26" fill="#f7e27a"/>
+            <circle cx="208" cy="196" r="19" fill="#fbf1b0" stroke-width="1.5"/>
+            <path d="M208 177v38M189 196h38M195 183l26 26M221 183l-26 26" stroke-width="1.5"/>
+            <!-- dill -->
+            <g stroke="#4f8a46" stroke-width="2.5">
+              <path d="M160 140q16-14 34-14"/>
+              <path d="M170 132l-4-8M178 128l-2-9M186 126l1-9M176 131l6 4M184 128l6 3"/>
+              <path d="M112 200q10 10 4 24M114 206l-7 3M115 213l-7 4M114 206l6 4"/>
+              <path d="M174 222q8-6 18-4M180 219l-2-6M186 218l2-6"/>
+            </g>
+            <!-- pepper -->
+            <g fill="#3b2a22" stroke="none">
+              <circle cx="150" cy="120" r="1.8"/><circle cx="182" cy="116" r="1.6"/><circle cx="196" cy="140" r="1.8"/>
+              <circle cx="132" cy="150" r="1.6"/><circle cx="104" cy="168" r="1.4"/><circle cx="160" cy="190" r="1.5"/>
+            </g>
+          </svg>
+    </div>
+    <div class="hero-bar">
+      <a class="icon-btn" href="browse.html" aria-label="Back to recipes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      </a>
+      <button class="icon-btn" type="button" aria-label="Photos (4)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 4 4 3-3 4 4"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <header class="recipe-title">
+    <span class="kicker">Fish · 35 min · from Ronja's mum</span>
+    <h1>Lemony baked salmon with dill potatoes</h1>
+    <div class="tags">
+      <span class="tag tag--fish">Fish</span>
+      <span class="tag tag--freeze">❄ freezable</span>
+      <span class="tag tag--kid">kid-friendly</span>
+    </div>
+    <p class="made-note">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12l4 4 10-10"/></svg>
+      Made 3 times · last on 19 Oct
+    </p>
+  </header>
+
+  <section style="display:grid;gap:0.25rem">
+    <div class="section-head">
+      <h2>Ingredients</h2>
+      <div class="stepper" role="group" aria-label="People">
+        <button class="step-btn" type="button" aria-label="Fewer people">−</button>
+        <output aria-live="polite">4<small>people</small></output>
+        <button class="step-btn" type="button" aria-label="More people">+</button>
+      </div>
+    </div>
+    <p class="hand" style="font-size:1.15rem;justify-self:end;rotate:-2deg">feeds 4 as written</p>
+    <ul class="ingredients">
+      <li><span class="name">Salmon fillets</span><span class="note">skin on</span><span class="amt">600 <small>g</small></span></li>
+      <li><span class="name">New potatoes</span><span class="note">halved</span><span class="amt">800 <small>g</small></span></li>
+      <li><span class="name">Lemon</span><span class="amt">1 <small>pcs</small></span></li>
+      <li><span class="name">Fresh dill</span><span class="note">finely chopped</span><span class="amt">3 <small>tbsp</small></span></li>
+      <li><span class="name">Crème fraîche</span><span class="amt">2 <small>dl</small></span></li>
+      <li><span class="name">Garlic</span><span class="note">grated</span><span class="amt">2 <small>pcs</small></span></li>
+      <li><span class="name">Olive oil</span><span class="amt">2 <small>tbsp</small></span></li>
+      <li><span class="name">Salt</span><span class="amt">1 <small>tsp</small></span></li>
+    </ul>
+  </section>
+
+  <section style="display:grid;gap:1rem">
+    <div class="section-head"><h2>Method</h2></div>
+    <ol class="steps">
+      <li><p>Heat the oven to <strong>200 °C</strong>. Toss the potatoes with half the oil and salt on a tray and roast for 15 minutes.</p></li>
+      <li><p>Mix crème fraîche, garlic, the zest of the lemon and most of the dill.</p></li>
+      <li><p>Push the potatoes aside, lay in the salmon skin down, spoon the dill cream on top and add lemon slices.</p></li>
+      <li><p>Roast another <strong>12–15 minutes</strong> until the salmon flakes. Scatter the rest of the dill and serve.</p></li>
+    </ol>
+    <div class="margin-note">
+      <svg viewBox="0 0 40 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M38 4q-10 18-32 14M6 18l6-7M6 18l9 3"/></svg>
+      <span class="hand">Runi loves it mashed with the potatoes</span>
+    </div>
+  </section>
+
+  <div class="recipe-actions">
+    <button class="btn btn--primary" type="button">
+      <svg class="lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13l5 5L20 6"/></svg>
+      <span>I made this</span>
+    </button>
+    <button class="btn" type="button">
+      <svg class="lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>
+      <span>Share</span>
+    </button>
+  </div>
+</main>
+
+<nav class="tabbar" aria-label="Main">
+  <a href="browse.html" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 5q4-2 9 1v14q-5-3-9-1zM21 5q-4-2-9 1v14q5-3 9-1z"/></svg>Recipes</a>
+  <a href="week.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Week</a>
+  <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Shopping</a>
+</nav>
+</body>
+</html>

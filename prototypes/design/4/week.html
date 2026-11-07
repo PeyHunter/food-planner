@@ -1,0 +1,53 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light"><title>Week</title><link rel="stylesheet" href="styles.css">
+<style>
+.wk{display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+.wk .nav{display:inline-grid;place-items:center;inline-size:2.75rem;block-size:2.75rem;border:var(--line) solid var(--ink);border-radius:50%;background:var(--paper);box-shadow:2px 2px 0 var(--ink);font-weight:800}
+.days{list-style:none;margin:0;padding:0;display:grid;gap:.9rem}
+.day{display:grid;grid-template-columns:3.4rem 1fr;gap:.2rem .8rem;padding:.8rem;border:var(--line) solid var(--ink);border-radius:1.4rem;background:var(--paper);box-shadow:3px 3px 0 var(--ink)}
+.dn{grid-row:span 2;display:grid;align-content:center;justify-items:center;border:var(--line) solid var(--ink);border-radius:1rem;background:var(--c,var(--sun));font-weight:800;line-height:1}
+.dn small{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;margin-block-start:.25rem}
+.dn b{font-size:1.5rem}
+.dinner{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;min-block-size:2.8rem}
+.dinner .name{font-weight:800;font-size:1.05rem;letter-spacing:-.01em;line-height:1.15;flex:1 1 9rem}
+.ppl{display:inline-flex;align-items:center;gap:.3rem;padding:.15em .6em;border:2px solid var(--ink);border-radius:99px;background:var(--sky);font-weight:800;font-size:.85rem}
+.empty{border:var(--line) dashed var(--ink);border-radius:.9rem;padding:.55rem .8rem;color:var(--muted);font-weight:800;flex:1 1 auto}
+.runi{display:flex;align-items:center;gap:.5rem;padding:.4rem .6rem;border-radius:.9rem;background:var(--lilac-soft);border:2px solid var(--ink);font-size:.92rem;font-weight:700}
+.runi b{font-weight:800;white-space:nowrap;flex:none}.cta .btn{padding-inline:.6rem;white-space:nowrap}
+.rules{display:grid;gap:1rem}
+.rule-set{border:var(--line) solid var(--ink);border-radius:1.5rem;padding:1rem;background:var(--paper);box-shadow:var(--pop);display:grid;gap:.6rem}
+.rule-set.runi-set{background:var(--lilac-soft)}
+.rule-set ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.5rem}
+.rule{display:inline-flex;align-items:center;gap:.4rem;padding:.35em .8em .35em .4em;border:var(--line) solid var(--ink);border-radius:99px;font-weight:800;background:var(--mint)}
+.rule .box{display:grid;place-items:center;inline-size:1.5rem;block-size:1.5rem;border:2px solid var(--ink);border-radius:50%;background:var(--paper);font-size:.85rem}
+.rule.warn{background:var(--sun)}
+.rule.warn .box{background:var(--tomato)}
+.cta{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.shop{display:flex;align-items:center;justify-content:space-between;gap:.8rem;padding:1rem 1.1rem;border:var(--line) solid var(--ink);border-radius:1.4rem;background:var(--sun);text-decoration:none;font-weight:800;box-shadow:var(--pop)}
+.shop:active{translate:3px 3px;box-shadow:1px 1px 0 var(--ink)}
+.shop span:last-child{font-size:1.4rem}
+</style></head><body><main class="app">
+<header class="wk"><a class="nav" href="#" aria-label="Previous week">←</a><div style="text-align:center"><h1 style="font-size:1.6rem">Week 45</h1><span class="note" style="color:var(--muted);font-weight:700">2 – 8 Nov</span></div><a class="nav" href="#" aria-label="Next week">→</a></header>
+<ol class="days">
+<li class="day" style="--c:var(--tomato)"><div class="dn"><small>Mon</small><b>2</b></div><div class="dinner"><span class="name">Sticky ginger salmon bowl</span><span class="ppl">👥 2</span></div><div class="runi">🧒 <b>Runi Lee</b> Salmon, mashed rice</div></li>
+<li class="day" style="--c:var(--mint)"><div class="dn"><small>Tue</small><b>3</b></div><div class="dinner"><span class="name">Slow tomato &amp; basil pasta</span><span class="ppl">👥 2</span></div><div class="runi">🧒 <b>Runi Lee</b> Same as dinner, mashed</div></li>
+<li class="day" style="--c:var(--lilac)"><div class="dn"><small>Wed</small><b>4</b></div><div class="dinner"><span class="name">Chicken &amp; sweet potato tray bake</span><span class="ppl">👥 5</span></div><div class="runi">🧒 <b>Runi Lee</b> Veggie pancakes</div></li>
+<li class="day" style="--c:var(--sky)"><div class="dn"><small>Thu</small><b>5</b></div><div class="dinner"><span class="name">Lentil &amp; carrot soup</span><span class="ppl">👥 2</span><span class="sticker white">freezable</span></div><div class="runi">🧒 <b>Runi Lee</b> Same as dinner, mashed</div></li>
+<li class="day" style="--c:var(--sun)"><div class="dn"><small>Fri</small><b>6</b></div><div class="dinner"><div class="empty">＋ Pick a dinner</div><span class="ppl">👥 2</span></div><div class="runi">🧒 <b>Runi Lee</b> <span style="color:var(--muted)">empty</span></div></li>
+<li class="day" style="--c:var(--tomato-soft)"><div class="dn"><small>Sat</small><b>7</b></div><div class="dinner"><span class="name">Beef &amp; bean chili</span><span class="ppl">👥 4</span><span class="sticker white">freezable</span></div><div class="runi">🧒 <b>Runi Lee</b> Fish fingers &amp; peas</div></li>
+<li class="day" style="--c:var(--mint-soft)"><div class="dn"><small>Sun</small><b>8</b></div><div class="dinner"><div class="empty">＋ Pick a dinner</div><span class="ppl">👥 2</span></div><div class="runi">🧒 <b>Runi Lee</b> <span style="color:var(--muted)">empty</span></div></li>
+</ol>
+<section class="rules" aria-label="Rules">
+<div class="rule-set"><h2>Rules <span class="sticker sky">Adults</span></h2><ul>
+<li class="rule"><span class="box">✓</span>Fish 1/1</li><li class="rule"><span class="box">✓</span>Freezable 2/1</li></ul></div>
+<div class="rule-set runi-set"><h2>Rules <span class="sticker lilac">Runi Lee</span></h2><ul>
+<li class="rule warn"><span class="box">!</span>Fish 1/2</li><li class="rule"><span class="box">✓</span>Meat 0/1</li><li class="rule warn"><span class="box">!</span>Vegetables 3/5</li></ul></div>
+</section>
+<div class="cta"><button class="btn">✨ Create week</button><button class="btn mint">♻ Reduce waste</button></div>
+<a class="shop" href="#"><span>🛒 Shopping list · 24 items</span><span aria-hidden="true">→</span></a>
+</main>
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="browse.html" ><span class="ic">🍽</span>Browse</a>
+  <a class="tab" href="week.html" aria-current="page"><span class="ic">📅</span>Week</a>
+  <a class="tab" href="recipe.html" ><span class="ic">📖</span>Recipe</a>
+</nav>
+</body></html>

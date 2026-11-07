@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#f7f5ee">
+<title>Browse · Food planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500..700&family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=Fraunces:opsz,wght,SOFT,WONK@9..144,600..700,0..100,0..1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="page content-grid">
+  <header class="topbar">
+    <h1 class="page-title"><span class="scribble">Browse</span></h1>
+    <div class="actions">
+      <button class="icon-btn" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></button>
+      <button class="icon-btn" aria-label="Grid view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg></button>
+    </div>
+  </header>
+
+  <div class="full-width chip-row" role="group" aria-label="Filter">
+    <button class="chip t-fish" aria-pressed="true"><i class="dot"></i><span>Fish</span></button>
+    <button class="chip t-meat" aria-pressed="false"><i class="dot"></i><span>Meat</span></button>
+    <button class="chip t-chicken" aria-pressed="false"><i class="dot"></i><span>Chicken</span></button>
+    <button class="chip t-veggie" aria-pressed="false"><i class="dot"></i><span>Vegetarian</span></button>
+    <button class="chip t-veg" aria-pressed="false"><i class="dot"></i><span>Vegetables</span></button>
+    <button class="chip tag" aria-pressed="false"><span>freezable</span></button>
+  </div>
+
+  <section class="deck" aria-label="Recipes">
+    <div class="ghost g1" aria-hidden="true"></div>
+    <div class="ghost g2" aria-hidden="true"></div>
+    <article class="dish-card">
+      <div class="photo">
+        <svg viewBox="0 0 360 300" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Oven salmon with lemon, dill and new potatoes on a white plate">
+  <defs>
+    <linearGradient id="tbl" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#cfe3b8"/><stop offset="1" stop-color="#a9cf93"/></linearGradient>
+    <linearGradient id="fil" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#f6a173"/><stop offset="0.6" stop-color="#ec7f4f"/><stop offset="1" stop-color="#c95e34"/></linearGradient>
+    <radialGradient id="pl" cx="0.45" cy="0.42" r="0.6"><stop offset="0.75" stop-color="#fffdf7"/><stop offset="1" stop-color="#ece8dc"/></radialGradient>
+    <radialGradient id="pot" cx="0.35" cy="0.35" r="0.7"><stop offset="0" stop-color="#f6dc8f"/><stop offset="1" stop-color="#d9ab4e"/></radialGradient>
+  </defs>
+  <rect width="360" height="300" fill="url(#tbl)"/>
+  <g opacity="0.35" stroke="#7fae6b" stroke-width="1.2"><path d="M0 40h360M0 80h360M0 260h360"/></g>
+  <path d="M-10 222 L120 300 L-10 300 Z" fill="#fbf6ea"/><path d="M-10 236 L96 300" stroke="#e8673d" stroke-width="3" opacity="0.6"/><path d="M-10 250 L72 300" stroke="#e8673d" stroke-width="3" opacity="0.6"/>
+  <ellipse cx="186" cy="160" rx="126" ry="124" fill="#5f8f4e" opacity="0.18"/>
+  <circle cx="180" cy="152" r="124" fill="url(#pl)"/>
+  <circle cx="180" cy="152" r="100" fill="none" stroke="#e9e3d3" stroke-width="1.5"/>
+  <g>
+    <ellipse cx="122" cy="196" rx="24" ry="19" fill="url(#pot)" transform="rotate(-20 122 196)"/>
+    <ellipse cx="160" cy="218" rx="21" ry="17" fill="url(#pot)" transform="rotate(15 160 218)"/>
+    <ellipse cx="108" cy="155" rx="19" ry="16" fill="url(#pot)"/>
+    <ellipse cx="200" cy="222" rx="18" ry="15" fill="url(#pot)" transform="rotate(-10 200 222)"/>
+    <g fill="#4f8a3a"><circle cx="118" cy="190" r="2"/><circle cx="128" cy="200" r="1.6"/><circle cx="158" cy="214" r="1.8"/><circle cx="166" cy="222" r="1.5"/><circle cx="104" cy="152" r="1.7"/><circle cx="198" cy="218" r="1.7"/></g>
+  </g>
+  <path d="M132 128 C 140 92, 222 78, 258 104 C 280 120, 274 168, 242 180 C 200 196, 140 182, 132 128 Z" fill="url(#fil)"/>
+  <g fill="none" stroke="#fde3cf" stroke-width="3" stroke-linecap="round" opacity="0.85">
+    <path d="M162 104 C 172 128, 170 156, 160 176"/><path d="M190 94 C 202 122, 202 158, 190 186"/><path d="M220 92 C 232 120, 234 156, 222 184"/><path d="M246 102 C 256 124, 256 150, 248 170"/>
+  </g>
+  <g transform="translate(232 76)"><circle r="26" fill="#f2c230"/><circle r="22" fill="#fae17a"/><g stroke="#f2c230" stroke-width="2"><path d="M0 -20V20M-20 0H20M-14 -14L14 14M-14 14L14 -14"/></g><circle r="4" fill="#fdf0b8"/></g>
+  <g transform="translate(270 132) rotate(30)"><ellipse rx="20" ry="11" fill="#f2c230"/><ellipse rx="17" ry="8" fill="#fae17a"/></g>
+  <g fill="none" stroke="#3f7d2f" stroke-width="2" stroke-linecap="round">
+    <path d="M150 120 q20 -6 40 4"/><path d="M160 117 l-4 -8M168 116 l-2 -9M176 117 l2 -9M184 120 l5 -7M164 118 l-6 5M172 118 l-3 7M180 119 l1 7"/>
+    <path d="M196 140 q16 -10 34 -4"/><path d="M204 136 l-3 -8M212 133 l0 -8M220 133 l4 -7M208 136 l-4 6M216 135 l1 7M224 135 l5 6"/>
+  </g>
+  <g fill="#4f8a3a"><path d="M300 248 c14 -10 34 -6 40 4 c-14 10 -32 8 -40 -4z"/><path d="M318 266 c10 -14 30 -16 38 -8 c-10 14 -28 16 -38 8z" fill="#6aa552"/><path d="M28 54 c10 -12 28 -12 34 -2 c-10 12 -26 12 -34 2z"/></g>
+  <g fill="#fbf6ea" opacity="0.9"><circle cx="318" cy="40" r="3"/><circle cx="330" cy="52" r="2"/><circle cx="40" cy="120" r="2.5"/></g>
+</svg>
+
+        <span class="price-tag badge">35 min</span>
+        <span class="count">3 of 11 fish dishes</span>
+      </div>
+      <div class="body">
+        <h2 class="dish-title"><a href="recipe.html" style="text-decoration:none">Oven salmon with lemon, dill &amp; new potatoes</a></h2>
+        <div class="meta">
+          <span class="pill t-fish">Fish</span>
+          <span class="pill tagged">kid-friendly</span>
+          <span>Feeds 4</span><i class="sep"></i><span>Made 3×</span>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <div class="swipe-hint" aria-hidden="true">
+    <svg viewBox="0 0 40 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M38 9 C 28 4, 16 12, 3 8"/><path d="M8 3 L3 8 L9 12"/></svg>
+    <span class="hand">swipe for the next dish</span>
+    <svg viewBox="0 0 40 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9 C 12 4, 24 12, 37 8"/><path d="M32 3 L37 8 L31 12"/></svg>
+  </div>
+
+  <div class="browse-actions">
+    <a class="btn btn-ghost" href="recipe.html" aria-label="Open recipe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M5 4.5h11a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/></svg><span>Recipe</span></a>
+    <button class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M12 10v6M9 13h6M8 3v4M16 3v4"/></svg><span>Add to week</span></button>
+  </div>
+</main>
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="browse.html" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M5 15h14" /></svg>Browse</a>
+  <a class="tab" href="week.html" ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke-linecap="round"/></svg>Week</a>
+  <a class="tab" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8" stroke-linecap="round"/></svg>Shopping</a>
+  <a class="tab" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M5 4.5h11a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11" /></svg>Recipes</a>
+</nav>
+
+</body>
+</html>
