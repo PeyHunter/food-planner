@@ -1,4 +1,4 @@
-import type { IngredientSuggestion, Recipe, RecipeInput, RecipeSummary, ShareLink } from "../../shared/recipes.ts";
+import type { Ingredient, IngredientSettings, IngredientSuggestion, Recipe, RecipeInput, RecipeSummary, ShareLink } from "../../shared/recipes.ts";
 
 export async function call<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
@@ -21,17 +21,34 @@ export const getRecipe = (id: string) => call<Recipe>(`/api/recipes/${id}`);
 export const createRecipe = (input: RecipeInput) => call<{ id: string }>("/api/recipes", json("POST", input));
 export const updateRecipe = (id: string, input: RecipeInput) => call<{ id: string }>(`/api/recipes/${id}`, json("PUT", input));
 export const deleteRecipe = (id: string) => call<void>(`/api/recipes/${id}`, { method: "DELETE" });
+export const listIngredients = (q: string) => call<Ingredient[]>(`/api/ingredients?all=1&q=${encodeURIComponent(q)}`);
+export const saveIngredient = (id: string, settings: IngredientSettings) => call<Ingredient>(`/api/ingredients/${id}`, json("PUT", settings));
 export const suggestIngredients = (q: string) => call<IngredientSuggestion[]>(`/api/ingredients?q=${encodeURIComponent(q)}`);
 
 export const getShareLink = (id: string) => call<ShareLink>(`/api/recipes/${id}/share`);
 export const turnShareOn = (id: string) => call<ShareLink>(`/api/recipes/${id}/share`, { method: "POST" });
 export const turnShareOff = (id: string) => call<ShareLink>(`/api/recipes/${id}/share`, { method: "DELETE" });
 
-export function uploadPhoto(recipeId: string, photo: File, role: "main" | "gallery") {
+/** XMLHttpRequest rather than fetch, because only it reports how much of the photo has been sent. `onProgress` gets 0 to 1. */
+export function uploadPhoto(recipeId: string, photo: File, role: "main" | "gallery", onProgress?: (sent: number) => void) {
   const form = new FormData();
   form.set("photo", photo);
   form.set("role", role);
-  return call(`/api/recipes/${recipeId}/photos`, { method: "POST", body: form });
+  return new Promise<void>((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("POST", `/api/recipes/${recipeId}/photos`);
+    request.upload.onprogress = (event) => event.lengthComputable && onProgress?.(event.loaded / event.total);
+    request.onerror = () => reject(new Error("Can't reach the server right now. Try again in a moment."));
+    request.onload = () => {
+      if (request.status < 300) return resolve();
+      let error: string | undefined;
+      try {
+        error = (JSON.parse(request.responseText) as { error?: string }).error;
+      } catch {}
+      reject(new Error(error ?? "That didn't work. Try again."));
+    };
+    request.send(form);
+  });
 }
 
 export function logCook(recipeId: string, madeOn: string, photos: File[]) {

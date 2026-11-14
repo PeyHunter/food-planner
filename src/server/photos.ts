@@ -8,6 +8,8 @@ sharp.concurrency(1);
 sharp.cache(false);
 
 const maxSide = 1600;
+const maxBytes = 400 * 1024;
+const qualities = [75, 65, 55, 45];
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export type StoredPhoto = { id: string; width: number; height: number; bytes: number };
@@ -19,16 +21,35 @@ export function photoStore(dir: string) {
   };
 
   return {
-    /** Turns the photo upright, shrinks it to at most 1600 px on its long side and saves it as JPEG without its metadata (no GPS). */
+    /** Turns the photo upright, shrinks it to at most 1600 px on its long side and saves it as JPEG of at most 400 kB without its metadata (no GPS). */
     async save(input: Uint8Array): Promise<StoredPhoto> {
-      const { data, info } = await sharp(input, { failOn: "error" })
+      const { data: pixels, info } = await sharp(input, { failOn: "error" })
         .rotate()
         .resize({ width: maxSide, height: maxSide, fit: "inside", withoutEnlargement: true })
-        .jpeg({ quality: 75, mozjpeg: true })
+        .raw()
         .toBuffer({ resolveWithObject: true });
+      const raw = { width: info.width, height: info.height, channels: info.channels };
+      const encode = (quality: number, width = raw.width, height = raw.height) =>
+        sharp(pixels, { raw })
+          .resize({ width, height, fit: "inside" })
+          .jpeg({ quality, mozjpeg: true })
+          .toBuffer({ resolveWithObject: true });
+
+      // Lower the quality first, then the size, until it fits.
+      let photo = await encode(qualities[0]!);
+      for (const quality of qualities.slice(1)) {
+        if (photo.data.length <= maxBytes) break;
+        photo = await encode(quality);
+      }
+      let scale = 1;
+      while (photo.data.length > maxBytes && scale > 0.1) {
+        scale *= 0.85;
+        photo = await encode(qualities.at(-1)!, Math.round(raw.width * scale), Math.round(raw.height * scale));
+      }
+
       const id = randomUUID();
-      await writeFile(pathOf(id), data);
-      return { id, width: info.width, height: info.height, bytes: data.length };
+      await writeFile(pathOf(id), photo.data);
+      return { id, width: photo.info.width, height: photo.info.height, bytes: photo.data.length };
     },
     read: (id: string) => readFile(pathOf(id)),
     remove: (id: string) => rm(pathOf(id), { force: true }),

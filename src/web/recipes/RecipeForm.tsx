@@ -51,7 +51,8 @@ export function RecipeForm({ id }: { id?: string }) {
   const [photo, setPhoto] = useState<File>();
   const [preview, setPreview] = useState<string>();
   const [problem, setProblem] = useState<string>();
-  const [busy, setBusy] = useState(false);
+  // What the save button says while it works, e.g. "Uploading photo… 60%".
+  const [busy, setBusy] = useState<string>();
 
   useEffect(() => {
     if (!id) return;
@@ -90,16 +91,20 @@ export function RecipeForm({ id }: { id?: string }) {
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
-    setBusy(true);
+    setBusy("Saving…");
     setProblem(undefined);
     try {
       const input = toInput(draft);
       const saved = id ? await updateRecipe(id, input) : await createRecipe(input);
-      if (photo) await uploadPhoto(saved.id, photo, "main");
+      if (photo) {
+        setBusy("Uploading photo… 0%");
+        // Once all of it is sent, the server still has to shrink it.
+        await uploadPhoto(saved.id, photo, "main", (sent) => setBusy(sent < 1 ? `Uploading photo… ${Math.round(sent * 100)}%` : "Saving…"));
+      }
       go(`/recipes/${saved.id}`);
     } catch (error) {
       setProblem((error as Error).message);
-      setBusy(false);
+      setBusy(undefined);
     }
   };
 
@@ -207,8 +212,8 @@ export function RecipeForm({ id }: { id?: string }) {
       </fieldset>
 
       {problem && <p role="alert">{problem}</p>}
-      <button type="submit" className="ink-button big" disabled={busy}>
-        {busy ? "Saving…" : "Save recipe"}
+      <button type="submit" className="ink-button big" disabled={busy !== undefined}>
+        {busy ?? "Save recipe"}
       </button>
       {id && (
         <button type="button" className="quiet danger" onClick={remove}>

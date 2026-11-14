@@ -10,8 +10,9 @@ import { createTestApp, startingUsers } from "./support/test-app.ts";
 const fileOf = (id: string) => join(inject("scratchDir"), `${id}.jpg`);
 
 /** A photo the size an iPhone takes: blurred noise, so it compresses worse than most real ones (about 6 MB at full size). */
-async function phonePhoto(width = 4032, height = 3024, orientation?: number) {
-  const noise = sharp(randomBytes(width * height * 3), { raw: { width, height, channels: 3 } }).blur(1);
+async function phonePhoto(width = 4032, height = 3024, orientation?: number, blur = true) {
+  const raw = sharp(randomBytes(width * height * 3), { raw: { width, height, channels: 3 } });
+  const noise = blur ? raw.blur(1) : raw;
   return (orientation ? noise.withMetadata({ orientation }) : noise).jpeg({ quality: 92 }).toBuffer();
 }
 
@@ -55,6 +56,18 @@ test("an uploaded photo is shrunk to 1600 px, saved as a small JPEG and served w
   expect((await served.arrayBuffer()).byteLength).toBe(size);
 
   expect((await recipe()).mainPhoto?.id).toBe(photo.id);
+});
+
+test("a photo that compresses badly still ends up at 400 kB or less", async () => {
+  const { upload } = await setUp();
+  // Sharp noise at 1600 px is about 800 kB at quality 75: it needs lower quality and a smaller size.
+  const photo = (await (await upload(await phonePhoto(1600, 1200, undefined, false), "main")).json()) as Photo;
+
+  const { size } = await stat(fileOf(photo.id));
+  expect(size).toBeLessThanOrEqual(400 * 1024);
+  const stored = await sharp(fileOf(photo.id)).metadata();
+  expect(stored.width! / stored.height!).toBeCloseTo(4 / 3, 1);
+  expect(stored.width).toBeGreaterThan(800);
 });
 
 test("a small photo is not blown up, a sideways one is turned upright, and its metadata is dropped", async () => {

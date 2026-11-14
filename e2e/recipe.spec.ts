@@ -93,3 +93,53 @@ test("typing an ingredient suggests ones the kitchen already has", async ({ page
   await expect(page.getByLabel("Ingredient 1")).toHaveValue("Carrots");
   await expect(page.getByRole("list", { name: "Suggestions for ingredient 1" })).toBeHidden();
 });
+
+test("saving with a big photo on a slow line shows how much of the photo is sent", async ({ page }) => {
+  await logIn(page);
+  await page.getByRole("link", { name: "+ Add recipe" }).click();
+  await page.getByLabel("Name").fill("Slow upload pie");
+  await page.getByRole("button", { name: "Fish" }).click();
+  const noise = await sharp(Buffer.from(Array.from({ length: 900 * 700 * 3 }, () => Math.floor(Math.random() * 256))), { raw: { width: 900, height: 700, channels: 3 } })
+    .jpeg({ quality: 95 })
+    .toBuffer();
+  await page.getByLabel("Main photo").setInputFiles({ name: "big.jpg", mimeType: "image/jpeg", buffer: noise });
+
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Network.enable");
+  await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: 200 * 1024 });
+  await page.getByRole("button", { name: "Save recipe" }).click();
+  await expect(page.getByRole("button", { name: /^Uploading photo… [1-9]\d?%$/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Slow upload pie" })).toBeVisible({ timeout: 30_000 });
+});
+
+test("a link to a recipe opened while logged out lands on that recipe after logging in", async ({ page, browser }) => {
+  await logIn(page);
+  const made = await page.request.post("/api/recipes", { data: { title: "Deep link stew", feeds: 2, types: ["Meat"], tags: [], lines: [], steps: [] } });
+  const { id } = (await made.json()) as { id: string };
+
+  const fresh = await browser.newPage();
+  await fresh.goto(`/#/recipes/${id}`);
+  await fresh.getByLabel("Name").fill("peyton");
+  await fresh.getByLabel("Password").fill(e2ePasswords.peyton);
+  await fresh.getByRole("button", { name: "Log in" }).click();
+  await expect(fresh.getByRole("heading", { name: "Deep link stew" })).toBeVisible();
+  const recipesTab = fresh.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Recipes" });
+  await expect(recipesTab).toHaveAttribute("aria-current", "page");
+
+  // The same link opened in an app that is already showing another tab.
+  await fresh.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Week" }).click();
+  await expect(fresh.getByRole("heading", { name: "Deep link stew" })).toBeHidden();
+  await fresh.goto(`/#/recipes/${id}`);
+  await expect(fresh.getByRole("heading", { name: "Deep link stew" })).toBeVisible();
+  await expect(recipesTab).toHaveAttribute("aria-current", "page");
+
+  // Logged out on a page that is already open, then the link, then logging in.
+  await fresh.getByRole("button", { name: "Log out" }).click();
+  await fresh.goto("/#/week");
+  await fresh.goto(`/#/recipes/${id}`);
+  await fresh.getByLabel("Name").fill("peyton");
+  await fresh.getByLabel("Password").fill(e2ePasswords.peyton);
+  await fresh.getByRole("button", { name: "Log in" }).click();
+  await expect(fresh.getByRole("heading", { name: "Deep link stew" })).toBeVisible();
+  await fresh.close();
+});

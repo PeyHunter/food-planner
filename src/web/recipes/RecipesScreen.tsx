@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react";
+import { IngredientsScreen } from "./IngredientsScreen.tsx";
 import { RecipeForm } from "./RecipeForm.tsx";
 import { RecipeList } from "./RecipeList.tsx";
 import { RecipePage } from "./RecipePage.tsx";
 import "./recipes.css";
 
-type Route = { screen: "list" } | { screen: "new" } | { screen: "recipe"; id: string } | { screen: "edit"; id: string };
+type Route = { screen: "list" } | { screen: "new" } | { screen: "ingredients" } | { screen: "recipe"; id: string } | { screen: "edit"; id: string };
 
-// #/recipes, #/recipes/new, #/recipes/<id>, #/recipes/<id>/edit
+// #/recipes, #/recipes/new, #/recipes/ingredients, #/recipes/<id>, #/recipes/<id>/edit
 function readRoute(hash: string): Route {
   const [, section, id, action] = hash.replace(/^#/, "").split("/");
   if (section !== "recipes" || !id) return { screen: "list" };
   if (id === "new") return { screen: "new" };
+  if (id === "ingredients") return { screen: "ingredients" };
   return action === "edit" ? { screen: "edit", id } : { screen: "recipe", id };
 }
 
@@ -31,6 +33,7 @@ export function RecipesScreen() {
     <div className="recipes">
       {route.screen === "list" && <RecipeList />}
       {route.screen === "new" && <RecipeForm />}
+      {route.screen === "ingredients" && <IngredientsScreen />}
       {route.screen === "edit" && <RecipeForm key={route.id} id={route.id} />}
       {route.screen === "recipe" && <RecipePage key={route.id} id={route.id} />}
     </div>
