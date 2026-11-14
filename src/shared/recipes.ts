@@ -53,3 +53,9 @@ export type RecipeInput = {
 };
 
 export type IngredientSuggestion = { id: string; name: string; shopSection: ShopSection };
+
+/** What a share link shows: the recipe without who made it or when it was cooked. Photo urls go through the link. */
+export type SharedRecipe = Pick<Recipe, "title" | "feeds" | "types" | "tags" | "mainPhoto" | "photos" | "lines" | "steps">;
+
+/** The recipe's share link, or null while sharing is off. */
+export type ShareLink = { url: string | null };

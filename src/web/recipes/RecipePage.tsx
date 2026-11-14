@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import type { Recipe, RecipeLine, RecipeSummary } from "../../shared/recipes.ts";
 import { formatAmount, scale } from "../../shared/units.ts";
 import { getRecipe, logCook, showDate, today, uploadPhoto } from "./api.ts";
+import { SharePanel } from "./SharePanel.tsx";
 
 const typeColour: Record<string, string> = { Fish: "sky", Meat: "tomato", Chicken: "sun", Vegetarian: "mint", Vegetables: "mint" };
 
@@ -27,19 +28,62 @@ function lineAmount(line: RecipeLine, from: number, to: number) {
   return `${formatAmount(scale(line.amount, line.unit, from, to))} ${line.unit}`;
 }
 
+/** Ingredients with the − N + stepper that scales the amounts. Used on the recipe page and the public share page. */
+export function IngredientsPanel({ recipe }: { recipe: Pick<Recipe, "feeds" | "lines"> }) {
+  const [people, setPeople] = useState(recipe.feeds);
+  return (
+    <section className="panel">
+      <div className="bar">
+        <h2>Ingredients</h2>
+        <div className="stepper" role="group" aria-label="How many people">
+          <button type="button" aria-label="Fewer people" disabled={people <= 1} onClick={() => setPeople(people - 1)}>
+            −
+          </button>
+          <output aria-live="polite">Feeds {people}</output>
+          <button type="button" aria-label="More people" disabled={people >= 100} onClick={() => setPeople(people + 1)}>
+            +
+          </button>
+        </div>
+      </div>
+      {people !== recipe.feeds && <p className="hint">Amounts scaled from {recipe.feeds} people and rounded up.</p>}
+      <ul className="lines">
+        {recipe.lines.map((line, index) => (
+          <li key={index}>
+            <span className="amount">{lineAmount(line, recipe.feeds, people)}</span>
+            <span>
+              {line.ingredient.name}
+              {line.note && <span className="note">, {line.note}</span>}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+export function StepsPanel({ steps }: { steps: string[] }) {
+  if (!steps.length) return null;
+  return (
+    <section className="panel">
+      <h2>Steps</h2>
+      <ol className="steps">
+        {steps.map((step, index) => (
+          <li key={index}>{step}</li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
 export function RecipePage({ id }: { id: string }) {
   const [recipe, setRecipe] = useState<Recipe>();
-  const [people, setPeople] = useState(0);
   const [problem, setProblem] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [logging, setLogging] = useState(false);
 
   const load = () =>
     getRecipe(id).then(
-      (loaded) => {
-        setRecipe(loaded);
-        setPeople((current) => current || loaded.feeds);
-      },
+      (loaded) => setRecipe(loaded),
       (error: Error) => setProblem(error.message),
     );
 
@@ -86,43 +130,9 @@ export function RecipePage({ id }: { id: string }) {
         </p>
       )}
 
-      <section className="panel">
-        <div className="bar">
-          <h2>Ingredients</h2>
-          <div className="stepper" role="group" aria-label="How many people">
-            <button type="button" aria-label="Fewer people" disabled={people <= 1} onClick={() => setPeople(people - 1)}>
-              −
-            </button>
-            <output aria-live="polite">Feeds {people}</output>
-            <button type="button" aria-label="More people" disabled={people >= 100} onClick={() => setPeople(people + 1)}>
-              +
-            </button>
-          </div>
-        </div>
-        {people !== recipe.feeds && <p className="hint">Amounts scaled from {recipe.feeds} people and rounded up.</p>}
-        <ul className="lines">
-          {recipe.lines.map((line, index) => (
-            <li key={index}>
-              <span className="amount">{lineAmount(line, recipe.feeds, people)}</span>
-              <span>
-                {line.ingredient.name}
-                {line.note && <span className="note">, {line.note}</span>}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {recipe.steps.length > 0 && (
-        <section className="panel">
-          <h2>Steps</h2>
-          <ol className="steps">
-            {recipe.steps.map((step, index) => (
-              <li key={index}>{step}</li>
-            ))}
-          </ol>
-        </section>
-      )}
+      <IngredientsPanel recipe={recipe} />
+      <StepsPanel steps={recipe.steps} />
+      <SharePanel recipeId={id} title={recipe.title} />
 
       <section className="panel">
         <div className="bar">

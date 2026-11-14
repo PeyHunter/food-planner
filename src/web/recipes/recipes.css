@@ -462,3 +462,46 @@
   border-radius: 1rem;
   object-fit: cover;
 }
+
+/* sharing */
+.recipes .switch {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 800;
+}
+
+.recipes .switch input {
+  appearance: none;
+  flex: none;
+  inline-size: 3.4rem;
+  block-size: 2rem;
+  margin: 0;
+  padding: 0;
+  border: var(--r-line);
+  border-radius: 999px;
+  background: radial-gradient(circle at 0.85rem 50%, var(--r-paper) 0 0.6rem, transparent 0.65rem), color-mix(in srgb, var(--r-ink) 25%, white);
+  box-shadow: 2px 2px 0 var(--r-ink);
+  cursor: pointer;
+}
+
+.recipes .switch input:checked {
+  background: radial-gradient(circle at calc(100% - 0.85rem) 50%, var(--r-paper) 0 0.6rem, transparent 0.65rem), var(--r-mint);
+}
+
+.recipes .share-url {
+  overflow-wrap: anywhere;
+}
+
+.recipes .share-note,
+.recipes .shared-from {
+  justify-self: start;
+  margin: 0;
+}
+
+.recipes .gone {
+  justify-items: start;
+  margin-top: 2rem;
+  background: var(--sun-soft, #fff3c4);
+  box-shadow: var(--r-pop);
+}

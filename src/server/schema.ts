@@ -73,6 +73,8 @@ export const recipes = pgTable(
     feeds: integer("feeds").notNull(),
     ageFromMonths: integer("age_from_months"),
     ageToMonths: integer("age_to_months"),
+    /** Null while the recipe isn't shared. Turning sharing off clears it, so an old link never works again. */
+    shareToken: text("share_token").unique(),
     createdBy: createdBy(),
     createdAt: at("created_at").notNull().defaultNow(),
     updatedAt: at("updated_at").notNull().defaultNow(),
