@@ -18,7 +18,7 @@ test("the bottom nav has four tabs and each one opens", async ({ page }) => {
     await tab.click();
     await expect(tab).toHaveAttribute("aria-current", "page");
     await expect(page.getByRole("heading", { level: 2, name: label })).toBeVisible();
-    await expect(page.getByText("Coming soon")).toBeVisible({ visible: label !== "Recipes" });
+    await expect(page.getByText("Coming soon")).toBeVisible({ visible: label !== "Recipes" && label !== "Week" });
   }
 
   const box = await nav.boundingBox();

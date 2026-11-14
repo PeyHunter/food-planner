@@ -1,6 +1,6 @@
 import type { IngredientSuggestion, Recipe, RecipeInput, RecipeSummary, ShareLink } from "../../shared/recipes.ts";
 
-async function call<T>(path: string, init?: RequestInit): Promise<T> {
+export async function call<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
     response = await fetch(path, init);
@@ -14,7 +14,7 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   return (response.status === 204 ? undefined : await response.json()) as T;
 }
 
-const json = (method: string, body: unknown): RequestInit => ({ method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+export const json = (method: string, body: unknown): RequestInit => ({ method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 
 export const listRecipes = (q: string) => call<RecipeSummary[]>(`/api/recipes?q=${encodeURIComponent(q)}`);
 export const getRecipe = (id: string) => call<Recipe>(`/api/recipes/${id}`);

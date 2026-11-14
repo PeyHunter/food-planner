@@ -138,3 +138,56 @@ export const photos = pgTable(
     uniqueIndex("photos_one_main").on(table.recipeId).where(sql`${table.role} = 'main'`),
   ],
 );
+
+export const children = pgTable(
+  "children",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kitchenId: kitchenId(),
+    name: text("name").notNull(),
+    birthday: date("birthday", { mode: "string" }),
+    createdAt: at("created_at").notNull().defaultNow(),
+  },
+  (table) => [index("children_kitchen").on(table.kitchenId)],
+);
+
+/** A day with no row is empty with the default people count. */
+export const planDays = pgTable(
+  "plan_days",
+  {
+    kitchenId: kitchenId(),
+    date: date("date", { mode: "string" }).notNull(),
+    people: integer("people").notNull().default(2),
+    dinnerRecipeId: uuid("dinner_recipe_id").references(() => recipes.id, { onDelete: "set null" }),
+  },
+  (table) => [primaryKey({ columns: [table.kitchenId, table.date] }), check("plan_days_people", sql`${table.people} between 1 and 50`)],
+);
+
+/** kind is empty, same-as-dinner or recipe. A recipe row whose recipe was deleted reads as empty. */
+export const childDays = pgTable(
+  "child_days",
+  {
+    childId: uuid("child_id")
+      .notNull()
+      .references(() => children.id, { onDelete: "cascade" }),
+    date: date("date", { mode: "string" }).notNull(),
+    kind: text("kind").notNull(),
+    recipeId: uuid("recipe_id").references(() => recipes.id, { onDelete: "set null" }),
+  },
+  (table) => [primaryKey({ columns: [table.childId, table.date] })],
+);
+
+/** childId null is the adults' rule. op is at-least or at-most; what is a main type or a tag. */
+export const rules = pgTable(
+  "rules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kitchenId: kitchenId(),
+    childId: uuid("child_id").references(() => children.id, { onDelete: "cascade" }),
+    op: text("op").notNull(),
+    n: integer("n").notNull(),
+    what: text("what").notNull(),
+    createdAt: at("created_at").notNull().defaultNow(),
+  },
+  (table) => [index("rules_kitchen").on(table.kitchenId)],
+);

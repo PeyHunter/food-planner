@@ -1,7 +1,7 @@
-import { eq, inArray } from "drizzle-orm";
+import { asc, eq, inArray, sql } from "drizzle-orm";
 import type { Database } from "./db.ts";
 import { hashPassword } from "./passwords.ts";
-import { kitchenMembers, kitchens, users } from "./schema.ts";
+import { children, kitchenMembers, kitchens, rules, users } from "./schema.ts";
 
 export type StartingUser = { username: string; password: string };
 
@@ -9,7 +9,8 @@ export type StartingUser = { username: string; password: string };
  * Makes sure every starting user exists and that they all share one Kitchen.
  * A user who already exists keeps their password: the env value is only used the first time.
  */
-export async function ensureHousehold({ db }: Database, people: StartingUser[]) {
+export async function ensureHousehold(database: Database, people: StartingUser[]) {
+  const { db } = database;
   await db.transaction(async (tx) => {
     for (const person of people) {
       const [existing] = await tx.select({ id: users.id }).from(users).where(eq(users.username, person.username));
@@ -39,5 +40,29 @@ export async function ensureHousehold({ db }: Database, people: StartingUser[]) 
       .insert(kitchenMembers)
       .values(members.map((member) => ({ kitchenId, userId: member.id })))
       .onConflictDoNothing();
+  });
+  await ensureKitchenDefaults(database);
+}
+
+/** A kitchen with no children gets Runi Lee; a kitchen with no rules gets the spec's starting rules. */
+export async function ensureKitchenDefaults({ db }: Database) {
+  await db.transaction(async (tx) => {
+    await tx.execute(sql`insert into ${children} (kitchen_id, name)
+      select k.id, 'Runi Lee' from ${kitchens} k where not exists (select 1 from ${children} c where c.kitchen_id = k.id)`);
+    const bare = await tx
+      .select({ id: kitchens.id })
+      .from(kitchens)
+      .where(sql`not exists (select 1 from ${rules} r where r.kitchen_id = ${kitchens.id})`);
+    for (const { id: kitchenId } of bare) {
+      const [first] = await tx.select({ id: children.id }).from(children).where(eq(children.kitchenId, kitchenId)).orderBy(asc(children.createdAt), asc(children.id)).limit(1);
+      const childId = first!.id;
+      await tx.insert(rules).values([
+        { kitchenId, childId: null, op: "at-least", n: 1, what: "Fish" },
+        { kitchenId, childId: null, op: "at-least", n: 1, what: "Freezable" },
+        { kitchenId, childId, op: "at-least", n: 2, what: "Fish" },
+        { kitchenId, childId, op: "at-most", n: 1, what: "Meat" },
+        { kitchenId, childId, op: "at-least", n: 5, what: "Vegetables" },
+      ]);
+    }
   });
 }
