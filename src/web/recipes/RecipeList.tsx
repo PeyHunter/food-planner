@@ -26,9 +26,14 @@ export function RecipeList() {
     <section className="recipe-list">
       <div className="bar">
         <h2>Recipes</h2>
-        <a className="ink-button" href="#/recipes/new">
-          + Add recipe
-        </a>
+        <span className="bar-buttons">
+          <a className="ink-button white small" href="#/recipes/ingredients">
+            Ingredients
+          </a>
+          <a className="ink-button" href="#/recipes/new">
+            + Add recipe
+          </a>
+        </span>
       </div>
       <input type="search" className="search" placeholder="Search by name or ingredient" aria-label="Search recipes" value={q} onChange={(event) => setQ(event.target.value)} />
       {problem && <p role="alert">{problem}</p>}

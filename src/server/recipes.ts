@@ -3,7 +3,7 @@ import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { createMiddleware } from "hono/factory";
-import { mainTypes, type Cook, type IngredientSuggestion, type MainType, type Photo, type Recipe, type RecipeInput, type RecipeSummary, type ShareLink, type SharedRecipe, type ShopSection } from "../shared/recipes.ts";
+import { mainTypes, shopSections, type Cook, type Ingredient, type IngredientSettings, type MainType, type Photo, type Recipe, type RecipeInput, type RecipeSummary, type ShareLink, type SharedRecipe, type ShopSection } from "../shared/recipes.ts";
 import { isUnit } from "../shared/units.ts";
 import { sessionUser } from "./access.ts";
 import type { AppDependencies } from "./app.ts";
@@ -124,17 +124,40 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl }: AppD
     return c.body(null, 204);
   });
 
+  // Suggestions while typing (8 at most), or with ?all=1 the whole list for the Ingredients screen.
   routes.get("/api/ingredients", member, async (c) => {
     const q = (c.req.query("q") ?? "").trim();
-    if (!q) return c.json([]);
+    const all = c.req.query("all") === "1";
+    if (!q && !all) return c.json([]);
     const rows = await db
-      .select({ id: ingredients.id, name: ingredients.name, shopSection: ingredients.shopSection })
+      .select({
+        id: ingredients.id,
+        name: ingredients.name,
+        shopSection: ingredients.shopSection,
+        packAmount: ingredients.packAmount,
+        packUnit: ingredients.packUnit,
+        alwaysAtHome: ingredients.alwaysAtHome,
+      })
       .from(ingredients)
-      .where(and(eq(ingredients.kitchenId, c.get("member").kitchenId), sql`${ingredients.name} ilike ${likeText(q)}`))
+      .where(and(eq(ingredients.kitchenId, c.get("member").kitchenId), q ? sql`${ingredients.name} ilike ${likeText(q)}` : undefined))
       // Names that start with what was typed come first.
       .orderBy(sql`${ingredients.name} ilike ${likeText(q).slice(1)} desc`, asc(sql`lower(${ingredients.name})`))
-      .limit(8);
-    return c.json(rows as IngredientSuggestion[]);
+      .limit(all ? 1000 : 8);
+    return c.json(rows.map(toIngredient));
+  });
+
+  routes.put("/api/ingredients/:id", member, async (c) => {
+    const id = c.req.param("id");
+    if (!uuidPattern.test(id)) return c.json({ error: "No such ingredient." }, 404);
+    const settings = parseIngredientSettings(await c.req.json().catch(() => undefined));
+    if ("error" in settings) return c.json(settings, 400);
+    const [row] = await db
+      .update(ingredients)
+      .set(settings)
+      .where(and(eq(ingredients.id, id), eq(ingredients.kitchenId, c.get("member").kitchenId)))
+      .returning();
+    if (!row) return c.json({ error: "No such ingredient." }, 404);
+    return c.json(toIngredient(row));
   });
 
   routes.post("/api/recipes/:id/photos", member, bodyLimit({ maxSize: 25 * megabyte, onError: tooBig }), async (c) => {
@@ -379,6 +402,15 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl }: AppD
   return routes;
 }
 
+const toIngredient = (row: { id: string; name: string; shopSection: string; packAmount: number | null; packUnit: string | null; alwaysAtHome: boolean }): Ingredient => ({
+  id: row.id,
+  name: row.name,
+  shopSection: row.shopSection as ShopSection,
+  packAmount: row.packAmount,
+  packUnit: isUnit(row.packUnit) ? row.packUnit : null,
+  alwaysAtHome: row.alwaysAtHome,
+});
+
 const sortTypes = (types: string[]) => mainTypes.filter((type) => types.includes(type));
 
 export async function recipeSummaries({ db }: Database, rows: { id: string; title: string; feeds: number }[]): Promise<RecipeSummary[]> {
@@ -454,3 +486,16 @@ export function parseInput(body: unknown): RecipeInput | { error: string } {
   return { title, feeds: feeds as number, types, tags, ageFromMonths, ageToMonths, lines, steps: stepTexts };
 }
 
+
+export function parseIngredientSettings(body: unknown): IngredientSettings | { error: string } {
+  if (!body || typeof body !== "object") return { error: "Send the settings as JSON." };
+  const raw = body as Record<string, unknown>;
+  if (!shopSections.includes(raw.shopSection as ShopSection)) return { error: "Pick a shop section." };
+  const packAmount = raw.packAmount === null || raw.packAmount === undefined || raw.packAmount === "" ? null : raw.packAmount;
+  if (packAmount !== null && !(typeof packAmount === "number" && Number.isFinite(packAmount) && packAmount > 0)) return { error: "The pack size must be a number above 0." };
+  const packUnit = raw.packUnit === null || raw.packUnit === undefined || raw.packUnit === "" ? null : raw.packUnit;
+  if (packUnit !== null && !isUnit(packUnit)) return { error: "Pick a unit for the pack size." };
+  if ((packAmount === null) !== (packUnit === null)) return { error: "A pack size needs both an amount and a unit." };
+  if (typeof raw.alwaysAtHome !== "boolean") return { error: "Say if it is always at home." };
+  return { shopSection: raw.shopSection as ShopSection, packAmount, packUnit, alwaysAtHome: raw.alwaysAtHome };
+}

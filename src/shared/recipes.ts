@@ -59,3 +59,8 @@ export type SharedRecipe = Pick<Recipe, "title" | "feeds" | "types" | "tags" | "
 
 /** The recipe's share link, or null while sharing is off. */
 export type ShareLink = { url: string | null };
+
+/** An ingredient with the settings the shopping list uses. */
+export type Ingredient = IngredientSuggestion & { packAmount: number | null; packUnit: Unit | null; alwaysAtHome: boolean };
+/** What the Ingredients screen sends to PUT /api/ingredients/:id. */
+export type IngredientSettings = Omit<Ingredient, "id" | "name">;

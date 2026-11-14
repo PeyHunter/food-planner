@@ -105,8 +105,14 @@ const tabs: Tab[] = [
 ];
 
 function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
-  // A reload on #/recipes/... stays on that tab.
-  const [current, setCurrent] = useState(() => tabs.find((tab) => window.location.hash.startsWith(`#/${tab.id}`)) ?? tabs[1]!);
+  // The hash picks the tab, so a reload or a link to #/recipes/... opens that tab.
+  const tabOfHash = () => tabs.find((tab) => window.location.hash.startsWith(`#/${tab.id}`));
+  const [current, setCurrent] = useState(() => tabOfHash() ?? tabs[1]!);
+  useEffect(() => {
+    const onChange = () => setCurrent((shown) => tabOfHash() ?? shown);
+    window.addEventListener("hashchange", onChange);
+    return () => window.removeEventListener("hashchange", onChange);
+  }, []);
   const logOut = async () => {
     await fetch("/api/logout", { method: "POST" });
     onLoggedOut();
@@ -131,7 +137,10 @@ function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
             type="button"
             className="tab"
             aria-current={tab.id === current.id ? "page" : undefined}
-            onClick={() => setCurrent(tab)}
+            onClick={() => {
+              setCurrent(tab);
+              window.location.hash = `#/${tab.id}`;
+            }}
           >
             <span className="ic" aria-hidden="true">
               {tab.icon}

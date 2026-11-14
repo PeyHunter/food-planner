@@ -505,3 +505,66 @@
   background: var(--sun-soft, #fff3c4);
   box-shadow: var(--r-pop);
 }
+
+/* ingredients screen */
+.recipes .bar-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.recipes .ingredient-rows {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recipes .ingredient-row,
+.recipes .ingredient-form {
+  display: grid;
+  gap: 0.6rem;
+  inline-size: 100%;
+  padding: 0.8rem 0.9rem;
+  border: var(--r-line);
+  border-radius: 1.1rem;
+  background: var(--r-paper);
+  box-shadow: var(--r-pop);
+  color: inherit;
+  font: inherit;
+  text-align: start;
+}
+
+.recipes .ingredient-row strong,
+.recipes .ingredient-form > strong {
+  font-size: 1.1rem;
+}
+
+.recipes .ingredient-row:active {
+  translate: 2px 2px;
+  box-shadow: 1px 1px 0 var(--r-ink);
+}
+
+.recipes .ingredient-form {
+  background: var(--sun-soft, #fff6cc);
+}
+
+.recipes .ingredient-form .pack {
+  display: grid;
+  grid-template-columns: 1fr 6rem;
+  gap: 0.5rem;
+}
+
+.recipes .ingredient-form .check {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.recipes .ingredient-form .check input {
+  inline-size: 1.5rem;
+  min-block-size: 1.5rem;
+  block-size: 1.5rem;
+  accent-color: var(--r-ink);
+}
