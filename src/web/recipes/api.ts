@@ -1,4 +1,4 @@
-import type { IngredientSuggestion, Recipe, RecipeInput, RecipeSummary } from "../../shared/recipes.ts";
+import type { IngredientSuggestion, Recipe, RecipeInput, RecipeSummary, ShareLink } from "../../shared/recipes.ts";
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
@@ -22,6 +22,10 @@ export const createRecipe = (input: RecipeInput) => call<{ id: string }>("/api/r
 export const updateRecipe = (id: string, input: RecipeInput) => call<{ id: string }>(`/api/recipes/${id}`, json("PUT", input));
 export const deleteRecipe = (id: string) => call<void>(`/api/recipes/${id}`, { method: "DELETE" });
 export const suggestIngredients = (q: string) => call<IngredientSuggestion[]>(`/api/ingredients?q=${encodeURIComponent(q)}`);
+
+export const getShareLink = (id: string) => call<ShareLink>(`/api/recipes/${id}/share`);
+export const turnShareOn = (id: string) => call<ShareLink>(`/api/recipes/${id}/share`, { method: "POST" });
+export const turnShareOff = (id: string) => call<ShareLink>(`/api/recipes/${id}/share`, { method: "DELETE" });
 
 export function uploadPhoto(recipeId: string, photo: File, role: "main" | "gallery") {
   const form = new FormData();

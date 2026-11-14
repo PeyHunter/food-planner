@@ -1,8 +1,9 @@
+import { randomBytes } from "node:crypto";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { createMiddleware } from "hono/factory";
-import { mainTypes, type Cook, type IngredientSuggestion, type MainType, type Photo, type Recipe, type RecipeInput, type RecipeSummary, type ShopSection } from "../shared/recipes.ts";
+import { mainTypes, type Cook, type IngredientSuggestion, type MainType, type Photo, type Recipe, type RecipeInput, type RecipeSummary, type ShareLink, type SharedRecipe, type ShopSection } from "../shared/recipes.ts";
 import { isUnit } from "../shared/units.ts";
 import { sessionUser } from "./access.ts";
 import type { AppDependencies } from "./app.ts";
@@ -19,6 +20,7 @@ const tooBig = (c: Context) => c.json({ error: "That photo is too big. Try a sma
 const unreadable = "That file isn't a photo we can read. Try a JPEG or PNG.";
 
 const photoUrl = (id: string) => `/api/photos/${id}.jpg`;
+const tokenPattern = /^[A-Za-z0-9_-]{43}$/;
 const toPhoto = (row: { id: string; role: string; cookId: string | null }): Photo => ({
   id: row.id,
   url: photoUrl(row.id),
@@ -28,7 +30,7 @@ const toPhoto = (row: { id: string; role: string; cookId: string | null }): Phot
 // LIKE treats % and _ as wildcards; a search for "50%" means the text.
 const likeText = (text: string) => `%${text.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
 
-export function createRecipeRoutes({ database, now, photosDir }: AppDependencies) {
+export function createRecipeRoutes({ database, now, photosDir, publicUrl }: AppDependencies) {
   const { db } = database;
   const store = photoStore(photosDir);
   const routes = new Hono<Env>();
@@ -171,6 +173,72 @@ export function createRecipeRoutes({ database, now, photosDir }: AppDependencies
     if (!file) return c.json({ error: "No such photo." }, 404);
     // A photo id never gets new content, so phones can keep it for a year.
     return c.body(new Uint8Array(file), 200, { "content-type": "image/jpeg", "cache-control": "private, max-age=31536000, immutable" });
+  });
+
+  const shareLink = (token: string | null): ShareLink => ({ url: token ? new URL(`/s/${token}`, publicUrl).href : null });
+
+  routes.get("/api/recipes/:id/share", member, async (c) => {
+    const id = await ownRecipe(c);
+    if (!id) return c.json({ error: "No such recipe." }, 404);
+    const [row] = await db.select({ token: recipes.shareToken }).from(recipes).where(eq(recipes.id, id));
+    return c.json(shareLink(row!.token));
+  });
+
+  routes.post("/api/recipes/:id/share", member, async (c) => {
+    const id = await ownRecipe(c);
+    if (!id) return c.json({ error: "No such recipe." }, 404);
+    // Keeps the token when sharing is already on, so links sent earlier keep working.
+    const [row] = await db
+      .update(recipes)
+      .set({ shareToken: sql`coalesce(${recipes.shareToken}, ${randomBytes(32).toString("base64url")})` })
+      .where(eq(recipes.id, id))
+      .returning({ token: recipes.shareToken });
+    return c.json(shareLink(row!.token));
+  });
+
+  routes.delete("/api/recipes/:id/share", member, async (c) => {
+    const id = await ownRecipe(c);
+    if (!id) return c.json({ error: "No such recipe." }, 404);
+    await db.update(recipes).set({ shareToken: null }).where(eq(recipes.id, id));
+    return c.json(shareLink(null));
+  });
+
+  /** The recipe's id while its share link is on. */
+  async function sharedRecipe(token: string) {
+    if (!tokenPattern.test(token)) return undefined;
+    const [row] = await db.select({ id: recipes.id }).from(recipes).where(eq(recipes.shareToken, token));
+    return row?.id;
+  }
+
+  routes.get("/api/share/:token", async (c) => {
+    const token = c.req.param("token");
+    const id = await sharedRecipe(token);
+    if (!id) return c.json({ error: "This link doesn't work any more." }, 404, { "cache-control": "no-store" });
+    const { title, feeds, types, tags, mainPhoto, photos: all, lines, steps: stepTexts } = await loadRecipe(id);
+    const viaLink = (photo: Photo): Photo => ({ ...photo, url: `/s/${token}/photos/${photo.id}.jpg` });
+    const shared: SharedRecipe = { title, feeds, types, tags, mainPhoto: mainPhoto && viaLink(mainPhoto), photos: all.map(viaLink), lines, steps: stepTexts };
+    return c.json(shared, 200, { "cache-control": "no-store" });
+  });
+
+  routes.get("/s/:token/photos/:file", async (c) => {
+    const id = c.req.param("file").replace(/\.jpg$/, "");
+    const recipeId = await sharedRecipe(c.req.param("token"));
+    if (!recipeId || !store.isPhotoId(id)) return c.text("No such photo.", 404);
+    const [row] = await db
+      .select({ id: photos.id })
+      .from(photos)
+      .where(and(eq(photos.id, id), eq(photos.recipeId, recipeId)));
+    const file = row && (await store.read(id).catch(() => undefined));
+    if (!file) return c.text("No such photo.", 404);
+    // Short, so a phone stops showing it soon after the link is turned off.
+    return c.body(new Uint8Array(file), 200, { "content-type": "image/jpeg", "cache-control": "private, max-age=600" });
+  });
+
+  // The page itself is the web app's index.html, served after this; a dead link gets that same page with a 404.
+  routes.get("/s/:token", async (c, next) => {
+    const live = await sharedRecipe(c.req.param("token"));
+    await next();
+    if (!live) c.res = new Response(c.res.body, { status: 404, headers: c.res.headers });
   });
 
   routes.post("/api/recipes/:id/cooks", member, bodyLimit({ maxSize: 60 * megabyte, onError: tooBig }), async (c) => {
