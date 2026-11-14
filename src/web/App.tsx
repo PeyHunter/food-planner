@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
+import { RecipesScreen } from "./recipes/RecipesScreen.tsx";
 
 type Me = { username: string; kitchen: { id: string; name: string } | null };
 type State = { kind: "loading" } | { kind: "logged-out" } | { kind: "logged-in"; me: Me } | { kind: "offline" };
@@ -96,14 +97,15 @@ type Tab = { id: string; label: string; icon: string; colour: string; screen?: (
 
 // Later PRs add a `screen` to a tab; until then it shows the "Coming soon" card.
 const tabs: Tab[] = [
-  { id: "recipes", label: "Recipes", icon: "📖", colour: "var(--tomato-soft)", soon: "Flip through your recipe book and add new dishes." },
+  { id: "recipes", label: "Recipes", icon: "📖", colour: "var(--tomato-soft)", screen: () => <RecipesScreen />, soon: "Flip through your recipe book and add new dishes." },
   { id: "week", label: "Week", icon: "📅", colour: "var(--sun-soft)", soon: "Plan dinners for the week and check the rules." },
   { id: "shopping", label: "Shopping", icon: "🛒", colour: "var(--mint-soft)", soon: "One list with everything the week needs." },
   { id: "kids", label: "Runi & kids", icon: "🧒", colour: "var(--lilac-soft)", soon: "Runi Lee's own recipes and rules, by age." },
 ];
 
 function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
-  const [current, setCurrent] = useState(tabs[1]!);
+  // A reload on #/recipes/... stays on that tab.
+  const [current, setCurrent] = useState(() => tabs.find((tab) => window.location.hash.startsWith(`#/${tab.id}`)) ?? tabs[1]!);
   const logOut = async () => {
     await fetch("/api/logout", { method: "POST" });
     onLoggedOut();
