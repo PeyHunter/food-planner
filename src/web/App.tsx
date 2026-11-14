@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 
 type Me = { username: string; kitchen: { id: string; name: string } | null };
 type State = { kind: "loading" } | { kind: "logged-out" } | { kind: "logged-in"; me: Me } | { kind: "offline" };
@@ -28,8 +28,8 @@ export function App() {
       return null;
     case "offline":
       return (
-        <main className="page">
-          <p>Can't reach the server right now. Try again in a moment.</p>
+        <main className="app">
+          <p className="card">Can't reach the server right now. Try again in a moment.</p>
         </main>
       );
     case "logged-out":
@@ -70,10 +70,11 @@ function LoginScreen({ onLoggedIn }: { onLoggedIn: () => Promise<void> }) {
   };
 
   return (
-    <main className="page login">
+    <main className="app login">
       <img className="logo" src="/icons/icon-192.png" alt="" width={96} height={96} />
       <h1>Food planner</h1>
-      <form onSubmit={submit}>
+      <span className="sticker mint tilt-l">Dinner, sorted</span>
+      <form className="card" onSubmit={submit}>
         <label>
           Name
           <input name="username" autoComplete="username" autoCapitalize="none" required />
@@ -83,7 +84,7 @@ function LoginScreen({ onLoggedIn }: { onLoggedIn: () => Promise<void> }) {
           <input name="password" type="password" autoComplete="current-password" required />
         </label>
         {problem && <p role="alert">{problem}</p>}
-        <button type="submit" disabled={busy}>
+        <button type="submit" className="btn" disabled={busy}>
           Log in
         </button>
       </form>
@@ -91,24 +92,62 @@ function LoginScreen({ onLoggedIn }: { onLoggedIn: () => Promise<void> }) {
   );
 }
 
+type Tab = { id: string; label: string; icon: string; colour: string; screen?: () => ReactNode; soon: string };
+
+// Later PRs add a `screen` to a tab; until then it shows the "Coming soon" card.
+const tabs: Tab[] = [
+  { id: "recipes", label: "Recipes", icon: "📖", colour: "var(--tomato-soft)", soon: "Flip through your recipe book and add new dishes." },
+  { id: "week", label: "Week", icon: "📅", colour: "var(--sun-soft)", soon: "Plan dinners for the week and check the rules." },
+  { id: "shopping", label: "Shopping", icon: "🛒", colour: "var(--mint-soft)", soon: "One list with everything the week needs." },
+  { id: "kids", label: "Runi & kids", icon: "🧒", colour: "var(--lilac-soft)", soon: "Runi Lee's own recipes and rules, by age." },
+];
+
 function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
+  const [current, setCurrent] = useState(tabs[1]!);
   const logOut = async () => {
     await fetch("/api/logout", { method: "POST" });
     onLoggedOut();
   };
 
   return (
-    <main className="page home">
-      <header>
-        <h1>Hi {capitalise(me.username)}</h1>
-        <button type="button" className="quiet" onClick={logOut}>
-          Log out
-        </button>
-      </header>
-      <section className="empty">
-        <p className="big">Nothing here yet.</p>
-        <p>Recipes and your week plan will show up here soon.</p>
-      </section>
-    </main>
+    <>
+      <main className="app">
+        <header className="top">
+          <img className="logo" src="/icons/icon-192.png" alt="" width={48} height={48} />
+          <h1>Hi {capitalise(me.username)}</h1>
+          <button type="button" className="btn white small end" onClick={logOut}>
+            Log out
+          </button>
+        </header>
+        {current.screen ? current.screen() : <ComingSoon tab={current} />}
+      </main>
+      <nav className="tabbar" aria-label="Main">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className="tab"
+            aria-current={tab.id === current.id ? "page" : undefined}
+            onClick={() => setCurrent(tab)}
+          >
+            <span className="ic" aria-hidden="true">
+              {tab.icon}
+            </span>
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+    </>
+  );
+}
+
+function ComingSoon({ tab }: { tab: Tab }) {
+  return (
+    <section className="card" style={{ "--c": tab.colour } as CSSProperties}>
+      <span className="sticker white tilt-l">Coming soon</span>
+      <h2>{tab.label}</h2>
+      <p className="note">{tab.soon}</p>
+      <p className="note">We're still building this part. Check back soon!</p>
+    </section>
   );
 }

@@ -13,7 +13,7 @@ test("peyton logs in on an iPhone, stays logged in, and logs out", async ({ page
   await page.getByLabel("Password").fill(e2ePasswords.peyton);
   await page.getByRole("button", { name: "Log in" }).click();
   await expect(page.getByRole("heading", { name: "Hi Peyton" })).toBeVisible();
-  await expect(page.getByText("Nothing here yet.")).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Main" })).toBeVisible();
   if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT });
 
   await page.reload();
