@@ -7,11 +7,13 @@ import { mainTypes, type Cook, type IngredientSuggestion, type MainType, type Ph
 import { isUnit } from "../shared/units.ts";
 import { sessionUser } from "./access.ts";
 import type { AppDependencies } from "./app.ts";
+import type { Database } from "./db.ts";
 import { photoStore, type StoredPhoto } from "./photos.ts";
 import { cooks, ingredients, kitchenMembers, photos, recipeLines, recipes, recipeTags, recipeTypes, steps, users } from "./schema.ts";
 
 type Member = { userId: string; kitchenId: string };
-type Env = { Variables: { member: Member } };
+export type MemberEnv = { Variables: { member: Member } };
+type Env = MemberEnv;
 
 const megabyte = 1024 * 1024;
 const maxCookPhotos = 6;
@@ -30,19 +32,23 @@ const toPhoto = (row: { id: string; role: string; cookId: string | null }): Phot
 // LIKE treats % and _ as wildcards; a search for "50%" means the text.
 const likeText = (text: string) => `%${text.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
 
-export function createRecipeRoutes({ database, now, photosDir, publicUrl }: AppDependencies) {
-  const { db } = database;
-  const store = photoStore(photosDir);
-  const routes = new Hono<Env>();
-
-  const member = createMiddleware<Env>(async (c, next) => {
+/** Lets only logged-in kitchen members through and sets `member`. */
+export const kitchenMember = ({ database, now }: Pick<AppDependencies, "database" | "now">) =>
+  createMiddleware<MemberEnv>(async (c, next) => {
     const user = await sessionUser(database, now, c);
     if (!user) return c.json({ error: "Not logged in" }, 401);
-    const [row] = await db.select({ kitchenId: kitchenMembers.kitchenId }).from(kitchenMembers).where(eq(kitchenMembers.userId, user.id)).limit(1);
+    const [row] = await database.db.select({ kitchenId: kitchenMembers.kitchenId }).from(kitchenMembers).where(eq(kitchenMembers.userId, user.id)).limit(1);
     if (!row) return c.json({ error: "You are not in a kitchen yet." }, 403);
     c.set("member", { userId: user.id, kitchenId: row.kitchenId });
     await next();
   });
+
+export function createRecipeRoutes({ database, now, photosDir, publicUrl }: AppDependencies) {
+  const { db } = database;
+  const store = photoStore(photosDir);
+  const routes = new Hono<Env>();
+  const member = kitchenMember({ database, now });
+  const summaries = (rows: { id: string; title: string; feeds: number }[]) => recipeSummaries(database, rows);
 
   /** The recipe's id when it exists in the caller's kitchen. */
   async function ownRecipe(c: Context<Env>) {
@@ -313,34 +319,6 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl }: AppD
     );
   }
 
-  async function summaries(rows: { id: string; title: string; feeds: number }[]): Promise<RecipeSummary[]> {
-    if (!rows.length) return [];
-    const ids = rows.map((row) => row.id);
-    const [types, tags, mains, lastCooks] = await Promise.all([
-      db.select().from(recipeTypes).where(inArray(recipeTypes.recipeId, ids)),
-      db.select().from(recipeTags).where(inArray(recipeTags.recipeId, ids)).orderBy(asc(recipeTags.tag)),
-      db
-        .select({ id: photos.id, recipeId: photos.recipeId, role: photos.role, cookId: photos.cookId })
-        .from(photos)
-        .where(and(inArray(photos.recipeId, ids), eq(photos.role, "main"))),
-      db
-        .select({ recipeId: cooks.recipeId, last: sql<string>`max(${cooks.madeOn})::text` })
-        .from(cooks)
-        .where(inArray(cooks.recipeId, ids))
-        .groupBy(cooks.recipeId),
-    ]);
-    return rows.map((row) => ({
-      ...row,
-      types: sortTypes(types.filter((type) => type.recipeId === row.id).map((type) => type.type)),
-      tags: tags.filter((tag) => tag.recipeId === row.id).map((tag) => tag.tag),
-      mainPhoto: (() => {
-        const main = mains.find((photo) => photo.recipeId === row.id);
-        return main ? toPhoto(main) : null;
-      })(),
-      lastMadeOn: lastCooks.find((cook) => cook.recipeId === row.id)?.last ?? null,
-    }));
-  }
-
   async function loadRecipe(id: string): Promise<Recipe> {
     const [row] = await db
       .select({
@@ -402,6 +380,34 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl }: AppD
 }
 
 const sortTypes = (types: string[]) => mainTypes.filter((type) => types.includes(type));
+
+export async function recipeSummaries({ db }: Database, rows: { id: string; title: string; feeds: number }[]): Promise<RecipeSummary[]> {
+  if (!rows.length) return [];
+  const ids = rows.map((row) => row.id);
+  const [types, tags, mains, lastCooks] = await Promise.all([
+    db.select().from(recipeTypes).where(inArray(recipeTypes.recipeId, ids)),
+    db.select().from(recipeTags).where(inArray(recipeTags.recipeId, ids)).orderBy(asc(recipeTags.tag)),
+    db
+      .select({ id: photos.id, recipeId: photos.recipeId, role: photos.role, cookId: photos.cookId })
+      .from(photos)
+      .where(and(inArray(photos.recipeId, ids), eq(photos.role, "main"))),
+    db
+      .select({ recipeId: cooks.recipeId, last: sql<string>`max(${cooks.madeOn})::text` })
+      .from(cooks)
+      .where(inArray(cooks.recipeId, ids))
+      .groupBy(cooks.recipeId),
+  ]);
+  return rows.map((row) => ({
+    ...row,
+    types: sortTypes(types.filter((type) => type.recipeId === row.id).map((type) => type.type)),
+    tags: tags.filter((tag) => tag.recipeId === row.id).map((tag) => tag.tag),
+    mainPhoto: (() => {
+      const main = mains.find((photo) => photo.recipeId === row.id);
+      return main ? toPhoto(main) : null;
+    })(),
+    lastMadeOn: lastCooks.find((cook) => cook.recipeId === row.id)?.last ?? null,
+  }));
+}
 
 function recipeColumns(input: RecipeInput) {
   return { title: input.title, feeds: input.feeds, ageFromMonths: input.ageFromMonths, ageToMonths: input.ageToMonths };

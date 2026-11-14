@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { createAccessRoutes } from "./access.ts";
 import type { Database } from "./db.ts";
 import { createRecipeRoutes } from "./recipes.ts";
+import { createWeekRoutes } from "./week.ts";
 
 export type AppDependencies = {
   database: Database;
@@ -21,6 +22,7 @@ export function createApp(dependencies: AppDependencies) {
 
   app.route("/", createAccessRoutes(dependencies));
   app.route("/", createRecipeRoutes(dependencies));
+  app.route("/", createWeekRoutes(dependencies));
 
   return app;
 }

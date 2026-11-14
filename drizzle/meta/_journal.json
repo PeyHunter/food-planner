@@ -22,6 +22,13 @@
       "when": 1794698545843,
       "tag": "0002_share_links",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794699520463,
+      "tag": "0003_week_plan",
+      "breakpoints": true
     }
   ]
 }
