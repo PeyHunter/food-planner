@@ -67,11 +67,17 @@ spec:
             exec:
               command: [pg_isready, -U, food_planner, -d, food_planner]
             periodSeconds: 10
+          startupProbe:
+            exec:
+              command: [pg_isready, -U, food_planner, -d, food_planner]
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60
           livenessProbe:
             exec:
               command: [pg_isready, -U, food_planner, -d, food_planner]
-            initialDelaySeconds: 30
             periodSeconds: 30
+            timeoutSeconds: 5
           resources:
             requests:
               cpu: 25m
