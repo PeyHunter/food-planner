@@ -2,7 +2,7 @@
 
 Build version 1 of docs/SPEC.md and ship it to https://food-planner.peytonhunter.com, then the four follow-ups.
 Users are Peyton and Ronja on two iPhones. One kitchen holds everything.
-PRs in order: P1 skeleton, P2 design, P3 recipes, P4 browse, P5 week, P6 shopping, P7 share, then F1 create week, F2 reduce waste, F3 photo to recipe, F4 freezer.
+PRs in order: P1 skeleton, P2 design, P2b Sticker pop swap, P3 recipes, P4 browse (flip book), P5 week (rules card, children, swaps), P5b Runi & kids tab, P6 shopping, P7 share, then F1 create week, F2 reduce waste, F3 photo to recipe, F4 freezer.
 Every PR ships to the live URL on merge, because CI bumps deploy/kustomization.yaml and Argo CD syncs it.
 
 ## How to read this
@@ -47,6 +47,21 @@ One box is one unit. Check a box only when its evidence exists. Runs `playbooks/
 - [ ] Perf: CSS size trunk n head <= 30 kB
 **Review gate.** The user may ask for a swap later.
 
+## PR P2b: Switch to Sticker pop
+
+**Goal.** The app uses design 4 (Sticker pop), per the user's 2026-11-14 feedback.
+**Depends on.** P2
+**Files.** src/web/styles.css, src/web/ (shell, nav, login), docs/adr/0002-sticker-pop.md
+
+- [ ] styles.css tokens and base components from prototypes/design/4/styles.css (dot grid, ink outlines, sticker tags, chunky buttons) . evidence: styles.css
+- [ ] Bottom nav: Recipes, Week, Shopping, Runi & kids (tabs without screens yet show a friendly "coming soon") . evidence: e2e/nav.spec.ts
+- [ ] ADR 0002 records the swap and the borrowed design-3 layouts . evidence: docs/adr/0002-sticker-pop.md
+
+**Verification.**
+- [ ] Unit: `npm run typecheck && npm test` passes
+- [ ] Live: login and home on the real URL at phone size . saves .peystack/shots/p2b.png . passes when it shows the Sticker pop look
+**Review gate.** None.
+
 ## PR P3: Recipes, ingredients, photos
 
 **Goal.** Add, edit and view recipes with scaled amounts, photos and an "I made this" log.
@@ -72,7 +87,7 @@ One box is one unit. Check a box only when its evidence exists. Runs `playbooks/
 **Depends on.** P3
 **Files.** src/web/, src/server/, e2e/
 
-- [ ] Swipe crate modeled on LP-Collection src/web/BrowseScreen.tsx . evidence: e2e/browse.spec.ts
+- [ ] "Flip through the book": design 3's stacked pages, page counter, swipe, in Sticker pop style (crate logic modeled on LP-Collection src/web/BrowseScreen.tsx) . evidence: e2e/browse.spec.ts
 - [ ] Filters by main type and tags, plus list or grid view with search . evidence: e2e/browse.spec.ts
 - [ ] "Add to week" picks a day . evidence: e2e/browse.spec.ts
 
@@ -89,9 +104,10 @@ One box is one unit. Check a box only when its evidence exists. Runs `playbooks/
 **Depends on.** P4
 **Files.** src/server/, src/web/, drizzle/, test/, e2e/
 
-- [ ] Schema: plan_days (date, people, dinner recipe), runi_days (recipe or same as dinner), rules (set, at least or at most, N, type or tag) with spec defaults . evidence: drizzle/
+- [ ] Schema: children (name, birthday; seed Runi Lee), plan_days (date, people, dinner recipe), child_days (child, date, recipe or same as dinner), rules (adults or a child, at least or at most, N, type or tag) with spec defaults . evidence: drizzle/
 - [ ] Rules checker as a pure function with tests . evidence: test/rules.test.ts
-- [ ] Week screen with week paging, people count per day, Runi Lee row, checklist . evidence: e2e/week.spec.ts
+- [ ] Week screen like design 3 in Sticker pop: rules card on top (Adults and each child side by side, counts, "N to go"), per day dish photo, type and tags, people count, "next up", child meal line, week paging . evidence: e2e/week.spec.ts
+- [ ] Pure swap suggester: for each missed rule, swaps from existing recipes that fix it without breaking another; shown in plain words, one tap accepts . evidence: test/rule-swaps.test.ts, e2e/week.spec.ts
 
 **Verification.** Tests alone are not verification. A PR is verified when its unit, live, and perf boxes are all checked.
 - [ ] Unit: `npm run typecheck && npm test` passes
@@ -99,6 +115,21 @@ One box is one unit. Check a box only when its evidence exists. Runs `playbooks/
 - [ ] Regression lane: same scenario on trunk and head
 - [ ] Perf: week API response trunk n/a head <= 200 ms
 **Review gate.** Screenshots of Week.
+
+## PR P5b: Runi & kids tab
+
+**Goal.** A tab per child with age, birthday, age-fitting recipes and her rules, so recipes are reused for the next child at the same age.
+**Depends on.** P5
+**Files.** src/server/, src/web/, drizzle/, test/, e2e/
+
+- [ ] Recipes get an optional child age range in months; edit form fields . evidence: drizzle/, test/
+- [ ] Age in months/years from birthday as a pure function . evidence: test/child-age.test.ts
+- [ ] Tab: pick child, set birthday, add a child, list recipes fitting the current age (and all child recipes), edit that child's rules . evidence: e2e/kids.spec.ts
+
+**Verification.**
+- [ ] Unit: `npm run typecheck && npm test` passes
+- [ ] Live: set Runi's birthday, add a 6-12 month recipe, see it listed . saves .peystack/shots/p5b.png . passes when age shows and the recipe is listed
+**Review gate.** None.
 
 ## PR P6: Shopping list
 
