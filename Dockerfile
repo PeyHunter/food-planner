@@ -13,6 +13,7 @@ COPY --from=build /app/dist ./dist
 COPY package.json ./
 COPY drizzle ./drizzle
 COPY src/server ./src/server
+COPY src/shared ./src/shared
 USER node
 EXPOSE 3000
 CMD ["node", "src/server/main.ts"]

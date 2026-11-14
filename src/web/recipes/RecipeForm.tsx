@@ -1,0 +1,280 @@
+import { useEffect, useState, type FormEvent } from "react";
+import { builtInTags, mainTypes, type IngredientSuggestion, type MainType, type RecipeInput } from "../../shared/recipes.ts";
+import { isUnit, units } from "../../shared/units.ts";
+import { createRecipe, deleteRecipe, getRecipe, go, suggestIngredients, updateRecipe, uploadPhoto } from "./api.ts";
+
+// Form fields hold text while typing; they become numbers on save.
+type LineDraft = { amount: string; unit: string; ingredient: string; note: string };
+type Draft = {
+  title: string;
+  feeds: string;
+  types: MainType[];
+  tags: string[];
+  otherTags: string;
+  ageFrom: string;
+  ageTo: string;
+  lines: LineDraft[];
+  steps: string[];
+};
+
+const emptyLine = (): LineDraft => ({ amount: "", unit: "g", ingredient: "", note: "" });
+const blank: Draft = { title: "", feeds: "4", types: [], tags: [], otherTags: "", ageFrom: "", ageTo: "", lines: [emptyLine()], steps: [""] };
+
+const toggle = <T,>(list: T[], item: T) => (list.includes(item) ? list.filter((value) => value !== item) : [...list, item]);
+const numberOrNull = (text: string) => (text.trim() === "" ? null : Number(text.replace(",", ".")));
+
+function toInput(draft: Draft): RecipeInput {
+  const otherTags = draft.otherTags
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+  return {
+    title: draft.title,
+    feeds: Number(draft.feeds),
+    types: draft.types,
+    tags: [...new Set([...draft.tags, ...otherTags])],
+    ageFromMonths: numberOrNull(draft.ageFrom),
+    ageToMonths: numberOrNull(draft.ageTo),
+    lines: draft.lines
+      .filter((line) => line.ingredient.trim() || line.amount.trim())
+      .map((line) => {
+        const amount = numberOrNull(line.amount);
+        if (Number.isNaN(amount)) throw new Error(`The amount for ${line.ingredient || "an ingredient"} must be a number, like 2 or 0.5.`);
+        return { amount, unit: amount === null || !isUnit(line.unit) ? null : line.unit, ingredient: line.ingredient, note: line.note };
+      }),
+    steps: draft.steps,
+  };
+}
+
+export function RecipeForm({ id }: { id?: string }) {
+  const [draft, setDraft] = useState<Draft | undefined>(id ? undefined : blank);
+  const [photo, setPhoto] = useState<File>();
+  const [preview, setPreview] = useState<string>();
+  const [problem, setProblem] = useState<string>();
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    getRecipe(id).then(
+      (recipe) =>
+        setDraft({
+          title: recipe.title,
+          feeds: String(recipe.feeds),
+          types: recipe.types,
+          tags: recipe.tags.filter((tag) => (builtInTags as readonly string[]).includes(tag)),
+          otherTags: recipe.tags.filter((tag) => !(builtInTags as readonly string[]).includes(tag)).join(", "),
+          ageFrom: recipe.ageFromMonths === null ? "" : String(recipe.ageFromMonths),
+          ageTo: recipe.ageToMonths === null ? "" : String(recipe.ageToMonths),
+          lines: [
+            ...recipe.lines.map((line) => ({ amount: line.amount === null ? "" : String(line.amount), unit: line.unit ?? "g", ingredient: line.ingredient.name, note: line.note })),
+            emptyLine(),
+          ],
+          steps: [...recipe.steps, ""],
+        }),
+      (error: Error) => setProblem(error.message),
+    );
+  }, [id]);
+
+  useEffect(() => {
+    if (!photo) return;
+    const url = URL.createObjectURL(photo);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [photo]);
+
+  if (!draft) return problem ? <p role="alert">{problem}</p> : null;
+
+  const set = (change: Partial<Draft>) => setDraft({ ...draft, ...change });
+  const setLine = (index: number, change: Partial<LineDraft>) => set({ lines: draft.lines.map((line, at) => (at === index ? { ...line, ...change } : line)) });
+  const setStep = (index: number, text: string) => set({ steps: draft.steps.map((step, at) => (at === index ? text : step)) });
+
+  const save = async (event: FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setProblem(undefined);
+    try {
+      const input = toInput(draft);
+      const saved = id ? await updateRecipe(id, input) : await createRecipe(input);
+      if (photo) await uploadPhoto(saved.id, photo, "main");
+      go(`/recipes/${saved.id}`);
+    } catch (error) {
+      setProblem((error as Error).message);
+      setBusy(false);
+    }
+  };
+
+  const remove = async () => {
+    if (!id || !window.confirm(`Delete "${draft.title}"? This can't be undone.`)) return;
+    try {
+      await deleteRecipe(id);
+      go("/recipes");
+    } catch (error) {
+      setProblem((error as Error).message);
+    }
+  };
+
+  return (
+    <form className="recipe-form" onSubmit={save}>
+      <nav className="bar">
+        <a className="back" href={id ? `#/recipes/${id}` : "#/recipes"} aria-label="Back">
+          ←
+        </a>
+        <h2>{id ? "Edit recipe" : "New recipe"}</h2>
+      </nav>
+
+      <label>
+        Name
+        <input value={draft.title} onChange={(event) => set({ title: event.target.value })} required maxLength={200} />
+      </label>
+      <label className="narrow">
+        Feeds (people)
+        <input type="number" inputMode="numeric" min={1} max={100} value={draft.feeds} onChange={(event) => set({ feeds: event.target.value })} required />
+      </label>
+
+      <fieldset>
+        <legend>Main type</legend>
+        <div className="chips">
+          {mainTypes.map((type) => (
+            <button key={type} type="button" className="chip" aria-pressed={draft.types.includes(type)} onClick={() => set({ types: toggle(draft.types, type) })}>
+              {type}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Tags</legend>
+        <div className="chips">
+          {builtInTags.map((tag) => (
+            <button key={tag} type="button" className="chip" aria-pressed={draft.tags.includes(tag)} onClick={() => set({ tags: toggle(draft.tags, tag) })}>
+              {tag}
+            </button>
+          ))}
+        </div>
+        <label>
+          Other tags (put a comma between them)
+          <input value={draft.otherTags} onChange={(event) => set({ otherTags: event.target.value })} placeholder="quick, summer" />
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Child age (months, if it is a child recipe)</legend>
+        <div className="row">
+          <label>
+            From
+            <input type="number" inputMode="numeric" min={0} max={240} value={draft.ageFrom} onChange={(event) => set({ ageFrom: event.target.value })} />
+          </label>
+          <label>
+            To
+            <input type="number" inputMode="numeric" min={0} max={240} value={draft.ageTo} onChange={(event) => set({ ageTo: event.target.value })} />
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Ingredients</legend>
+        <ol className="line-rows">
+          {draft.lines.map((line, index) => (
+            <IngredientRow key={index} index={index} line={line} onChange={(change) => setLine(index, change)} onRemove={() => set({ lines: draft.lines.filter((_, at) => at !== index) })} />
+          ))}
+        </ol>
+        <button type="button" className="ink-button white small" onClick={() => set({ lines: [...draft.lines, emptyLine()] })}>
+          + Add ingredient
+        </button>
+      </fieldset>
+
+      <fieldset>
+        <legend>Steps</legend>
+        <ol className="step-rows">
+          {draft.steps.map((step, index) => (
+            <li key={index}>
+              <textarea aria-label={`Step ${index + 1}`} rows={2} value={step} onChange={(event) => setStep(index, event.target.value)} />
+            </li>
+          ))}
+        </ol>
+        <button type="button" className="ink-button white small" onClick={() => set({ steps: [...draft.steps, ""] })}>
+          + Add step
+        </button>
+      </fieldset>
+
+      <fieldset>
+        <legend>Main photo</legend>
+        {preview && <img className="preview" src={preview} alt="New main photo" />}
+        <label className="ink-button white small file-button">
+          {photo ? "Pick another photo" : id ? "Change main photo" : "Pick a photo"}
+          <input type="file" accept="image/*" aria-label="Main photo" onChange={(event) => setPhoto(event.target.files?.[0])} />
+        </label>
+      </fieldset>
+
+      {problem && <p role="alert">{problem}</p>}
+      <button type="submit" className="ink-button big" disabled={busy}>
+        {busy ? "Saving…" : "Save recipe"}
+      </button>
+      {id && (
+        <button type="button" className="quiet danger" onClick={remove}>
+          Delete recipe
+        </button>
+      )}
+    </form>
+  );
+}
+
+function IngredientRow({ index, line, onChange, onRemove }: { index: number; line: LineDraft; onChange: (change: Partial<LineDraft>) => void; onRemove: () => void }) {
+  const [suggestions, setSuggestions] = useState<IngredientSuggestion[]>([]);
+  const [focused, setFocused] = useState(false);
+  const n = index + 1;
+
+  useEffect(() => {
+    const q = line.ingredient.trim();
+    if (!focused || !q) return setSuggestions([]);
+    let current = true;
+    const timer = setTimeout(() => {
+      suggestIngredients(q).then(
+        (found) => current && setSuggestions(found.filter((item) => item.name.toLowerCase() !== q.toLowerCase())),
+        () => {},
+      );
+    }, 120);
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
+  }, [line.ingredient, focused]);
+
+  return (
+    <li className="line-row">
+      <input className="amount" aria-label={`Amount ${n}`} inputMode="decimal" placeholder="2" value={line.amount} onChange={(event) => onChange({ amount: event.target.value })} />
+      <select aria-label={`Unit ${n}`} value={line.unit} onChange={(event) => onChange({ unit: event.target.value })}>
+        {units.map((unit) => (
+          <option key={unit}>{unit}</option>
+        ))}
+      </select>
+      <div className="suggest-wrap">
+        <input
+          aria-label={`Ingredient ${n}`}
+          placeholder="carrot"
+          autoComplete="off"
+          value={line.ingredient}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          onChange={(event) => onChange({ ingredient: event.target.value })}
+        />
+        {suggestions.length > 0 && (
+          <ul className="suggest" aria-label={`Suggestions for ingredient ${n}`}>
+            {suggestions.map((item) => (
+              <li key={item.id}>
+                {/* mousedown would blur the field and hide the list before the tap lands */}
+                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => (onChange({ ingredient: item.name }), setSuggestions([]))}>
+                  {item.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <input className="note" aria-label={`Note ${n}`} placeholder="note, e.g. finely chopped" value={line.note} onChange={(event) => onChange({ note: event.target.value })} />
+      <button type="button" className="quiet remove" aria-label={`Remove line ${n}`} onClick={onRemove}>
+        ×
+      </button>
+    </li>
+  );
+}

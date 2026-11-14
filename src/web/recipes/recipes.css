@@ -1,0 +1,464 @@
+/* Recipes tab, Sticker pop look: ink outlines, hard shadows, tilted sticker tags. Scoped to .recipes so it sits beside the app styles. */
+.recipes {
+  --r-ink: var(--ink, #23202f);
+  --r-paper: var(--paper, #fff);
+  --r-line: 3px solid var(--r-ink);
+  --r-pop: 4px 4px 0 var(--r-ink);
+  --r-tomato: var(--tomato, #ff6f5b);
+  --r-sun: var(--sun, #ffd84d);
+  --r-mint: var(--mint, #8de3c0);
+  --r-lilac: var(--lilac, #c9b3f2);
+  --r-sky: var(--sky, #9fd3f5);
+  --r-muted: #6b6878;
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-bottom: 6rem;
+  color: var(--r-ink);
+}
+
+.recipes > * {
+  display: grid;
+  gap: 1rem;
+}
+
+.recipes h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.recipes h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.recipes .bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.recipes .hint {
+  margin: 0;
+  color: var(--r-muted);
+  font-size: 0.9rem;
+}
+
+.recipes .back {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 2.75rem;
+  block-size: 2.75rem;
+  border: var(--r-line);
+  border-radius: 50%;
+  background: var(--r-paper);
+  box-shadow: 2px 2px 0 var(--r-ink);
+  color: inherit;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+/* buttons */
+.recipes .ink-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-block-size: 2.9rem;
+  padding: 0 1.1rem;
+  border: var(--r-line);
+  border-radius: 1rem;
+  background: var(--r-tomato);
+  box-shadow: var(--r-pop);
+  color: var(--r-ink);
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.recipes .ink-button.white {
+  background: var(--r-paper);
+}
+
+.recipes .ink-button.small {
+  min-block-size: 2.5rem;
+  padding: 0 0.85rem;
+  font-size: 0.9rem;
+  box-shadow: 2px 2px 0 var(--r-ink);
+}
+
+.recipes .ink-button.big {
+  inline-size: 100%;
+  min-block-size: 3.4rem;
+  font-size: 1.1rem;
+}
+
+.recipes .ink-button:active {
+  translate: 2px 2px;
+  box-shadow: 1px 1px 0 var(--r-ink);
+}
+
+.recipes .file-button input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  opacity: 0;
+}
+
+.recipes .file-button {
+  position: relative;
+  justify-self: start;
+}
+
+.recipes .danger {
+  color: #b3261e;
+}
+
+/* stickers and chips */
+.recipes .stickers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.recipes .sticker {
+  display: inline-flex;
+  padding: 0.2em 0.65em;
+  border: var(--r-line);
+  border-radius: 999px;
+  background: var(--r-sun);
+  box-shadow: 2px 2px 0 var(--r-ink);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.recipes .sticker.tomato {
+  background: var(--r-tomato);
+}
+.recipes .sticker.mint {
+  background: var(--r-mint);
+}
+.recipes .sticker.sky {
+  background: var(--r-sky);
+}
+.recipes .sticker.lilac {
+  background: var(--r-lilac);
+}
+.recipes .sticker.white {
+  background: var(--r-paper);
+}
+.recipes .tilt-l {
+  rotate: -3deg;
+}
+.recipes .tilt-r {
+  rotate: 3deg;
+}
+
+.recipes .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.recipes .chip {
+  min-block-size: 2.5rem;
+  padding: 0 0.9rem;
+  border: var(--r-line);
+  border-radius: 999px;
+  background: var(--r-paper);
+  box-shadow: 2px 2px 0 var(--r-ink);
+  color: var(--r-ink);
+  font-weight: 800;
+}
+
+.recipes .chip[aria-pressed="true"] {
+  background: var(--r-ink);
+  color: var(--r-paper);
+  box-shadow: none;
+  translate: 2px 2px;
+}
+
+/* list */
+.recipes .search,
+.recipes input,
+.recipes select,
+.recipes textarea {
+  inline-size: 100%;
+  min-block-size: 2.75rem;
+  padding: 0.55rem 0.75rem;
+  border: var(--r-line);
+  border-radius: 0.9rem;
+  background: var(--r-paper);
+  color: var(--r-ink);
+  font: inherit;
+  font-size: 1rem;
+}
+
+.recipes .cards {
+  display: grid;
+  gap: 0.9rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recipes .card {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  gap: 0.8rem;
+  align-items: center;
+  padding: 0.55rem;
+  border: var(--r-line);
+  border-radius: 1.2rem;
+  background: var(--r-paper);
+  box-shadow: var(--r-pop);
+  color: inherit;
+  text-decoration: none;
+}
+
+.recipes .card img,
+.recipes .card .no-photo {
+  inline-size: 5.5rem;
+  block-size: 5.5rem;
+  border: var(--r-line);
+  border-radius: 0.8rem;
+  object-fit: cover;
+}
+
+.recipes .card-text {
+  display: grid;
+  gap: 0.45rem;
+  font-size: 1.05rem;
+}
+
+.recipes .no-photo {
+  display: block;
+  background: radial-gradient(circle at 30% 30%, var(--r-sun) 0 25%, transparent 26%), var(--r-mint);
+}
+
+/* recipe page */
+.recipes .hero {
+  display: grid;
+  overflow: clip;
+  border: var(--r-line);
+  border-radius: 1.6rem;
+  background: var(--r-sun);
+  box-shadow: var(--r-pop);
+}
+
+.recipes .hero > * {
+  grid-area: 1 / 1;
+}
+
+.recipes .hero img,
+.recipes .hero .no-photo {
+  inline-size: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.recipes .hero .stickers {
+  align-self: start;
+  padding: 0.8rem;
+}
+
+.recipes .made {
+  margin: -0.4rem 0 0;
+  color: var(--r-muted);
+}
+
+.recipes .panel {
+  display: grid;
+  gap: 0.8rem;
+  padding: 1rem;
+  border: var(--r-line);
+  border-radius: 1.3rem;
+  background: var(--r-paper);
+}
+
+.recipes .stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.recipes .stepper button {
+  inline-size: 2.6rem;
+  block-size: 2.6rem;
+  padding: 0;
+  border: var(--r-line);
+  border-radius: 50%;
+  background: var(--r-sun);
+  box-shadow: 2px 2px 0 var(--r-ink);
+  color: var(--r-ink);
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.recipes .stepper output {
+  min-inline-size: 4.8rem;
+  text-align: center;
+  font-weight: 800;
+}
+
+.recipes .lines,
+.recipes .cooks {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recipes .lines li {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  gap: 0.6rem;
+  padding: 0.45rem 0;
+  border-bottom: 2px dashed color-mix(in srgb, var(--r-ink) 20%, white);
+}
+
+.recipes .lines li:last-child {
+  border-bottom: 0;
+}
+
+.recipes .amount {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.recipes .note {
+  color: var(--r-muted);
+  font-weight: 500;
+}
+
+.recipes .steps {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding-left: 1.4rem;
+}
+
+.recipes .gallery {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recipes .gallery img {
+  aspect-ratio: 1;
+  inline-size: 100%;
+  border: var(--r-line);
+  border-radius: 0.8rem;
+  object-fit: cover;
+}
+
+/* form */
+.recipes form fieldset {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.recipes legend {
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.recipes .narrow input {
+  inline-size: 7rem;
+}
+
+.recipes .row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.recipes .line-rows,
+.recipes .step-rows {
+  display: grid;
+  gap: 0.8rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recipes .line-row {
+  display: grid;
+  grid-template-columns: 4.5rem 5rem 1fr 2.5rem;
+  gap: 0.4rem;
+  padding: 0.6rem;
+  border: var(--r-line);
+  border-radius: 1rem;
+  background: var(--r-paper);
+}
+
+.recipes .line-row .note {
+  grid-column: 1 / 4;
+  color: var(--r-ink);
+}
+
+.recipes .line-row .remove {
+  grid-row: 1;
+  grid-column: 4;
+  padding: 0;
+  font-size: 1.4rem;
+}
+
+.recipes .suggest-wrap {
+  position: relative;
+}
+
+.recipes .suggest {
+  position: absolute;
+  z-index: 2;
+  inset-inline: 0;
+  top: calc(100% + 0.25rem);
+  display: grid;
+  margin: 0;
+  padding: 0.25rem;
+  border: var(--r-line);
+  border-radius: 0.9rem;
+  background: var(--r-paper);
+  box-shadow: var(--r-pop);
+  list-style: none;
+}
+
+.recipes .suggest button {
+  inline-size: 100%;
+  padding: 0.6rem 0.7rem;
+  border: 0;
+  border-radius: 0.6rem;
+  background: transparent;
+  color: var(--r-ink);
+  font-weight: 700;
+  text-align: left;
+}
+
+.recipes .suggest button:hover,
+.recipes .suggest button:focus-visible {
+  background: var(--r-sun);
+}
+
+.recipes .preview {
+  inline-size: 100%;
+  max-block-size: 14rem;
+  border: var(--r-line);
+  border-radius: 1rem;
+  object-fit: cover;
+}
