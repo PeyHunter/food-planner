@@ -55,6 +55,18 @@ A meal planner and recipe book for Peyton and Ronja (and their baby, Runi Lee). 
 
 - Share button opens the iPhone share sheet with a link. Anyone with the link sees that one recipe read-only, with photos and the stepper. No login. Links can be turned off.
 
+## Feedback 2026-11-14 (overrides anything above that disagrees)
+
+From the user after seeing the designs. Full notes in `docs/design-feedback-2026-11-14.md`.
+
+- **Look**: Sticker pop (design 4): white dot grid, chunky ink outlines, bright coloured day tiles, tilted sticker tags.
+- **Browse** uses design 3's "Flip through the book" layout in the Sticker pop style: a stack of recipe pages, big dish photo, page counter ("p. 12 / 48"), swipe to the next page, type filter chips, a big "Add to week" button.
+- **Week** shows more per day, like design 3: a **rules card at the top** with Adults and each child side by side (a tick or "1/2" per rule, and "2 to go" when rules are not met), and per day the dish photo, main type and tags, people count, "next up" on today, and the child's meal line.
+- **Children** are data, not a hard-coded row. A `children` table (name, birthday). Runi Lee is created at startup; her birthday is set in the app. The app shows each child's age ("Runi Lee, 7 months").
+- **"Runi & kids" tab** (bottom nav): pick a child, see age, birthday, her recipes and her rules. Child recipes carry an **age range in months** (e.g. 6–12). The tab lists recipes that fit the child's current age, so the same recipes work again for the next child at that age.
+- **Rules are clear and editable** per adults and per child (e.g. "Runi Lee: Fish at least 2 a week"). Defaults as in Week plan above.
+- **Rule check with swaps**: when the planned week misses a rule (no fish for Runi), the week screen says so in plain words and suggests swaps from recipes already in the book ("Swap Tuesday for Salmon mash to get fish 2/2"). One tap accepts. Plain deterministic code, no AI.
+
 ## After version 1, in order
 
 1. **Create week**: fills only empty days, follows both rule sets, skips dishes made in the last 14 days, prefers dishes that use up leftover packs. Plain code, deterministic, no AI.
