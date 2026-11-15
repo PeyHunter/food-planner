@@ -35,11 +35,22 @@ git commit -qm "food-planner: logins for kitchens without kids"
 git push -q
 
 echo "Waiting for the cluster to pick up the new passwords (up to 5 minutes)..."
+umask 077
+{
+  echo
+  for name in "${names[@]}"; do printf '%-12s %s\n' "$name" "${passwords[$name]}"; done
+} >> ~/food-planner-logins.txt
+
 want="$(printf '%s' "${passwords[mads]}" | base64)"
+ready=no
 for _ in $(seq 60); do
-  [ "$(kubectl -n food-planner get secret food-planner-secrets -o jsonpath='{.data.MADS_PASSWORD}')" = "$want" ] && break
+  if [ "$(kubectl -n food-planner get secret food-planner-secrets -o jsonpath='{.data.MADS_PASSWORD}')" = "$want" ]; then ready=yes; break; fi
   sleep 5
 done
+if [ "$ready" = no ]; then
+  echo "The cluster didn't pick up the new passwords in 5 minutes. Wait a bit and run this script again."
+  exit 1
+fi
 kubectl -n food-planner rollout restart deploy/web >/dev/null
 kubectl -n food-planner rollout status deploy/web --timeout=180s >/dev/null
 
@@ -48,11 +59,6 @@ for name in "${names[@]}"; do
   kubectl -n food-planner exec deploy/web -- env NEW_PASSWORD="${passwords[$name]}" node src/server/set-password.ts "$name"
 done
 
-umask 077
-{
-  echo
-  for name in "${names[@]}"; do printf '%-12s %s\n' "$name" "${passwords[$name]}"; done
-} >> ~/food-planner-logins.txt
 echo
 echo "Done. New logins (also saved in ~/food-planner-logins.txt):"
 for name in "${names[@]}"; do printf '  %-12s %s\n' "$name" "${passwords[$name]}"; done
