@@ -29,7 +29,7 @@ test("photos go to the API shrunk, as base64 JPEG, with the typed tool; the tool
       title: "Mormors frikadeller",
       feeds: 6,
       mainTypes: ["Meat", "Pasta"],
-      tags: ["classic"],
+      tags: ["freezable"],
       lines: [
         { amount: 500, unit: "g", ingredient: "Minced pork", note: "" },
         { amount: 1, unit: "pcs", ingredient: "Onion", note: "grated" },
@@ -50,7 +50,7 @@ test("photos go to the API shrunk, as base64 JPEG, with the typed tool; the tool
       title: "Mormors frikadeller",
       feeds: 6,
       types: ["Meat"],
-      tags: ["classic"],
+      tags: ["freezable"],
       ageFromMonths: null,
       ageToMonths: null,
       lines: [
@@ -107,20 +107,23 @@ test("cups, ounces and spelled-out units become metric; unknown units move into 
 });
 
 test("lines the recipe parser refuses are left out with a note; bad feeds, types and tags are tidied", () => {
-  const { recipe, notes } = toDraft({
-    title: "",
-    feeds: 0,
-    mainTypes: ["Dessert"],
-    tags: ["x".repeat(41), "sweet", "sweet"],
-    lines: [
-      { amount: -1, unit: "g", ingredient: "Butter", note: "" },
-      { amount: 2, unit: "g", ingredient: "", note: "" },
-      { amount: "lots", unit: "g", ingredient: "Sugar", note: "" },
-      "not a line",
-      { amount: 100, unit: "g", ingredient: "Flour", note: "" },
-    ],
-    steps: ["Bake.", "", 7],
-  });
+  const { recipe, notes } = toDraft(
+    {
+      title: "",
+      feeds: 0,
+      mainTypes: ["Dessert"],
+      tags: ["x".repeat(41), "sweet", "sweet"],
+      lines: [
+        { amount: -1, unit: "g", ingredient: "Butter", note: "" },
+        { amount: 2, unit: "g", ingredient: "", note: "" },
+        { amount: "lots", unit: "g", ingredient: "Sugar", note: "" },
+        "not a line",
+        { amount: 100, unit: "g", ingredient: "Flour", note: "" },
+      ],
+      steps: ["Bake.", "", 7],
+    },
+    ["sweet"],
+  );
   expect(recipe).toMatchObject({ title: "", feeds: 4, types: [], tags: ["sweet"], steps: ["Bake."] });
   expect(recipe.lines).toEqual([{ amount: 100, unit: "g", ingredient: "Flour", note: "" }]);
   expect(notes).toEqual([
@@ -130,6 +133,25 @@ test("lines the recipe parser refuses are left out with a note; bad feeds, types
     "Left out a line (no ingredient): Every ingredient line needs an ingredient.",
     "We couldn't read a name. Add one before you save.",
   ]);
+});
+
+test("only tags the kitchen already uses, or the built-in ones, are kept; made-up tags are dropped", async () => {
+  const calls: CreateParams[] = [];
+  const { app, send } = await setUp(
+    fakeClient({ title: "Fish cakes", feeds: 4, mainTypes: ["Fish"], tags: ["fish cakes", "Kid-Friendly", "QUICK", "for runi"], lines: [], steps: ["Fry."] }, calls),
+  );
+  const { cookie } = await app.logIn("peyton", startingUsers[0]!.password);
+  const saved = await app.request("/api/recipes", {
+    method: "POST",
+    headers: { cookie: cookie!, "content-type": "application/json" },
+    body: JSON.stringify({ title: "Toast", feeds: 1, types: ["Vegetarian"], tags: ["Quick"], lines: [], steps: [] }),
+  });
+  expect(saved.status).toBe(201);
+
+  const draft = (await (await send(await photo())).json()) as PhotoRecipeDraft;
+  expect(draft.recipe.tags).toEqual(["kid-friendly", "Quick", "for Runi"]);
+  const content = calls[0]!.messages[0]!.content as Anthropic.Beta.Messages.BetaContentBlockParam[];
+  expect(content.at(-1)).toEqual({ type: "text", text: "Tags you may use: freezable, kid-friendly, for Runi, Quick." });
 });
 
 test("an answer with no recipe in it, or no tool call at all, says the photo couldn't be read", async () => {

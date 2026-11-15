@@ -1,11 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { eq } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import sharp from "sharp";
-import { mainTypes, type PhotoRecipeDraft, type RecipeInput } from "../shared/recipes.ts";
+import { builtInTags, mainTypes, type PhotoRecipeDraft, type RecipeInput } from "../shared/recipes.ts";
 import { isUnit, units, type Unit } from "../shared/units.ts";
 import type { AppDependencies } from "./app.ts";
 import { kitchenMember, parseInput, type MemberEnv } from "./recipes.ts";
+import { recipes, recipeTags } from "./schema.ts";
 
 type CreateParams = Anthropic.Beta.Messages.MessageCreateParamsNonStreaming;
 type RequestOptions = { signal: AbortSignal; maxRetries: number };
@@ -40,7 +42,7 @@ const tool: Anthropic.Beta.Messages.BetaTool = {
       title: { type: "string", description: "The recipe's name, as written." },
       feeds: { type: "integer", description: "How many people it feeds. 4 if the recipe doesn't say." },
       mainTypes: { type: "array", items: { type: "string", enum: [...mainTypes] }, description: "What the dish is mostly made of. Pick one or more." },
-      tags: { type: "array", items: { type: "string" }, description: "Short tags like quick or soup. Empty if none fit." },
+      tags: { type: "array", items: { type: "string" }, description: "Only tags from the list in the message. Empty if none fit." },
       lines: {
         type: "array",
         items: {
@@ -117,8 +119,10 @@ function toMetric(amount: unknown, unit: unknown): { amount: unknown; unit: unkn
   return { amount: null, unit: null, extra: typeof amount === "number" ? `${amount} ${written}` : written };
 }
 
-/** Turns what the model sent into a draft for the edit form. Lines the recipe parser would refuse are left out, each with a note saying why. */
-export function toDraft(output: unknown): PhotoRecipeDraft {
+/** Turns what the model sent into a draft for the edit form. Lines the recipe parser would refuse are left out, each with a note saying why.
+ * Tags the kitchen doesn't use yet are dropped, so the model can't invent new ones. */
+export function toDraft(output: unknown, knownTags: readonly string[] = builtInTags): PhotoRecipeDraft {
+  const spelling = new Map([...builtInTags, ...knownTags].map((tag) => [tag.toLowerCase(), tag]));
   const raw = (output && typeof output === "object" ? output : {}) as Record<string, unknown>;
   const notes: string[] = [];
   const lines: RecipeInput["lines"] = [];
@@ -136,7 +140,7 @@ export function toDraft(output: unknown): PhotoRecipeDraft {
     title: text(raw.title).slice(0, 200),
     feeds,
     types: mainTypes.filter((type) => list(raw.mainTypes).includes(type)),
-    tags: [...new Set(list(raw.tags).map(text).filter((tag) => tag && tag.length <= 40))].slice(0, 10),
+    tags: [...new Set(list(raw.tags).map((tag) => spelling.get(text(tag).toLowerCase())).filter((tag) => tag !== undefined))].slice(0, 10),
     ageFromMonths: null,
     ageToMonths: null,
     lines,
@@ -163,7 +167,7 @@ async function shrink(photo: File) {
 }
 
 /** Sends the photos and returns what the tool call held, or undefined when the model didn't call it. */
-export async function readRecipe(client: PhotoRecipeClient, images: string[], signal: AbortSignal) {
+export async function readRecipe(client: PhotoRecipeClient, images: string[], signal: AbortSignal, tags: readonly string[] = builtInTags) {
   const message = await client.beta.messages.create(
     {
       model,
@@ -181,6 +185,7 @@ export async function readRecipe(client: PhotoRecipeClient, images: string[], si
           content: [
             ...images.map((data) => ({ type: "image" as const, source: { type: "base64" as const, media_type: "image/jpeg" as const, data } })),
             { type: "text", text: images.length > 1 ? "These photos are pages of one recipe, in order. Save it." : "Save the recipe in this photo." },
+            { type: "text", text: `Tags you may use: ${tags.join(", ")}.` },
           ],
         },
       ],
@@ -240,9 +245,15 @@ export function createPhotoRecipeRoutes({ database, now, photoRecipeClient }: Ap
       // One at a time: the pod has little memory.
       const images: string[] = [];
       for (const photo of photos) images.push(await shrink(photo));
-      const output = await readRecipe(photoRecipeClient, images, signal);
+      const used = await database.db
+        .selectDistinct({ tag: recipeTags.tag })
+        .from(recipeTags)
+        .innerJoin(recipes, eq(recipes.id, recipeTags.recipeId))
+        .where(eq(recipes.kitchenId, c.get("member").kitchenId));
+      const tags = [...new Map([...builtInTags, ...used.map((row) => row.tag)].map((tag) => [tag.toLowerCase(), tag])).values()];
+      const output = await readRecipe(photoRecipeClient, images, signal, tags);
       if (output === undefined) return c.json({ error: noRecipe }, 422);
-      const draft = toDraft(output);
+      const draft = toDraft(output, tags);
       if (!draft.recipe.title && !draft.recipe.lines.length && !draft.recipe.steps.length) return c.json({ error: noRecipe }, 422);
       return c.json(draft);
     } catch (error) {

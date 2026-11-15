@@ -1,9 +1,11 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import sharp from "sharp";
-import { expect, test } from "vitest";
+import { expect, inject, test } from "vitest";
 import type { Photo, Recipe, ShareLink, SharedRecipe } from "../src/shared/recipes.ts";
 import { createTestApp, startingUsers } from "./support/test-app.ts";
 
-const smallPhoto = () => sharp({ create: { width: 80, height: 60, channels: 3, background: "#e8a33c" } }).jpeg().toBuffer();
+const smallPhoto = (width = 80, height = 60) => sharp({ create: { width, height, channels: 3, background: "#e8a33c" } }).jpeg().toBuffer();
 
 async function setUp() {
   const app = await createTestApp({ publicUrl: "https://food.example" });
@@ -17,9 +19,9 @@ async function setUp() {
     });
     return ((await response.json()) as { id: string }).id;
   };
-  const upload = async (recipeId: string, role: "main" | "gallery") => {
+  const upload = async (recipeId: string, role: "main" | "gallery", width?: number, height?: number) => {
     const form = new FormData();
-    form.set("photo", new File([new Uint8Array(await smallPhoto())], "pie.jpg", { type: "image/jpeg" }));
+    form.set("photo", new File([new Uint8Array(await smallPhoto(width, height))], "pie.jpg", { type: "image/jpeg" }));
     form.set("role", role);
     return (await (await app.request(`/api/recipes/${recipeId}/photos`, { method: "POST", headers, body: form })).json()) as Photo;
   };
@@ -102,13 +104,17 @@ test("photos of a shared recipe open through the link only, and only while it is
   expect(page.headers.get("content-type")).toContain("text/html");
   expect(page.headers.get("cache-control")).toBe("no-store");
   const html = await page.text();
-  expect(html).toContain(`<link rel="preload" as="image" href="${shared.mainPhoto!.url}" fetchpriority="high" />`);
+  expect(html).toContain(
+    `<link rel="preload" as="image" href="${shared.mainPhoto!.smallUrl}" media="(max-width: 35.98rem)" fetchpriority="high" />` +
+      `<link rel="preload" as="image" href="${shared.mainPhoto!.url}" media="(min-width: 36rem)" fetchpriority="high" />`,
+  );
   expect(html).toContain("<title>Fish &lt;/script&gt; pie · Food planner</title>");
   const data = /<script id="share-data" type="application\/json">(.*?)<\/script>/.exec(html)?.[1];
   expect(JSON.parse(data!)).toEqual(shared);
 
   await share(recipeId, "DELETE");
   expect((await app.request(shared.mainPhoto!.url)).status).toBe(404);
+  expect((await app.request(shared.mainPhoto!.smallUrl)).status).toBe(404);
   expect((await app.request(shared.photos[1]!.url)).status).toBe(404);
   const gone = await app.request(`/s/${token}`);
   expect(gone.status).toBe(404);
@@ -116,6 +122,36 @@ test("photos of a shared recipe open through the link only, and only while it is
   const goneHtml = await gone.text();
   expect(goneHtml).toContain('<script id="share-data" type="application/json">null</script>');
   expect(goneHtml).not.toContain("Fish");
+});
+
+test("the share page's main photo has an 800 px copy, made once, kept next to the photo, and removed with it", async () => {
+  const { app, headers, addRecipe, upload, share, pathOf } = await setUp();
+  const recipeId = await addRecipe("Fish pie");
+  const main = await upload(recipeId, "main", 1600, 1200);
+  const token = pathOf((await share(recipeId, "POST"))!).split("/")[2]!;
+  const shared = (await (await app.request(`/api/share/${token}`)).json()) as SharedRecipe;
+  expect(shared.mainPhoto?.smallUrl).toBe(`/s/${token}/photos/${main.id}-800.jpg`);
+  const copy = join(inject("scratchDir"), `${main.id}-800.jpg`);
+  expect(existsSync(copy)).toBe(false);
+
+  const [first, second] = await Promise.all([app.request(shared.mainPhoto!.smallUrl), app.request(shared.mainPhoto!.smallUrl)]);
+  for (const response of [first!, second!]) {
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("image/jpeg");
+    expect(response.headers.get("cache-control")).toBe("private, max-age=31536000, immutable");
+  }
+  const small = Buffer.from(await first!.arrayBuffer());
+  expect(await sharp(small).metadata()).toMatchObject({ width: 800, height: 600 });
+  const full = Buffer.from(await (await app.request(shared.mainPhoto!.url)).arrayBuffer());
+  expect(small.length).toBeLessThan(full.length);
+  expect(existsSync(copy)).toBe(true);
+  expect(Buffer.from(await (await app.request(shared.mainPhoto!.smallUrl)).arrayBuffer())).toEqual(small);
+
+  // Only the 800 px size exists.
+  expect((await app.request(`/s/${token}/photos/${main.id}-400.jpg`)).status).toBe(404);
+
+  await app.request(`/api/photos/${main.id}`, { method: "DELETE", headers });
+  expect(existsSync(copy)).toBe(false);
 });
 
 test("a share link never leaks another recipe or its photos", async () => {

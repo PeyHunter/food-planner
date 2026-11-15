@@ -26,6 +26,7 @@ test("photo to recipe: take a photo, check the draft in the edit form, save it w
   await expect(page.getByLabel("Unit 1")).toHaveValue("dl");
   await expect(page.getByLabel("Ingredient 2")).toHaveValue("Egg");
   await expect(page.getByLabel("Note 3")).toHaveValue("1 pinch");
+  await expect(page.getByLabel("Unit 3")).toHaveValue("");
   await expect(page.getByRole("list", { name: "Notes from reading" })).toContainText("Left out a line (Butter)");
   await expect(page.getByLabel("Step 2")).toHaveValue("Fry thin pancakes in butter.");
 

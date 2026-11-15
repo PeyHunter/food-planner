@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { SharedRecipe } from "../../shared/recipes.ts";
+import { sharePhotoMedia, type SharedRecipe } from "../../shared/recipes.ts";
 import { IngredientsPanel, StepsPanel, TypeStickers } from "./RecipePage.tsx";
 import "./recipes.css";
 
@@ -54,7 +54,14 @@ function SharedRecipeView({ recipe }: { recipe: SharedRecipe }) {
     <article className="shared">
       <span className="sticker white tilt-r shared-from">Shared from our food planner</span>
       <div className="hero">
-        {recipe.mainPhoto ? <img src={recipe.mainPhoto.url} alt={recipe.title} fetchPriority="high" /> : <span className="no-photo" aria-hidden="true" />}
+        {recipe.mainPhoto ? (
+          <picture>
+            <source media={sharePhotoMedia.wide} srcSet={recipe.mainPhoto.url} />
+            <img src={recipe.mainPhoto.smallUrl} alt={recipe.title} fetchPriority="high" />
+          </picture>
+        ) : (
+          <span className="no-photo" aria-hidden="true" />
+        )}
         <TypeStickers recipe={recipe} />
       </div>
       <h1>{recipe.title}</h1>

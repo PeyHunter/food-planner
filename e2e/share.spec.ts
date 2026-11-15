@@ -68,6 +68,8 @@ test("share a recipe, open it logged out with the stepper, then turn the link of
   expect(opened?.status()).toBe(200);
   await expect(stranger.getByRole("heading", { name: title })).toBeVisible();
   await shownImage(stranger, title);
+  // A phone gets the 800 px copy, not the full photo.
+  expect(await stranger.getByRole("img", { name: title, exact: true }).evaluate((img: HTMLImageElement) => [img.currentSrc.endsWith("-800.jpg"), img.naturalWidth])).toEqual([true, 800]);
   await expect(stranger.getByRole("button", { name: "Log in" })).toHaveCount(0);
   await expect(stranger.getByText("Fry the onion in the butter.")).toBeVisible();
   const amounts = stranger.locator(".lines .amount");
