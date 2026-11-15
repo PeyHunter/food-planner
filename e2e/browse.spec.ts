@@ -58,7 +58,12 @@ test("flip through the book, filter to Fish, swipe, and add a dish to Wednesday"
   await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
   const second = pages.getByRole("listitem", { name: `${cod}, page 2 of 2` });
   await expect(second).toHaveAttribute("aria-current", "true");
-  await expect(page.getByRole("button", { name: "Next page" })).toBeDisabled();
+  // Past the last page the book goes round to page 1, and back again from page 1 to the last page.
+  await page.getByRole("button", { name: "Back to page 1" }).click();
+  await expect(first).toHaveAttribute("aria-current", "true");
+  await expect(page.getByRole("status").filter({ hasText: "page 1 of 2" })).toBeAttached();
+  await page.getByRole("button", { name: "Go to the last page" }).click();
+  await expect(second).toHaveAttribute("aria-current", "true");
 
   await page.getByRole("button", { name: "Previous page" }).click();
   await expect(first).toHaveAttribute("aria-current", "true");
