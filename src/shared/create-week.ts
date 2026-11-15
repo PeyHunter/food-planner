@@ -26,7 +26,7 @@ export type CreateWeekResult = { fills: Fill[]; rules: RuleStatus[]; note: strin
 
 export const recentDays = 14;
 
-const forChildren = (recipe: PlannerRecipe) => recipe.ageFromMonths !== null || recipe.ageToMonths !== null || recipe.tags.includes(childRecipeTag);
+export const forChildren = (recipe: PlannerRecipe) => recipe.ageFromMonths !== null || recipe.ageToMonths !== null || recipe.tags.includes(childRecipeTag);
 
 /** A recipe with an age range fits a child of known age inside it; one tagged "for Runi" without a range fits any child. */
 function fitsChild(recipe: PlannerRecipe, child: PlannerChild) {
@@ -98,10 +98,10 @@ const beats = (score: number[], other: number[]) => {
   return false;
 };
 
-/** Ingredients the shopping list would buy more of than the planned meals use. */
-function leftoverIngredients(plan: PlannerDay[], children: PlannerChild[], byId: Map<string, PlannerRecipe>) {
+/** The plan as the shopping list builder takes it. */
+export function toShoppingDays(plan: PlannerDay[], children: PlannerChild[], byId: Map<string, PlannerRecipe>): ShoppingDay[] {
   const recipeOf = (dish: Dish | null) => (dish ? (byId.get(dish.id) ?? null) : null);
-  const shopping: ShoppingDay[] = plan.map((day) => ({
+  return plan.map((day) => ({
     date: day.date,
     people: day.people,
     sameAsDinner: children.filter((child) => day.children[child.id]?.kind === "same-as-dinner").length,
@@ -112,8 +112,12 @@ function leftoverIngredients(plan: PlannerDay[], children: PlannerChild[], byId:
       return recipe ? [{ childName: child.name, recipe }] : [];
     }),
   }));
+}
+
+/** Ingredients the shopping list would buy more of than the planned meals use. */
+function leftoverIngredients(plan: PlannerDay[], children: PlannerChild[], byId: Map<string, PlannerRecipe>) {
   return new Set(
-    buildShoppingList(shopping)
+    buildShoppingList(toShoppingDays(plan, children, byId))
       .flatMap((section) => section.lines)
       .filter((line) => line.leftover !== null)
       .map((line) => line.ingredient.id),

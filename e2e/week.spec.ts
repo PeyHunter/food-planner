@@ -158,7 +158,7 @@ test("Create week fills only the empty days, ticks the rules, and undo puts them
   await expect(page.getByRole("button", { name: "+ Pick a dinner" })).toHaveCount(5);
 
   await page.getByRole("button", { name: "Create week" }).click();
-  const note = page.getByRole("status");
+  const note = page.getByRole("region", { name: "Create week" }).getByRole("status");
   await expect(note).toContainText("Filled 5 dinners and 7 meals for Runi Lee.");
   // Other tests add recipes to the same kitchen, so counts can go past the goal.
   await expect(note).toContainText(/Fish \d\/2 for Runi Lee ✓/);
@@ -197,4 +197,57 @@ test("Create week fills only the empty days, ticks the rules, and undo puts them
   );
   expect(squeezed, "rules with no room between name and count").toEqual([]);
   await page.locator(".rules-card").screenshot({ path: process.env.RULES_SHOT ?? "test-results/rules-375.png" });
+});
+
+test("Reduce waste suggests a dish for the leftover carrots, and accepting it lowers the leftover on the list", async ({ page }) => {
+  const stamp = Date.now();
+  const carrots = `Carrots ${stamp}`;
+  const soup = `Carrot soup ${stamp}`;
+  await page.goto("/");
+  await page.getByLabel("Name").fill("peyton");
+  await page.getByLabel("Password").fill(e2ePasswords.peyton);
+  await page.getByRole("button", { name: "Log in" }).click();
+  await expect(page.getByText("Next up")).toBeVisible();
+
+  // Next week, so the shopping list can show it and no day is past. 400 g of a 1 kg bag on Monday leaves 600 g.
+  const monday = addDays(mondayOf(new Date().toLocaleDateString("en-CA")), 7);
+  const withCarrots = (title: string, amount: number) => ({ ...recipe(title, ["Vegetarian"], []), feeds: 2, lines: [{ amount, unit: "g", ingredient: carrots, note: "" }] });
+  const post = async (data: object) => ((await (await page.request.post("/api/recipes", { data })).json()) as { id: string }).id;
+  const cake = await post(withCarrots(`Carrot cake ${stamp}`, 400));
+  await post(withCarrots(soup, 300));
+  const [carrot] = (await (await page.request.get(`/api/ingredients?q=${encodeURIComponent(carrots)}`)).json()) as { id: string }[];
+  await page.request.put(`/api/ingredients/${carrot!.id}`, { data: { shopSection: "Vegetables", packAmount: 1, packUnit: "kg", alwaysAtHome: false } });
+  await page.request.put(`/api/plan/days/${monday}`, { data: { dinnerRecipeId: cake, people: 2 } });
+
+  const nav = page.getByRole("navigation", { name: "Main" });
+  const carrotLine = page.getByRole("listitem").filter({ has: page.getByRole("checkbox", { name: new RegExp(carrots) }) });
+  const nextWeekList = async () => {
+    await nav.getByRole("button", { name: "Shopping" }).click();
+    await page.getByRole("group", { name: "Which week" }).getByRole("button", { name: "Next week" }).click();
+  };
+  await nextWeekList();
+  await expect(carrotLine).toContainText("600 g left over");
+
+  await nav.getByRole("button", { name: "Week" }).click();
+  await page.getByRole("button", { name: "Next week" }).click();
+  const idea = page.getByRole("region", { name: "Reduce waste" }).getByRole("status");
+  const suggestion = new RegExp(`^(Add ${soup} on \\w+|Swap \\w+ for ${soup}) to use the 600 g ${carrots.toLowerCase()} left from Monday\\.`);
+  await page.getByRole("button", { name: "Reduce waste" }).click();
+  await expect(idea).toContainText(suggestion);
+  await idea.getByRole("button", { name: "Accept" }).click();
+  await expect(idea).toContainText("Done.");
+  await expect(page.getByText(soup)).toBeVisible();
+
+  // Undo puts the week back; then take it again for real.
+  await idea.getByRole("button", { name: "Undo" }).click();
+  await expect(page.getByText(soup)).toHaveCount(0);
+  await page.getByRole("button", { name: "Reduce waste" }).click();
+  await expect(idea).toContainText(suggestion);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: process.env.WASTE_SHOT ?? "test-results/reduce-waste.png" });
+  await idea.getByRole("button", { name: "Accept" }).click();
+  await expect(page.getByText(soup)).toBeVisible();
+
+  await nextWeekList();
+  await expect(carrotLine).toContainText("300 g left over");
 });

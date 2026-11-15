@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import type { RecipeInput } from "../src/shared/recipes.ts";
+import type { ReduceWaste } from "../src/shared/reduce-waste.ts";
 import type { CreatedWeek, WeekView } from "../src/shared/week.ts";
 import { createTestApp, startingUsers } from "./support/test-app.ts";
 
@@ -197,4 +198,46 @@ test("the week answers fast", async () => {
   console.log(`GET week: median ${median.toFixed(1)} ms over 15 calls`);
   // The aim is under 50 ms (about 25 ms on a laptop); the bound leaves room for slow CI machines.
   expect(median).toBeLessThan(100);
+});
+
+test("Reduce waste suggests one dish that uses the leftover carrots, within 200 ms with 200 recipes", async () => {
+  const { call, create } = await loggedIn();
+  const carrots = (amount: number) => ({ feeds: 2, lines: [{ amount, unit: "g" as const, ingredient: "Carrots", note: "" }] });
+  const cake = await create(recipe("Carrot cake", ["Vegetarian"], carrots(400)));
+  const soup = await create(recipe("Carrot soup", ["Vegetarian"], carrots(300)));
+  const [carrot] = (await (await call("/api/ingredients?q=Carrots")).json()) as { id: string }[];
+  await call(`/api/ingredients/${carrot!.id}`, "PUT", { shopSection: "Vegetables", packAmount: 1, packUnit: "kg", alwaysAtHome: false });
+  await call(`/api/plan/days/${monday}`, "PUT", { dinnerRecipeId: cake, people: 2 });
+
+  const suggest = async () => {
+    const response = await call(`/api/plan/weeks/${monday}/reduce-waste`, "POST", { today: monday });
+    expect(response.status).toBe(200);
+    return (await response.json()) as ReduceWaste;
+  };
+  expect((await suggest()).swap).toEqual({ date: "2026-03-03", recipeId: soup, replaces: null, text: "Add Carrot soup on Tuesday to use the 600 g carrots left from Monday." });
+  expect((await call("/api/plan/weeks/2026-03-03/reduce-waste", "POST", {})).status).toBe(400);
+
+  // Many more recipes, each with eight lines from one small pantry, so most of them use a leftover.
+  const pantry = Array.from({ length: 30 }, (_, index) => `Thing ${index}`);
+  for (let index = 0; index < 198; index++) {
+    await create(
+      recipe(`Dish ${index}`, [(["Fish", "Meat", "Vegetarian"] as const)[index % 3]!], {
+        lines: Array.from({ length: 8 }, (_, line) => ({ amount: 70 + line * 30, unit: "g" as const, ingredient: pantry[(index * 3 + line) % 30]!, note: "" })),
+      }),
+    );
+  }
+  for (const name of pantry) {
+    const [thing] = (await (await call(`/api/ingredients?q=${encodeURIComponent(name)}`)).json()) as { id: string }[];
+    await call(`/api/ingredients/${thing!.id}`, "PUT", { shopSection: "Other", packAmount: 500, packUnit: "g", alwaysAtHome: false });
+  }
+  await suggest();
+  const times: number[] = [];
+  for (let run = 0; run < 7; run++) {
+    const start = performance.now();
+    expect((await suggest()).swap).not.toBeNull();
+    times.push(performance.now() - start);
+  }
+  const median = times.sort((a, b) => a - b)[3]!;
+  console.log(`POST reduce-waste: median ${median.toFixed(1)} ms over 7 calls`);
+  expect(median).toBeLessThanOrEqual(200);
 });

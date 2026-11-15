@@ -1,3 +1,4 @@
+import type { ReduceWaste } from "../../shared/reduce-waste.ts";
 import type { RuleOp } from "../../shared/rules.ts";
 import type { ChildDayKind, CreatedWeek, WeekView } from "../../shared/week.ts";
 import { call, json, today } from "../recipes/api.ts";
@@ -15,3 +16,4 @@ export const updateRule = (id: string, rule: RuleInput) => call<{ id: string }>(
 export const deleteRule = (id: string) => call<void>(`/api/rules/${id}`, { method: "DELETE" });
 export const createWeek = (monday: string) => call<CreatedWeek>(`/api/plan/weeks/${monday}/create`, json("POST", { today: today() }));
 export const undoCreateWeek = (monday: string, fills: CreatedWeek["fills"]) => call<void>(`/api/plan/weeks/${monday}/undo-create`, json("POST", { fills }));
+export const reduceWaste = (monday: string) => call<ReduceWaste>(`/api/plan/weeks/${monday}/reduce-waste`, json("POST", { today: today() }));
