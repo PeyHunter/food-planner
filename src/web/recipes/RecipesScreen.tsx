@@ -1,22 +1,22 @@
 import { useEffect, useState } from "react";
+import { BrowseScreen } from "./BrowseScreen.tsx";
 import { IngredientsScreen } from "./IngredientsScreen.tsx";
 import { RecipeForm } from "./RecipeForm.tsx";
 import { RecipeList } from "./RecipeList.tsx";
 import { RecipePage } from "./RecipePage.tsx";
 import "./recipes.css";
 
-type Route = { screen: "list" } | { screen: "new" } | { screen: "ingredients" } | { screen: "recipe"; id: string } | { screen: "edit"; id: string };
+type Route = { screen: "book" } | { screen: "list" } | { screen: "new" } | { screen: "ingredients" } | { screen: "recipe"; id: string } | { screen: "edit"; id: string };
 
-// #/recipes, #/recipes/new, #/recipes/ingredients, #/recipes/<id>, #/recipes/<id>/edit
+// #/recipes (the book), #/recipes/list, #/recipes/new, #/recipes/ingredients, #/recipes/<id>, #/recipes/<id>/edit
 function readRoute(hash: string): Route {
   const [, section, id, action] = hash.replace(/^#/, "").split("/");
-  if (section !== "recipes" || !id) return { screen: "list" };
-  if (id === "new") return { screen: "new" };
-  if (id === "ingredients") return { screen: "ingredients" };
+  if (section !== "recipes" || !id) return { screen: "book" };
+  if (id === "list" || id === "new" || id === "ingredients") return { screen: id };
   return action === "edit" ? { screen: "edit", id } : { screen: "recipe", id };
 }
 
-/** The Recipes tab: list, recipe page and edit form, picked by the URL hash so reload and back work. */
+/** The Recipes tab: the book, list, recipe page and edit form, picked by the URL hash so reload and back work. */
 export function RecipesScreen() {
   const [route, setRoute] = useState(() => readRoute(window.location.hash));
 
@@ -31,6 +31,7 @@ export function RecipesScreen() {
 
   return (
     <div className="recipes">
+      {route.screen === "book" && <BrowseScreen />}
       {route.screen === "list" && <RecipeList />}
       {route.screen === "new" && <RecipeForm />}
       {route.screen === "ingredients" && <IngredientsScreen />}

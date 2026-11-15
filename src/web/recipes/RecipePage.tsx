@@ -4,7 +4,7 @@ import { formatAmount, scale } from "../../shared/units.ts";
 import { getRecipe, logCook, showDate, today, uploadPhoto } from "./api.ts";
 import { SharePanel } from "./SharePanel.tsx";
 
-const typeColour: Record<string, string> = { Fish: "sky", Meat: "tomato", Chicken: "sun", Vegetarian: "mint", Vegetables: "mint" };
+export const typeColour: Record<string, string> = { Fish: "sky", Meat: "tomato", Chicken: "sun", Vegetarian: "mint", Vegetables: "mint" };
 
 export function TypeStickers({ recipe }: { recipe: Pick<RecipeSummary, "types" | "tags"> }) {
   return (

@@ -17,7 +17,7 @@ test("the bottom nav has four tabs and each one opens", async ({ page }) => {
     const tab = nav.getByRole("button", { name: label });
     await tab.click();
     await expect(tab).toHaveAttribute("aria-current", "page");
-    await expect(page.getByRole("heading", { level: 2, name: label })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: label === "Recipes" ? "Flip through the book" : label })).toBeVisible();
     await expect(page.getByText("Coming soon")).toBeVisible({ visible: label !== "Recipes" && label !== "Week" });
   }
 
