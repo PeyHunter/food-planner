@@ -7,6 +7,7 @@ import { createRecipe, deleteRecipe, getRecipe, go, suggestIngredients, updateRe
 type LineDraft = { amount: string; unit: string; ingredient: string; note: string };
 type Draft = {
   title: string;
+  description: string;
   feeds: string;
   types: MainType[];
   tags: string[];
@@ -18,7 +19,7 @@ type Draft = {
 };
 
 const emptyLine = (): LineDraft => ({ amount: "", unit: "g", ingredient: "", note: "" });
-const blank: Draft = { title: "", feeds: "4", types: [], tags: [], otherTags: "", ageFrom: "", ageTo: "", lines: [emptyLine()], steps: [""] };
+const blank: Draft = { title: "", description: "", feeds: "4", types: [], tags: [], otherTags: "", ageFrom: "", ageTo: "", lines: [emptyLine()], steps: [""] };
 
 const toggle = <T,>(list: T[], item: T) => (list.includes(item) ? list.filter((value) => value !== item) : [...list, item]);
 const numberOrNull = (text: string) => (text.trim() === "" ? null : Number(text.replace(",", ".")));
@@ -30,6 +31,7 @@ function toInput(draft: Draft): RecipeInput {
     .filter(Boolean);
   return {
     title: draft.title,
+    description: draft.description,
     feeds: Number(draft.feeds),
     types: draft.types,
     tags: [...new Set([...draft.tags, ...otherTags])],
@@ -57,11 +59,26 @@ function startDraft({ tags, ageFrom }: Prefill): Draft {
 /** A recipe read from photos, to check before saving. The photos can be kept in the gallery. */
 export type FromPhoto = PhotoRecipeDraft & { photos: File[] };
 
+function dataUrlToFile(dataUrl: string, name: string) {
+  const [head = "", base64 = ""] = dataUrl.split(",");
+  const type = /^data:([^;]+)/.exec(head)?.[1] ?? "image/jpeg";
+  return new File([Uint8Array.from(atob(base64), (char) => char.charCodeAt(0))], name, { type });
+}
+
+/** The main photo a scanned recipe starts with: the dish picture cut out of the book, or else the first page. */
+function startPhoto(fromPhoto?: FromPhoto): { file: File; from: "dish" | "page" } | undefined {
+  if (!fromPhoto) return undefined;
+  if (fromPhoto.dishPhoto) return { file: dataUrlToFile(fromPhoto.dishPhoto, "dish.jpg"), from: "dish" };
+  const page = fromPhoto.photos[0];
+  return page && { file: page, from: "page" };
+}
+
 function photoDraft({ recipe }: FromPhoto): Draft {
   const isBuiltIn = (tag: string) => (builtInTags as readonly string[]).includes(tag);
   return {
     ...blank,
     title: recipe.title,
+    description: recipe.description ?? "",
     feeds: String(recipe.feeds),
     types: recipe.types,
     tags: recipe.tags.filter(isBuiltIn),
@@ -74,7 +91,8 @@ function photoDraft({ recipe }: FromPhoto): Draft {
 export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Prefill; fromPhoto?: FromPhoto }) {
   const [draft, setDraft] = useState<Draft | undefined>(id ? undefined : fromPhoto ? photoDraft(fromPhoto) : start ? startDraft(start) : blank);
   const [keepPhotos, setKeepPhotos] = useState(true);
-  const [photo, setPhoto] = useState<File>();
+  const [started] = useState(() => startPhoto(fromPhoto));
+  const [photo, setPhoto] = useState<File | undefined>(started?.file);
   const [preview, setPreview] = useState<string>();
   const [problem, setProblem] = useState<string>();
   // What the save button says while it works, e.g. "Uploading photo… 60%".
@@ -86,6 +104,7 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
       (recipe) =>
         setDraft({
           title: recipe.title,
+          description: recipe.description,
           feeds: String(recipe.feeds),
           types: recipe.types,
           tags: recipe.tags.filter((tag) => (builtInTags as readonly string[]).includes(tag)),
@@ -129,7 +148,8 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
       }
       if (fromPhoto && keepPhotos) {
         setBusy("Saving the recipe photo…");
-        for (const page of fromPhoto.photos) await uploadPhoto(saved.id, page, "gallery");
+        // The first page is already the main photo when the book had no dish picture.
+        for (const page of fromPhoto.photos) if (page !== photo) await uploadPhoto(saved.id, page, "gallery");
       }
       go(`/recipes/${saved.id}`);
     } catch (error) {
@@ -177,6 +197,10 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
       <label>
         Name
         <input value={draft.title} onChange={(event) => set({ title: event.target.value })} required maxLength={200} />
+      </label>
+      <label>
+        Description
+        <textarea rows={3} value={draft.description} onChange={(event) => set({ description: event.target.value })} maxLength={2000} placeholder="A few words about the dish" />
       </label>
       <label className="narrow">
         Feeds (people)
@@ -252,6 +276,9 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
       <fieldset>
         <legend>Main photo</legend>
         {preview && <img className="preview" src={preview} alt="New main photo" />}
+        {started && photo === started.file && (
+          <p className="hint">{started.from === "dish" ? "The dish picture from the book. Pick another photo if it isn't right." : "No dish picture found, so the recipe photo is used. Pick another photo if you have one."}</p>
+        )}
         <label className="ink-button white small file-button">
           {photo ? "Pick another photo" : id ? "Change main photo" : "Pick a photo"}
           <input type="file" accept="image/*" aria-label="Main photo" onChange={(event) => setPhoto(event.target.files?.[0])} />
@@ -261,7 +288,7 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
       {fromPhoto && (
         <label className="check">
           <input type="checkbox" checked={keepPhotos} onChange={(event) => setKeepPhotos(event.target.checked)} />
-          Keep the handwritten recipe as a gallery photo
+          Keep the recipe pages as gallery photos
         </label>
       )}
 

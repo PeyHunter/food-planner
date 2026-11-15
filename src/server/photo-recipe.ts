@@ -37,9 +37,10 @@ const tool: Anthropic.Beta.Messages.BetaTool = {
   input_schema: {
     type: "object",
     additionalProperties: false,
-    required: ["title", "feeds", "mainTypes", "tags", "lines", "steps"],
+    required: ["title", "description", "feeds", "mainTypes", "tags", "lines", "steps", "dishPhoto"],
     properties: {
       title: { type: "string", description: "The recipe's name, as written." },
+      description: { type: "string", description: "The short text about the dish, like a book's intro above the recipe, in the cook's words. Empty if there is none." },
       feeds: { type: "integer", description: "How many people it feeds. 4 if the recipe doesn't say." },
       mainTypes: { type: "array", items: { type: "string", enum: [...mainTypes] }, description: "What the dish is mostly made of. Pick one or more." },
       tags: { type: "array", items: { type: "string" }, description: "Only tags from the list in the message. Empty if none fit." },
@@ -58,6 +59,19 @@ const tool: Anthropic.Beta.Messages.BetaTool = {
         },
       },
       steps: { type: "array", items: { type: "string" }, description: "One entry per step, in order." },
+      dishPhoto: nullable({
+        type: "object",
+        additionalProperties: false,
+        required: ["photo", "left", "top", "right", "bottom"],
+        description: "Where the printed picture of the finished dish is, if a photo has one. Null if there is no such picture.",
+        properties: {
+          photo: { type: "integer", description: "Which photo it is in, counting from 1." },
+          left: { type: "number", description: "Left edge, as a fraction of the photo's width (0 to 1)." },
+          top: { type: "number", description: "Top edge, as a fraction of the photo's height (0 to 1)." },
+          right: { type: "number", description: "Right edge, as a fraction of the photo's width (0 to 1)." },
+          bottom: { type: "number", description: "Bottom edge, as a fraction of the photo's height (0 to 1)." },
+        },
+      }),
     },
   },
 };
@@ -66,7 +80,8 @@ const system = `You read photos of written, handwritten or printed recipes and s
 - Write the recipe in the language it is written in. Keep the cook's own words in the steps.
 - Units must be one of: ${units.join(", ")}. Convert anything else to metric: 1 cup = 2.4 dl, 1 oz = 28 g, 1 lb = 450 g, 1 fl oz = 30 ml. Use pcs for things you count (2 eggs = 2 pcs).
 - Amounts are numbers (½ = 0.5). If there is no amount, like "salt to taste", set amount and unit to null and put the words in note.
-- If a part can't be read, leave it out rather than guess.`;
+- If a part can't be read, leave it out rather than guess.
+- Recipe books often print a picture of the finished dish next to the recipe. If you see one, give its edges in dishPhoto, tight around the picture, without the text around it. Drawings, ingredient shots and the page itself don't count.`;
 
 // Units the model may still send, and how they become allowed ones.
 const unitAliases: Record<string, { unit: Unit; factor: number }> = {
@@ -121,7 +136,7 @@ function toMetric(amount: unknown, unit: unknown): { amount: unknown; unit: unkn
 
 /** Turns what the model sent into a draft for the edit form. Lines the recipe parser would refuse are left out, each with a note saying why.
  * Tags the kitchen doesn't use yet are dropped, so the model can't invent new ones. */
-export function toDraft(output: unknown, knownTags: readonly string[] = builtInTags): PhotoRecipeDraft {
+export function toDraft(output: unknown, knownTags: readonly string[] = builtInTags): Omit<PhotoRecipeDraft, "dishPhoto"> {
   const spelling = new Map([...builtInTags, ...knownTags].map((tag) => [tag.toLowerCase(), tag]));
   const raw = (output && typeof output === "object" ? output : {}) as Record<string, unknown>;
   const notes: string[] = [];
@@ -138,6 +153,7 @@ export function toDraft(output: unknown, knownTags: readonly string[] = builtInT
   const feeds = Number.isInteger(raw.feeds) && (raw.feeds as number) >= 1 && (raw.feeds as number) <= 100 ? (raw.feeds as number) : 4;
   const recipe: RecipeInput = {
     title: text(raw.title).slice(0, 200),
+    description: text(raw.description).slice(0, 2000),
     feeds,
     types: mainTypes.filter((type) => list(raw.mainTypes).includes(type)),
     tags: [...new Set(list(raw.tags).map((tag) => spelling.get(text(tag).toLowerCase())).filter((tag) => tag !== undefined))].slice(0, 10),
@@ -148,6 +164,44 @@ export function toDraft(output: unknown, knownTags: readonly string[] = builtInT
   };
   if (!recipe.title) notes.push("We couldn't read a name. Add one before you save.");
   return { recipe, notes };
+}
+
+/** Edges of the dish picture as fractions of a photo, checked. */
+export type DishBox = { photo: number; left: number; top: number; right: number; bottom: number };
+
+/** The model's dishPhoto, or undefined when it is missing, points at a photo that wasn't sent, or is too small to be a real picture. */
+export function toDishBox(output: unknown, photoCount: number): DishBox | undefined {
+  const raw = output && typeof output === "object" ? (output as Record<string, unknown>).dishPhoto : undefined;
+  if (!raw || typeof raw !== "object") return undefined;
+  const { photo, left, top, right, bottom } = raw as Record<string, unknown>;
+  if (!Number.isInteger(photo) || (photo as number) < 1 || (photo as number) > photoCount) return undefined;
+  const edges = [left, top, right, bottom];
+  if (!edges.every((edge) => typeof edge === "number" && Number.isFinite(edge))) return undefined;
+  const clamp = (edge: number) => Math.min(1, Math.max(0, edge));
+  const box = { photo: photo as number, left: clamp(left as number), top: clamp(top as number), right: clamp(right as number), bottom: clamp(bottom as number) };
+  // Anything under a tenth of the side each way is a misread, not a dish picture.
+  if (box.right - box.left < 0.1 || box.bottom - box.top < 0.1) return undefined;
+  return box;
+}
+
+/** Cuts the dish picture out of the full photo (not the shrunk copy, so it stays sharp) as a JPEG data URL, at most 1600 px. */
+export async function cutOutDish(photo: Uint8Array, box: DishBox): Promise<string | null> {
+  try {
+    const { data, info } = await sharp(photo, { failOn: "error" }).rotate().toBuffer({ resolveWithObject: true });
+    const left = Math.floor(box.left * info.width);
+    const top = Math.floor(box.top * info.height);
+    const width = Math.max(1, Math.min(info.width - left, Math.ceil((box.right - box.left) * info.width)));
+    const height = Math.max(1, Math.min(info.height - top, Math.ceil((box.bottom - box.top) * info.height)));
+    const bytes = await sharp(data)
+      .extract({ left, top, width, height })
+      .resize({ width: maxSide, height: maxSide, fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 85 })
+      .toBuffer();
+    return `data:image/jpeg;base64,${bytes.toString("base64")}`;
+  } catch {
+    // The recipe is still worth having without its picture.
+    return null;
+  }
 }
 
 class Unreadable extends Error {}
@@ -184,7 +238,7 @@ export async function readRecipe(client: PhotoRecipeClient, images: string[], si
           role: "user",
           content: [
             ...images.map((data) => ({ type: "image" as const, source: { type: "base64" as const, media_type: "image/jpeg" as const, data } })),
-            { type: "text", text: images.length > 1 ? "These photos are pages of one recipe, in order. Save it." : "Save the recipe in this photo." },
+            { type: "text", text: images.length > 1 ? `These ${images.length} photos are pages of one recipe, in order. Save it.` : "Save the recipe in this photo." },
             { type: "text", text: `Tags you may use: ${tags.join(", ")}.` },
           ],
         },
@@ -255,7 +309,9 @@ export function createPhotoRecipeRoutes({ database, now, photoRecipeClient }: Ap
       if (output === undefined) return c.json({ error: noRecipe }, 422);
       const draft = toDraft(output, tags);
       if (!draft.recipe.title && !draft.recipe.lines.length && !draft.recipe.steps.length) return c.json({ error: noRecipe }, 422);
-      return c.json(draft);
+      const box = toDishBox(output, photos.length);
+      const dishPhoto = box ? await cutOutDish(new Uint8Array(await photos[box.photo - 1]!.arrayBuffer()), box) : null;
+      return c.json({ ...draft, dishPhoto } satisfies PhotoRecipeDraft);
     } catch (error) {
       return failure(c, error, signal);
     }

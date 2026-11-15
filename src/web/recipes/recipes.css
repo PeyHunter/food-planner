@@ -275,6 +275,12 @@
   color: var(--r-muted);
 }
 
+.recipes .description {
+  margin: -0.4rem 0 0;
+  white-space: pre-line;
+  text-wrap: pretty;
+}
+
 .recipes .panel {
   display: grid;
   gap: 0.8rem;

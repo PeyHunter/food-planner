@@ -260,10 +260,10 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
   async function sharedView(token: string): Promise<SharedRecipe | undefined> {
     const id = await sharedRecipe(token);
     if (!id) return undefined;
-    const { title, feeds, types, tags, mainPhoto, photos: all, lines, steps: stepTexts } = await loadRecipe(id);
+    const { title, description, feeds, types, tags, mainPhoto, photos: all, lines, steps: stepTexts } = await loadRecipe(id);
     const viaLink = (photo: Photo): Photo => ({ ...photo, url: `/s/${token}/photos/${photo.id}.jpg` });
     const main = mainPhoto && { ...viaLink(mainPhoto), smallUrl: `/s/${token}/photos/${mainPhoto.id}-${smallWidth}.jpg` };
-    return { title, feeds, types, tags, mainPhoto: main, photos: all.map(viaLink), lines, steps: stepTexts };
+    return { title, description, feeds, types, tags, mainPhoto: main, photos: all.map(viaLink), lines, steps: stepTexts };
   }
 
   routes.get("/api/share/:token", async (c) => {
@@ -384,6 +384,7 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
       .select({
         id: recipes.id,
         title: recipes.title,
+        description: recipes.description,
         feeds: recipes.feeds,
         ageFromMonths: recipes.ageFromMonths,
         ageToMonths: recipes.ageToMonths,
@@ -393,7 +394,7 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
       .from(recipes)
       .leftJoin(users, eq(users.id, recipes.createdBy))
       .where(eq(recipes.id, id));
-    const { createdBy, ageFromMonths, ageToMonths, shareToken, ...summaryRow } = row!;
+    const { createdBy, description, ageFromMonths, ageToMonths, shareToken, ...summaryRow } = row!;
     const [[summary], lines, stepRows, photoRows, cookRows] = await Promise.all([
       summaries([summaryRow]),
       db
@@ -423,6 +424,7 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
     const allPhotos = photoRows.map(toPhoto);
     return {
       ...summary!,
+      description,
       ageFromMonths,
       ageToMonths,
       createdBy,
@@ -486,7 +488,7 @@ export async function recipeSummaries({ db }: Database, rows: { id: string; titl
 }
 
 function recipeColumns(input: RecipeInput) {
-  return { title: input.title, feeds: input.feeds, ageFromMonths: input.ageFromMonths, ageToMonths: input.ageToMonths };
+  return { title: input.title, description: input.description ?? "", feeds: input.feeds, ageFromMonths: input.ageFromMonths, ageToMonths: input.ageToMonths };
 }
 
 const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
@@ -503,6 +505,8 @@ export function parseInput(body: unknown): RecipeInput | { error: string } {
   const title = text(raw.title);
   if (!title) return { error: "Give the recipe a name." };
   if (title.length > 200) return { error: "That name is too long." };
+  const description = text(raw.description);
+  if (description.length > 2000) return { error: "That description is too long. Keep it under 2000 letters." };
   const feeds = raw.feeds;
   if (!Number.isInteger(feeds) || (feeds as number) < 1 || (feeds as number) > 100) return { error: "Feeds must be a whole number from 1 to 100." };
   const types = sortTypes(list(raw.types).filter((type): type is MainType => mainTypes.includes(type as MainType)));
@@ -527,7 +531,7 @@ export function parseInput(body: unknown): RecipeInput | { error: string } {
     lines.push({ amount, unit, ingredient, note: text(line.note).slice(0, 200) });
   }
   const stepTexts = list(raw.steps).map(text).filter(Boolean);
-  return { title, feeds: feeds as number, types, tags, ageFromMonths, ageToMonths, lines, steps: stepTexts };
+  return { title, description, feeds: feeds as number, types, tags, ageFromMonths, ageToMonths, lines, steps: stepTexts };
 }
 
 
