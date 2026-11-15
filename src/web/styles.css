@@ -93,3 +93,19 @@ input{inline-size:100%;padding:.75rem .9rem;border:var(--line) solid var(--ink);
 .tab .ic{font-size:1.3rem;line-height:1}
 .tab[aria-current=page]{background:var(--sun);border-color:var(--ink);box-shadow:var(--pop-sm)}
 .tab:active{scale:.96}
+
+/* computers and tablets: a wider page; lists spread into columns, reading pages stay a comfortable width */
+@media (min-width:60rem){
+  .app{grid-template-columns:[full-start] minmax(var(--gutter),1fr) [content-start] min(100% - var(--gutter)*2,90rem) [content-end] minmax(var(--gutter),1fr) [full-end]}
+  .recipes .book,.recipes .recipe-page,.recipes .recipe-form,.recipes .ingredient-form,.shopping,.kids{inline-size:100%;max-inline-size:56rem;justify-self:center;margin-inline:auto}
+  .recipes .cards{grid-template-columns:repeat(auto-fill,minmax(20rem,1fr))}
+  .week .days{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+  /* the tabs sit under the page, not spread across the whole screen */
+  .tabbar{padding-inline:max(var(--gutter),(100% - 48rem)/2)}
+}
+@media (min-width:84rem){
+  .week .days{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (min-width:110rem){
+  .week .days{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
