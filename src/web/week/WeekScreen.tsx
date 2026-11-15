@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { mainTypes, type RecipeSummary } from "../../shared/recipes.ts";
+import type { ReduceWaste as WasteIdea } from "../../shared/reduce-waste.ts";
 import type { RuleOp } from "../../shared/rules.ts";
 import { addDays, maxPeople, mondayOf, weekdayName, type Child, type CreatedWeek, type WeekDay, type WeekRule, type WeekView } from "../../shared/week.ts";
 import { listRecipes, today } from "../recipes/api.ts";
-import { acceptSuggestion, addRule, createWeek, deleteRule, getWeek, setChildDay, setDinner, setPeople, undoCreateWeek, updateRule, type RuleInput } from "./api.ts";
+import { acceptSuggestion, addRule, createWeek, deleteRule, getWeek, reduceWaste, setChildDay, setDinner, setPeople, undoCreateWeek, updateRule, type RuleInput } from "./api.ts";
 import "./week.css";
 
 type Picking = { date: string; childId: string | null };
@@ -79,7 +80,10 @@ export function WeekScreen() {
       {problem && <p role="alert">{problem}</p>}
       {shown && (
         <>
-          <CreateWeek monday={monday} onDone={load} setProblem={setProblem} />
+          <div className="week-tools">
+            <CreateWeek monday={monday} onDone={load} setProblem={setProblem} />
+            <ReduceWaste monday={monday} onDone={load} setProblem={setProblem} />
+          </div>
           <RulesCard view={shown} onEdit={() => setEditingRules(true)} />
           {shown.suggestions.length > 0 && (
             <section className="swaps" aria-label="Ideas to meet the rules">
@@ -209,6 +213,70 @@ function CreateWeek({ monday, onDone, setProblem }: { monday: string; onDone: ()
             {shown.fills.length > 0 && (
               <button type="button" className="btn small white" disabled={busy} onClick={() => undo(shown)}>
                 Undo
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/** Gently suggests one swap that uses up a leftover. Accepting it changes one dinner; undo puts the old one back. */
+function ReduceWaste({ monday, onDone, setProblem }: { monday: string; onDone: () => Promise<void>; setProblem: (problem: string) => void }) {
+  const [idea, setIdea] = useState<{ monday: string; accepted: boolean } & WasteIdea>();
+  const [busy, setBusy] = useState(false);
+  const shown = idea?.monday === monday ? idea : undefined;
+
+  const run = async (change: () => Promise<void>, reload: boolean) => {
+    setBusy(true);
+    try {
+      await change();
+    } catch (error) {
+      setProblem((error as Error).message);
+    }
+    if (reload) await onDone();
+    setBusy(false);
+  };
+  const ask = () => run(async () => setIdea({ monday, accepted: false, ...(await reduceWaste(monday)) }), false);
+  const accept = (swap: NonNullable<WasteIdea["swap"]>) =>
+    run(async () => {
+      await setDinner(swap.date, swap.recipeId);
+      setIdea((current) => current && { ...current, accepted: true });
+    }, true);
+  const undo = (swap: NonNullable<WasteIdea["swap"]>) =>
+    run(async () => {
+      await setDinner(swap.date, swap.replaces);
+      setIdea(undefined);
+    }, true);
+
+  return (
+    <section className="reduce-waste" aria-label="Reduce waste">
+      <button type="button" className="btn lilac" disabled={busy} onClick={ask}>
+        Reduce waste
+      </button>
+      <div role="status">
+        {shown && (
+          <div className="waste-idea">
+            <p>{shown.accepted ? "Done. The week is updated." : shown.text}</p>
+            {shown.swap && !shown.accepted && (
+              <div className="actions">
+                <button type="button" className="btn small mint" disabled={busy} onClick={() => accept(shown.swap!)}>
+                  Accept
+                </button>
+                <button type="button" className="btn small white" disabled={busy} onClick={() => setIdea(undefined)}>
+                  Not now
+                </button>
+              </div>
+            )}
+            {shown.swap && shown.accepted && (
+              <button type="button" className="btn small white" disabled={busy} onClick={() => undo(shown.swap!)}>
+                Undo
+              </button>
+            )}
+            {!shown.swap && (
+              <button type="button" className="btn small white" onClick={() => setIdea(undefined)}>
+                OK
               </button>
             )}
           </div>

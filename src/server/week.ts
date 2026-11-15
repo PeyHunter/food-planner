@@ -1,7 +1,8 @@
 import { and, asc, between, eq, inArray, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { monthsOld } from "../shared/child-age.ts";
-import { createWeek } from "../shared/create-week.ts";
+import { createWeek, type CreateWeekInput } from "../shared/create-week.ts";
+import { reduceWaste, type ReduceWaste } from "../shared/reduce-waste.ts";
 import type { ShopSection } from "../shared/recipes.ts";
 import { isBabyOnly, suggestSwaps } from "../shared/rule-swaps.ts";
 import { checkRules, ruleOps, ruleSentence, type ChildMeal, type PlanDay, type Rule, type RuleOp } from "../shared/rules.ts";
@@ -227,14 +228,9 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
 
   const mondayError = { error: "A week starts on a Monday (YYYY-MM-DD)." };
 
-  // Fills the week's empty days and says which, so the phone can undo just those.
-  routes.post("/api/plan/weeks/:monday/create", member, async (c) => {
-    const monday = c.req.param("monday");
-    if (!isDate(monday) || mondayOf(monday) !== monday) return c.json(mondayError, 400);
-    const { kitchenId } = c.get("member");
-    const today = todayFrom((await readBody(c.req)).today);
-    const { kids, recipeRows, summaries, days, plan, ordered } = await loadPlan(kitchenId, monday);
-    const lineRows = await db
+  /** Everything Create week and Reduce waste need: the plan, the rules, and each recipe with its lines. */
+  async function plannerInput(kitchenId: string, monday: string, today: string): Promise<CreateWeekInput> {
+    const lineQuery = db
       .select({
         recipeId: recipeLines.recipeId,
         amount: recipeLines.amount,
@@ -253,25 +249,34 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
       .innerJoin(recipes, eq(recipes.id, recipeLines.recipeId))
       .where(eq(recipes.kitchenId, kitchenId))
       .orderBy(asc(recipeLines.recipeId), asc(recipeLines.position));
+    const [{ kids, recipeRows, summaries, days, plan, ordered }, lineRows] = await Promise.all([loadPlan(kitchenId, monday), lineQuery]);
     const ranges = new Map(recipeRows.map((row) => [row.id, row]));
-    const result = createWeek({
+    const linesOf = Map.groupBy(lineRows, (line) => line.recipeId);
+    return {
       rules: ordered,
       days: plan.map((day, index) => ({ ...day, people: days[index]!.people })),
       recipes: summaries.map((summary) => ({
         ...summary,
         ageFromMonths: ranges.get(summary.id)!.ageFrom,
         ageToMonths: ranges.get(summary.id)!.ageTo,
-        lines: lineRows
-          .filter((line) => line.recipeId === summary.id)
-          .map(({ amount, unit, ingredient }) => ({
-            amount,
-            unit: unit as Unit | null,
-            ingredient: { ...ingredient, shopSection: ingredient.shopSection as ShopSection, packUnit: ingredient.packUnit as Unit | null },
-          })),
+        lines: (linesOf.get(summary.id) ?? []).map(({ amount, unit, ingredient }) => ({
+          amount,
+          unit: unit as Unit | null,
+          ingredient: { ...ingredient, shopSection: ingredient.shopSection as ShopSection, packUnit: ingredient.packUnit as Unit | null },
+        })),
       })),
       children: kids.map((kid) => ({ id: kid.id, name: kid.name, ageMonths: kid.birthday ? monthsOld(kid.birthday, today) : null })),
       today,
-    });
+    };
+  }
+
+  // Fills the week's empty days and says which, so the phone can undo just those.
+  routes.post("/api/plan/weeks/:monday/create", member, async (c) => {
+    const monday = c.req.param("monday");
+    if (!isDate(monday) || mondayOf(monday) !== monday) return c.json(mondayError, 400);
+    const { kitchenId } = c.get("member");
+    const today = todayFrom((await readBody(c.req)).today);
+    const result = createWeek(await plannerInput(kitchenId, monday, today));
     await db.transaction(async (tx) => {
       for (const fill of result.fills) {
         // Only an empty day is filled, even if someone planned it a moment ago.
@@ -287,6 +292,15 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
     });
     const created: CreatedWeek = { fills: result.fills, note: result.note };
     return c.json(created);
+  });
+
+  // One gentle swap that uses up a leftover. Accepting it is a plain dinner change, and so is undoing it.
+  routes.post("/api/plan/weeks/:monday/reduce-waste", member, async (c) => {
+    const monday = c.req.param("monday");
+    if (!isDate(monday) || mondayOf(monday) !== monday) return c.json(mondayError, 400);
+    const today = todayFrom((await readBody(c.req)).today);
+    const result: ReduceWaste = reduceWaste(await plannerInput(c.get("member").kitchenId, monday, today));
+    return c.json(result);
   });
 
   // Takes back what Create week put in, leaving any day changed since then as it is.

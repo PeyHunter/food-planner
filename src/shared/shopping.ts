@@ -75,7 +75,13 @@ export const restOfWeek = (today: string) => {
 
 // One formatter for all calls: building it each time is slow, and Create week builds the list for every day it fills.
 const shortDayFormat = new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: "UTC" });
-const shortDay = (date: string) => shortDayFormat.format(new Date(`${date}T00:00:00Z`));
+// Formatting is slow even with one formatter, and Reduce waste builds the list for each dish and day it tries.
+const shortDays = new Map<string, string>();
+const shortDay = (date: string) => {
+  let label = shortDays.get(date);
+  if (label === undefined) shortDays.set(date, (label = shortDayFormat.format(new Date(`${date}T00:00:00Z`))));
+  return label;
+};
 
 /** 1400 g reads as 1.4 kg, 0.6 kg as 600 g. Spoons and pieces stay as they are. */
 function tidy(amount: number, unit: Unit): { amount: number; unit: Unit } {
