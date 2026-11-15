@@ -105,3 +105,6 @@ export async function readRecipePhotos(photos: File[]) {
 export const go = (path: string) => {
   window.location.hash = path;
 };
+
+/** Sends a recipe page's address; the server reads it into a draft for the edit form, like Photo to recipe. */
+export const readRecipeLink = (url: string) => call<PhotoRecipeDraft>("/api/recipes/from-link", json("POST", { url: url.trim() }));

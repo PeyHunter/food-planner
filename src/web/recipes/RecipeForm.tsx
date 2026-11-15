@@ -177,9 +177,14 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
         <h2>{id ? "Edit recipe" : fromPhoto ? "Check the recipe" : "New recipe"}</h2>
       </nav>
       {!id && !fromPhoto && (
-        <a className="ink-button white small" href="#/recipes/from-photo">
-          Photo to recipe
-        </a>
+        <div className="row">
+          <a className="ink-button white small" href="#/recipes/from-link">
+            From a link
+          </a>
+          <a className="ink-button white small" href="#/recipes/from-photo">
+            Photo to recipe
+          </a>
+        </div>
       )}
       {fromPhoto && (
         <div className="hint">
