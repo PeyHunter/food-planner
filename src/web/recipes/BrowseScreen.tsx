@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { type TouchEvent, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { formatMinutes, type RecipeSummary } from "../../shared/recipes.ts";
 import { weekdayName, type WeekView } from "../../shared/week.ts";
 import { getWeek, setDinner } from "../week/api.ts";
@@ -51,9 +51,57 @@ export function BrowseScreen() {
     if (slide !== at) setAt(slide);
   }
 
+  // Past the last page the book starts again at page 1 (and before page 1 comes the last page). The open page
+  // tucks itself in at the back of the stack and the other end comes to the front, so it's clear the book went round.
+  const [wrapping, setWrapping] = useState<"to-start" | "to-end">();
+  const wrapTimers = useRef<number[]>([]);
+  useEffect(() => () => wrapTimers.current.forEach((timer) => window.clearTimeout(timer)), []);
+
+  function wrap(direction: "to-start" | "to-end") {
+    const element = crate.current;
+    if (!element || pages.length < 2) return;
+    // A quick second tap doesn't wait for the first animation: it starts its own.
+    wrapTimers.current.forEach((timer) => window.clearTimeout(timer));
+    wrapTimers.current = [];
+    const target = direction === "to-start" ? 0 : pages.length - 1;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setWrapping(direction);
+    wrapTimers.current.push(
+      window.setTimeout(
+        () => {
+          element.scrollTo({ left: target * element.clientWidth, behavior: "instant" });
+          setAt(target);
+        },
+        reduced ? 0 : 260,
+      ),
+      window.setTimeout(() => setWrapping(undefined), reduced ? 1200 : 1400),
+    );
+  }
+
   function step(by: number) {
     const element = crate.current;
-    element?.scrollBy({ left: by * element.clientWidth, behavior: "smooth" });
+    if (!element) return;
+    if (by > 0 && at >= pages.length - 1) return wrap("to-start");
+    if (by < 0 && at === 0) return wrap("to-end");
+    element.scrollBy({ left: by * element.clientWidth, behavior: "smooth" });
+  }
+
+  // A swipe that can't scroll any further (past the last page, or back from the first) goes round the book too.
+  // Where the swipe started counts, not where the scroll got to: a swipe onto the last page isn't one past it.
+  const swipeFrom = useRef<{ x: number; y: number; at: number } | undefined>(undefined);
+  function onTouchStart(event: TouchEvent) {
+    const touch = event.touches[0]!;
+    swipeFrom.current = { x: touch.clientX, y: touch.clientY, at };
+  }
+  function onTouchEnd(event: TouchEvent) {
+    const start = swipeFrom.current;
+    swipeFrom.current = undefined;
+    const touch = event.changedTouches[0];
+    if (!start || !touch) return;
+    const dx = touch.clientX - start.x;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(touch.clientY - start.y)) return;
+    if (dx < 0 && start.at >= pages.length - 1) wrap("to-start");
+    if (dx > 0 && start.at === 0) wrap("to-end");
   }
 
   function toggle(chip: Chip) {
@@ -115,10 +163,15 @@ export function BrowseScreen() {
 
       {pages.length > 0 && (
         <>
-          <div className="deck">
+          <div className={`deck${wrapping ? ` wrapping ${wrapping}` : ""}`}>
             {pages.length > 1 && <span className="ghost one" aria-hidden="true" />}
             {pages.length > 2 && <span className="ghost two" aria-hidden="true" />}
-            <ol className="crate" ref={crate} onScroll={onScroll} aria-label="Recipe pages">
+            {wrapping && (
+              <span className="wrap-note sticker sun" aria-hidden="true">
+                {wrapping === "to-start" ? "↺ Back to page 1" : "↻ To the last page"}
+              </span>
+            )}
+            <ol className="crate" ref={crate} onScroll={onScroll} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} aria-label="Recipe pages">
               {pages.map((recipe, index) => (
                 <li key={recipe.id} aria-roledescription="page" aria-label={`${recipe.title}, page ${index + 1} of ${pages.length}`} aria-current={index === at ? "true" : undefined}>
                   <BookPage recipe={recipe} number={index + 1} total={pages.length} showPhoto={Math.abs(index - at) <= photosAround} />
@@ -127,7 +180,7 @@ export function BrowseScreen() {
             </ol>
           </div>
           <div className="turn">
-            <button type="button" className="round" onClick={() => step(-1)} disabled={at === 0} aria-label="Previous page">
+            <button type="button" className="round" onClick={() => step(-1)} disabled={pages.length < 2} aria-label={at === 0 ? "Go to the last page" : "Previous page"}>
               ←
             </button>
             {page && (
@@ -135,11 +188,13 @@ export function BrowseScreen() {
                 <span aria-hidden="true">📅</span> Add to week
               </button>
             )}
-            <button type="button" className="round" onClick={() => step(1)} disabled={at >= pages.length - 1} aria-label="Next page">
+            <button type="button" className="round" onClick={() => step(1)} disabled={pages.length < 2} aria-label={at >= pages.length - 1 ? "Back to page 1" : "Next page"}>
               →
             </button>
           </div>
           <p className="sr" role="status">
+            {wrapping === "to-start" && "Back to the start. "}
+            {wrapping === "to-end" && "Round to the last page. "}
             {page && `${page.title}, page ${at + 1} of ${pages.length}`}
           </p>
         </>

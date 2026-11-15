@@ -71,3 +71,17 @@
 .book .day-list .free { color: var(--muted); }
 .book .day-list .planned { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
 .book .day-list .planned::before { content: "Now: "; color: var(--muted); }
+
+/* Going round the book: the open page tucks in at the back of the stack, the other end comes to the front. */
+.deck .wrap-note { position: absolute; z-index: 3; inset-block-start: 40%; inset-inline: 0; margin-inline: auto; inline-size: max-content; font-size: 1.05rem; font-weight: 800; rotate: -4deg; animation: wrap-note 1.4s ease-out both; pointer-events: none; }
+@keyframes wrap-note { 0% { opacity: 0; scale: .6; } 15% { opacity: 1; scale: 1.08; } 30% { scale: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: no-preference) {
+  .deck.wrapping .crate { animation: wrap-away .26s ease-in both, wrap-front .5s .26s cubic-bezier(.2,.9,.3,1.25) forwards; }
+  .deck.wrapping.to-end .crate { animation-name: wrap-away-back, wrap-front; }
+  .deck.wrapping .ghost.one { animation: ghost-shuffle .76s ease-in-out both; }
+  .deck.wrapping .ghost.two { animation: ghost-shuffle .76s .08s ease-in-out both reverse; }
+}
+@keyframes wrap-away { to { translate: -18% .6rem; rotate: -9deg; scale: .86; opacity: .2; } }
+@keyframes wrap-away-back { to { translate: 18% .6rem; rotate: 9deg; scale: .86; opacity: .2; } }
+@keyframes wrap-front { from { translate: 0 1.2rem; rotate: 3deg; scale: .9; opacity: .3; } to { translate: 0 0; rotate: 0deg; scale: 1; opacity: 1; } }
+@keyframes ghost-shuffle { 50% { translate: 0 -.6rem; rotate: 0deg; } }
