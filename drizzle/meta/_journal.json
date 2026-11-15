@@ -29,6 +29,13 @@
       "when": 1794699520463,
       "tag": "0003_week_plan",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794701596706,
+      "tag": "0004_shopping",
+      "breakpoints": true
     }
   ]
 }

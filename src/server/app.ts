@@ -3,6 +3,7 @@ import { createAccessRoutes } from "./access.ts";
 import { createChildRoutes } from "./children.ts";
 import type { Database } from "./db.ts";
 import { createRecipeRoutes } from "./recipes.ts";
+import { createShoppingRoutes } from "./shopping.ts";
 import { createWeekRoutes } from "./week.ts";
 
 export type AppDependencies = {
@@ -25,6 +26,7 @@ export function createApp(dependencies: AppDependencies) {
   app.route("/", createRecipeRoutes(dependencies));
   app.route("/", createWeekRoutes(dependencies));
   app.route("/", createChildRoutes(dependencies));
+  app.route("/", createShoppingRoutes(dependencies));
 
   return app;
 }

@@ -1,0 +1,9 @@
+import type { ShoppingView } from "../../shared/shopping.ts";
+import { call, json } from "../recipes/api.ts";
+
+export const getShopping = (monday: string, days: string[]) => call<ShoppingView>(`/api/shopping/${monday}?days=${days.join(",")}`);
+export const setTick = (monday: string, key: string, ticked: boolean) => call<void>(`/api/shopping/${monday}/ticks`, json("PUT", { key, ticked }));
+export const addExtra = (monday: string, name: string) => call<{ id: string }>(`/api/shopping/${monday}/extras`, json("POST", { name }));
+export const removeExtra = (monday: string, id: string) => call<void>(`/api/shopping/${monday}/extras/${id}`, { method: "DELETE" });
+export const clearTicked = (monday: string) => call<void>(`/api/shopping/${monday}/clear`, { method: "POST" });
+export const bringBack = (monday: string) => call<void>(`/api/shopping/${monday}/bring-back`, { method: "POST" });
