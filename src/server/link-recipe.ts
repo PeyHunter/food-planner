@@ -211,13 +211,20 @@ function* objectsIn(value: unknown, depth = 0): Generator<Record<string, unknown
 /** The schema.org Recipe most recipe sites put in the page for search engines, if there is one. */
 export function findRecipeData(html: string): Record<string, unknown> | undefined {
   const lower = html.toLowerCase();
-  for (const { tag, end } of openTags(html, lower, "script")) {
-    const close = lower.indexOf("</script", end);
+  let at = 0;
+  // Each script's search for its </script starts after the previous one's, so the page is read once.
+  while ((at = lower.indexOf("<script", at)) !== -1) {
+    const tagEnd = lower.indexOf(">", at);
+    if (tagEnd === -1) return undefined;
+    const close = lower.indexOf("</script", tagEnd + 1);
     if (close === -1) return undefined;
-    if (!/application\/ld\+json/i.test(attribute(tag, "type") ?? "")) continue;
+    const tag = html.slice(at, tagEnd + 1);
+    const body = html.slice(tagEnd + 1, close);
+    at = close + 8;
+    if (!/^<script[\s>]/i.test(tag) || !/application\/ld\+json/i.test(attribute(tag, "type") ?? "")) continue;
     let parsed: unknown;
     try {
-      parsed = JSON.parse(html.slice(end, close).trim());
+      parsed = JSON.parse(body.trim());
     } catch {
       continue;
     }

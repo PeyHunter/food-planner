@@ -137,12 +137,19 @@ test("a page the model finds no recipe on is refused", async () => {
 });
 
 test("broken or hostile pages are read quickly and never crash the reader", () => {
-  const hostile = "<script ".repeat(200_000) + "<!--".repeat(100_000) + "<meta ".repeat(100_000) + "<b".repeat(100_000);
-  const started = performance.now();
-  pageText(hostile);
-  findRecipeData(hostile);
-  findImageUrl(hostile, undefined, new URL("https://food.example/"));
-  expect(performance.now() - started).toBeLessThan(1500);
+  const pages = [
+    "<script ".repeat(200_000) + "<!--".repeat(100_000) + "<meta ".repeat(100_000) + "<b".repeat(100_000),
+    "<script>".repeat(300_000) + "</script>",
+    '<script type="application/ld+json">'.repeat(80_000) + "</script>",
+    "<svg>".repeat(300_000) + "</svg>" + "<title>".repeat(300_000),
+  ];
+  for (const hostile of pages) {
+    const started = performance.now();
+    pageText(hostile);
+    findRecipeData(hostile);
+    findImageUrl(hostile, undefined, new URL("https://food.example/"));
+    expect(performance.now() - started).toBeLessThan(1500);
+  }
 
   const text = pageText("<title>Boller &#99999999; &#x110000;</title><p>Rør &#229; godt</p>");
   expect(text.startsWith("Boller &#99999999; &#x110000;\n")).toBe(true);
