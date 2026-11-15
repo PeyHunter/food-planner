@@ -239,3 +239,19 @@ export const freezerPortions = pgTable(
   },
   (table) => [primaryKey({ columns: [table.kitchenId, table.recipeId] }), check("freezer_portions_count", sql`${table.count} >= 0`)],
 );
+
+/** Reference papers for the kids, like the health visitor's food plans: a PDF or a photo, kept in the photos folder under documents/. */
+export const kidDocuments = pgTable(
+  "kid_documents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kitchenId: kitchenId(),
+    title: text("title").notNull(),
+    /** pdf, jpeg, png or webp: read from the file's first bytes, not its name. */
+    fileType: text("file_type").notNull(),
+    bytes: integer("bytes").notNull(),
+    createdBy: createdBy(),
+    createdAt: at("created_at").notNull().defaultNow(),
+  },
+  (table) => [index("kid_documents_kitchen").on(table.kitchenId)],
+);
