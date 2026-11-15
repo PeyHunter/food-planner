@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";
 import { expect, inject, test } from "vitest";
+import { sharePhotoFile } from "../src/server/photos.ts";
 import type { Photo, Recipe, ShareLink, SharedRecipe } from "../src/shared/recipes.ts";
 import { createTestApp, startingUsers } from "./support/test-app.ts";
 
@@ -152,6 +153,15 @@ test("the share page's main photo has an 800 px copy, made once, kept next to th
 
   await app.request(`/api/photos/${main.id}`, { method: "DELETE", headers });
   expect(existsSync(copy)).toBe(false);
+});
+
+test("a share photo's file name gives its id, and whether the small copy is wanted", () => {
+  const id = "3f2a1b2c-1111-4222-8333-123456789012";
+  expect(sharePhotoFile(`${id}.jpg`)).toEqual({ id, small: false });
+  expect(sharePhotoFile(id)).toEqual({ id, small: false });
+  expect(sharePhotoFile(`${id}-800.jpg`)).toEqual({ id, small: true });
+  expect(sharePhotoFile(`${id}-400.jpg`)).toBeUndefined();
+  expect(sharePhotoFile("..%2F..%2Fetc%2Fpasswd")).toBeUndefined();
 });
 
 test("a share link never leaks another recipe or its photos", async () => {

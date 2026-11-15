@@ -10,7 +10,7 @@ import { isUnit } from "../shared/units.ts";
 import { sessionUser } from "./access.ts";
 import type { AppDependencies } from "./app.ts";
 import type { Database } from "./db.ts";
-import { photoStore, smallWidth, type StoredPhoto } from "./photos.ts";
+import { photoStore, sharePhotoFile, smallWidth, type StoredPhoto } from "./photos.ts";
 import { guessShopSection } from "../shared/shop-section-guess.ts";
 import { nameForms, sameIngredient } from "../shared/ingredient-names.ts";
 import { cooks, ingredients, kitchenMembers, photos, recipeLines, recipes, recipeTags, recipeTypes, steps, users } from "./schema.ts";
@@ -273,10 +273,10 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
   });
 
   routes.get("/s/:token/photos/:file", async (c) => {
-    const [, id = "", small] = /^(.+?)(-\d+)?(?:\.jpg)?$/.exec(c.req.param("file")) ?? [];
-    if (small && small !== `-${smallWidth}`) return c.text("No such photo.", 404);
+    const asked = sharePhotoFile(c.req.param("file"));
     const recipeId = await sharedRecipe(c.req.param("token"));
-    if (!recipeId || !store.isPhotoId(id)) return c.text("No such photo.", 404);
+    if (!recipeId || !asked) return c.text("No such photo.", 404);
+    const { id, small } = asked;
     const [row] = await db
       .select({ id: photos.id })
       .from(photos)

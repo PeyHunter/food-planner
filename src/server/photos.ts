@@ -14,6 +14,13 @@ const qualities = [75, 65, 55, 45];
 export const smallWidth = 800;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
+/** "<id>.jpg" is the photo, "<id>-800.jpg" its small copy. Undefined for anything else. */
+export function sharePhotoFile(file: string): { id: string; small: boolean } | undefined {
+  const [, id, size] = /^(.{36})(-\d+)?(?:\.jpg)?$/.exec(file) ?? [];
+  if (!id || !uuidPattern.test(id) || (size && size !== `-${smallWidth}`)) return undefined;
+  return { id, small: Boolean(size) };
+}
+
 export type StoredPhoto = { id: string; width: number; height: number; bytes: number };
 
 export function photoStore(dir: string) {
