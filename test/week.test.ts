@@ -145,9 +145,24 @@ test("rules can be added, changed and removed", async () => {
 });
 
 test("the week answers fast", async () => {
-  const { create, week } = await loggedIn();
-  for (let index = 0; index < 30; index++) await create(recipe(`Dish ${index}`, index % 2 ? ["Fish"] : ["Meat"]));
-  const start = performance.now();
+  const { call, create, week } = await loggedIn();
+  const ids: string[] = [];
+  for (let index = 0; index < 30; index++) ids.push(await create(recipe(`Dish ${index}`, index % 2 ? ["Fish"] : ["Meat"], { tags: index % 3 ? [] : ["for Runi"] })));
+  const runi = (await week()).children[0]!.id;
+  for (let day = 0; day < 7; day++) {
+    const date = `2026-03-0${day + 2}`;
+    await call(`/api/plan/days/${date}`, "PUT", { dinnerRecipeId: ids[day] });
+    await call(`/api/plan/days/${date}/children/${runi}`, "PUT", day % 2 ? { kind: "same-as-dinner" } : { kind: "recipe", recipeId: ids[day * 3] });
+  }
   await week();
-  expect(performance.now() - start).toBeLessThan(200);
+  const times: number[] = [];
+  for (let run = 0; run < 15; run++) {
+    const start = performance.now();
+    await week();
+    times.push(performance.now() - start);
+  }
+  const median = times.sort((a, b) => a - b)[7]!;
+  console.log(`GET week: median ${median.toFixed(1)} ms over 15 calls`);
+  // The aim is under 50 ms (about 25 ms on a laptop); the bound leaves room for slow CI machines.
+  expect(median).toBeLessThan(100);
 });
