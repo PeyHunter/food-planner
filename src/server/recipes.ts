@@ -260,10 +260,10 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
   async function sharedView(token: string): Promise<SharedRecipe | undefined> {
     const id = await sharedRecipe(token);
     if (!id) return undefined;
-    const { title, description, feeds, types, tags, mainPhoto, photos: all, lines, steps: stepTexts } = await loadRecipe(id);
+    const { title, description, feeds, minutes, types, tags, mainPhoto, photos: all, lines, steps: stepTexts } = await loadRecipe(id);
     const viaLink = (photo: Photo): Photo => ({ ...photo, url: `/s/${token}/photos/${photo.id}.jpg` });
     const main = mainPhoto && { ...viaLink(mainPhoto), smallUrl: `/s/${token}/photos/${mainPhoto.id}-${smallWidth}.jpg` };
-    return { title, description, feeds, types, tags, mainPhoto: main, photos: all.map(viaLink), lines, steps: stepTexts };
+    return { title, description, feeds, minutes, types, tags, mainPhoto: main, photos: all.map(viaLink), lines, steps: stepTexts };
   }
 
   routes.get("/api/share/:token", async (c) => {
@@ -459,7 +459,8 @@ const sortTypes = (types: string[]) => mainTypes.filter((type) => types.includes
 export async function recipeSummaries({ db }: Database, rows: { id: string; title: string; feeds: number }[]): Promise<RecipeSummary[]> {
   if (!rows.length) return [];
   const ids = rows.map((row) => row.id);
-  const [types, tags, mains, lastCooks] = await Promise.all([
+  const [times, types, tags, mains, lastCooks] = await Promise.all([
+    db.select({ id: recipes.id, minutes: recipes.minutes }).from(recipes).where(inArray(recipes.id, ids)),
     db.select().from(recipeTypes).where(inArray(recipeTypes.recipeId, ids)),
     db.select().from(recipeTags).where(inArray(recipeTags.recipeId, ids)).orderBy(asc(recipeTags.tag)),
     db
@@ -474,6 +475,7 @@ export async function recipeSummaries({ db }: Database, rows: { id: string; titl
   ]);
   return rows.map((row) => ({
     ...row,
+    minutes: times.find((time) => time.id === row.id)?.minutes ?? null,
     types: sortTypes(types.filter((type) => type.recipeId === row.id).map((type) => type.type)),
     tags: tags.filter((tag) => tag.recipeId === row.id).map((tag) => tag.tag),
     mainPhoto: (() => {
@@ -488,11 +490,14 @@ export async function recipeSummaries({ db }: Database, rows: { id: string; titl
 }
 
 function recipeColumns(input: RecipeInput) {
-  return { title: input.title, description: input.description ?? "", feeds: input.feeds, ageFromMonths: input.ageFromMonths, ageToMonths: input.ageToMonths };
+  return { title: input.title, description: input.description ?? "", feeds: input.feeds, minutes: input.minutes ?? null, ageFromMonths: input.ageFromMonths, ageToMonths: input.ageToMonths };
 }
 
 const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 const list = (value: unknown) => (Array.isArray(value) ? (value as unknown[]) : []);
+
+/** A week. Anything longer is a typo. */
+export const maxMinutes = 7 * 24 * 60;
 
 function months(value: unknown): number | null | undefined {
   if (value === null || value === undefined || value === "") return null;
@@ -509,6 +514,8 @@ export function parseInput(body: unknown): RecipeInput | { error: string } {
   if (description.length > 2000) return { error: "That description is too long. Keep it under 2000 letters." };
   const feeds = raw.feeds;
   if (!Number.isInteger(feeds) || (feeds as number) < 1 || (feeds as number) > 100) return { error: "Feeds must be a whole number from 1 to 100." };
+  const minutes = raw.minutes === null || raw.minutes === undefined || raw.minutes === "" ? null : raw.minutes;
+  if (minutes !== null && !(Number.isInteger(minutes) && (minutes as number) >= 1 && (minutes as number) <= maxMinutes)) return { error: "Time must be a whole number of minutes." };
   const types = sortTypes(list(raw.types).filter((type): type is MainType => mainTypes.includes(type as MainType)));
   if (!types.length) return { error: "Pick at least one main type." };
   const tags = [...new Set(list(raw.tags).map(text).filter(Boolean))];
@@ -531,7 +538,7 @@ export function parseInput(body: unknown): RecipeInput | { error: string } {
     lines.push({ amount, unit, ingredient, note: text(line.note).slice(0, 200) });
   }
   const stepTexts = list(raw.steps).map(text).filter(Boolean);
-  return { title, description, feeds: feeds as number, types, tags, ageFromMonths, ageToMonths, lines, steps: stepTexts };
+  return { title, description, feeds: feeds as number, minutes: minutes as number | null, types, tags, ageFromMonths, ageToMonths, lines, steps: stepTexts };
 }
 
 

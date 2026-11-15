@@ -15,6 +15,8 @@ export type RecipeSummary = {
   id: string;
   title: string;
   feeds: number;
+  /** Total cooking time in minutes, or null when unknown. */
+  minutes: number | null;
   types: MainType[];
   tags: string[];
   mainPhoto: Photo | null;
@@ -51,6 +53,8 @@ export type RecipeInput = {
   /** Left out means empty. */
   description?: string;
   feeds: number;
+  /** Left out means unknown. */
+  minutes?: number | null;
   types: MainType[];
   tags: string[];
   ageFromMonths: number | null;
@@ -66,13 +70,21 @@ export type PhotoRecipeDraft = { recipe: RecipeInput; notes: string[]; dishPhoto
 export type IngredientSuggestion = { id: string; name: string; shopSection: ShopSection };
 
 /** What a share link shows: the recipe without who made it or when it was cooked. Photo urls go through the link. */
-export type SharedRecipe = Pick<Recipe, "title" | "description" | "feeds" | "types" | "tags" | "photos" | "lines" | "steps"> & {
+export type SharedRecipe = Pick<Recipe, "title" | "description" | "feeds" | "minutes" | "types" | "tags" | "photos" | "lines" | "steps"> & {
   /** smallUrl: an 800 px wide copy for phones. */
   mainPhoto: (Photo & { smallUrl: string }) | null;
 };
 
 /** Share pages show the small copy of the main photo below this width (the content column is at most 34rem) and the full photo above it. */
 export const sharePhotoMedia = { narrow: "(max-width: 35.98rem)", wide: "(min-width: 36rem)" } as const;
+
+/** 45 → "45 min", 75 → "1 h 15 min", 120 → "2 h". */
+export function formatMinutes(minutes: number) {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (!hours) return `${rest} min`;
+  return rest ? `${hours} h ${rest} min` : `${hours} h`;
+}
 
 /** The recipe's share link, or null while sharing is off. */
 export type ShareLink = { url: string | null };

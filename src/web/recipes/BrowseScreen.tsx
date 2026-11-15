@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { RecipeSummary } from "../../shared/recipes.ts";
+import { formatMinutes, type RecipeSummary } from "../../shared/recipes.ts";
 import { weekdayName, type WeekView } from "../../shared/week.ts";
 import { getWeek, setDinner } from "../week/api.ts";
 import { listRecipes, showDate, today } from "./api.ts";
@@ -181,6 +181,7 @@ function BookPage({ recipe, number, total, showPhoto }: { recipe: RecipeSummary;
         </h3>
         <p className="meta">
           <span>feeds {recipe.feeds}</span>
+          {recipe.minutes !== null && <span>{formatMinutes(recipe.minutes)}</span>}
           <span>{recipe.timesMade ? `Made ${recipe.timesMade}×` : "Not made yet"}</span>
           {recipe.lastMadeOn && <span>last {showDate(recipe.lastMadeOn)}</span>}
         </p>

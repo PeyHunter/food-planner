@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { sharePhotoMedia, type SharedRecipe } from "../../shared/recipes.ts";
+import { formatMinutes, sharePhotoMedia, type SharedRecipe } from "../../shared/recipes.ts";
 import { IngredientsPanel, StepsPanel, TypeStickers } from "./RecipePage.tsx";
 import "./recipes.css";
 
@@ -65,6 +65,7 @@ function SharedRecipeView({ recipe }: { recipe: SharedRecipe }) {
         <TypeStickers recipe={recipe} />
       </div>
       <h1>{recipe.title}</h1>
+      {recipe.minutes !== null && <p className="time">Takes {formatMinutes(recipe.minutes)}</p>}
       {recipe.description && <p className="description">{recipe.description}</p>}
       <IngredientsPanel recipe={recipe} />
       <StepsPanel steps={recipe.steps} />

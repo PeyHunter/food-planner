@@ -115,7 +115,7 @@ test("editing replaces the lines and steps", async () => {
     feeds: 2,
     types: ["Fish", "Vegetables"],
     tags: [],
-    lines: [{ amount: 2, unit: "tbsp", ingredient: "Olive oil", note: "" }],
+    lines: [{ amount: 30, unit: "ml", ingredient: "Olive oil", note: "" }],
     steps: ["Just bake it."],
   });
   expect(response.status).toBe(200);

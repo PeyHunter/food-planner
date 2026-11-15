@@ -53,6 +53,7 @@ function photoRecipeClient(env: NodeJS.ProcessEnv): PhotoRecipeClient | undefine
       title: "Granny's pancakes",
       description: "Thin pancakes like Granny made on Sundays.",
       feeds: 4,
+      minutes: 30,
       mainTypes: ["Vegetarian"],
       tags: ["quick"],
       lines: [

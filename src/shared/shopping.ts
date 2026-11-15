@@ -60,8 +60,7 @@ export const childPortion = 1;
 type Measure = "mass" | "volume" | "pcs" | "none";
 const measureOf = (amount: number | null, unit: Unit | null): Measure => {
   if (amount === null || unit === null) return "none";
-  const kind = kindOf(unit);
-  return kind === "spoon" ? "volume" : kind;
+  return kindOf(unit);
 };
 const baseUnit: Record<Exclude<Measure, "none">, Unit> = { mass: "g", volume: "ml", pcs: "pcs" };
 
@@ -83,7 +82,7 @@ const shortDay = (date: string) => {
   return label;
 };
 
-/** 1400 g reads as 1.4 kg, 0.6 kg as 600 g. Spoons and pieces stay as they are. */
+/** 1400 g reads as 1.4 kg, 0.6 kg as 600 g. Pieces stay as they are. */
 function tidy(amount: number, unit: Unit): { amount: number; unit: Unit } {
   const kind = kindOf(unit);
   if (kind !== "mass" && kind !== "volume") return { amount, unit };
@@ -92,7 +91,7 @@ function tidy(amount: number, unit: Unit): { amount: number; unit: Unit } {
   return inSmall >= 1000 ? { amount: Number((inSmall / 1000).toFixed(3)), unit: big } : { amount: Number(inSmall.toFixed(1)), unit: small };
 }
 
-const show = (amount: number, unit: Unit, name: string) => (unit === "pcs" ? `${formatAmount(amount)} ${name}` : `${formatAmount(amount)} ${unit} ${name}`);
+const show = (amount: number, unit: Unit, name: string) => (unit === "pcs" ? `${formatAmount(amount)} ${name}` : `${formatAmount(amount, unit)} ${unit} ${name}`);
 
 type Part = { amount: number; unit: Unit };
 type Group = { ingredient: ShoppingIngredient; measure: Measure; parts: Part[]; meals: string[] };
@@ -104,9 +103,6 @@ function total(measure: Exclude<Measure, "none">, parts: Part[]): { amount: numb
   if (units.size === 1 && only !== "g" && only !== "ml") {
     return { amount: roundUp(parts.reduce((sum, part) => sum + part.amount, 0), only!), unit: only! };
   }
-  if ([...units].every((unit) => kindOf(unit) === "spoon")) {
-    return { amount: roundUp(parts.reduce((sum, part) => sum + convert(part.amount, part.unit, "tbsp"), 0), "tbsp"), unit: "tbsp" };
-  }
   const base = baseUnit[measure];
   const sum = parts.reduce((all, part) => all + convert(part.amount, part.unit, base), 0);
   const rounded = roundUp(sum, base);
@@ -116,8 +112,7 @@ function total(measure: Exclude<Measure, "none">, parts: Part[]): { amount: numb
 function packsFor(amount: number, unit: Unit, ingredient: ShoppingIngredient) {
   const { packAmount, packUnit } = ingredient;
   if (packAmount === null || packUnit === null) return { packs: null, leftover: null, spare: null };
-  const kinds = [kindOf(unit), kindOf(packUnit)].map((kind) => (kind === "spoon" ? "volume" : kind));
-  if (kinds[0] !== kinds[1]) return { packs: null, leftover: null, spare: null };
+  if (kindOf(unit) !== kindOf(packUnit)) return { packs: null, leftover: null, spare: null };
   const needed = convert(amount, unit, packUnit);
   const packs = Math.max(1, Math.ceil(needed / packAmount - 1e-9));
   const spare = packs * packAmount - needed;
@@ -153,7 +148,7 @@ export function buildShoppingList(days: ShoppingDay[]): ShoppingSection[] {
   for (const [key, group] of groups) {
     const { ingredient, measure, meals } = group;
     if (measure === "none") {
-      // "Salt, to taste" next to "1 tsp salt" is the same thing to buy.
+      // "Salt, to taste" next to "5 ml salt" is the same thing to buy.
       const measured = ["mass", "volume", "pcs"].map((other) => groups.get(`${ingredient.id}:${other}`)).find(Boolean);
       if (measured) {
         for (const meal of meals) if (!measured.meals.includes(meal)) measured.meals.push(meal);

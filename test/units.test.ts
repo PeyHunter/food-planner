@@ -8,12 +8,12 @@ test("every unit has a kind", () => {
     ["ml", "volume"],
     ["dl", "volume"],
     ["l", "volume"],
-    ["tsp", "spoon"],
-    ["tbsp", "spoon"],
     ["pcs", "pcs"],
   ]);
   expect(isUnit("dl")).toBe(true);
   expect(isUnit("cup")).toBe(false);
+  expect(isUnit("tsp")).toBe(false);
+  expect(isUnit("tbsp")).toBe(false);
   expect(isUnit("toString")).toBe(false);
 });
 
@@ -24,10 +24,7 @@ describe("convert", () => {
     [1, "l", "ml", 1000],
     [3, "dl", "ml", 300],
     [1, "l", "dl", 10],
-    [1, "tbsp", "tsp", 3],
-    [2, "tsp", "ml", 10],
-    [1, "tbsp", "ml", 15],
-    [1, "dl", "tbsp", 100 / 15],
+    [15, "ml", "dl", 0.15],
     [4, "pcs", "pcs", 4],
   ])("%d %s is %d %s", (amount, from, to, expected) => {
     expect(convert(amount, from, to)).toBeCloseTo(expected, 9);
@@ -36,7 +33,7 @@ describe("convert", () => {
   test.each<[Unit, Unit]>([
     ["g", "ml"],
     ["kg", "l"],
-    ["tsp", "g"],
+    ["ml", "g"],
     ["pcs", "g"],
     ["ml", "pcs"],
   ])("%s never converts to %s", (from, to) => {
@@ -52,8 +49,13 @@ describe("roundUp", () => {
     [1, "pcs", 1],
     [1.01, "pcs", 2],
     [4.5, "pcs", 5],
-    // g and ml: step 5 below 100
-    [1, "g", 5],
+    // g and ml: step 1 below 10, so spice amounts stay small
+    [1, "g", 1],
+    [0.1, "ml", 1],
+    [7.5, "ml", 8],
+    // step 5 from 10 to below 100
+    [10, "ml", 10],
+    [12, "g", 15],
     [37, "g", 40],
     [40, "g", 40],
     [97.5, "ml", 100],
@@ -73,12 +75,6 @@ describe("roundUp", () => {
     [1.5, "dl", 1.5],
     [1.53, "dl", 1.75],
     [0.333, "l", 0.35],
-    // tsp and tbsp go up to the next half
-    [1, "tsp", 1],
-    [1.2, "tsp", 1.5],
-    [1.5, "tbsp", 1.5],
-    [1.51, "tbsp", 2],
-    [0.1, "tsp", 0.5],
     [0, "g", 0],
   ])("%d %s becomes %d", (amount, unit, expected) => {
     expect(roundUp(amount, unit)).toBe(expected);
@@ -100,12 +96,12 @@ describe("scale", () => {
   test.each<[number, Unit, number, number, number]>([
     [3, "pcs", 4, 6, 5],
     [130, "g", 4, 6, 200],
-    [1, "tsp", 4, 6, 1.5],
+    [5, "ml", 4, 6, 8],
     [1, "pcs", 4, 3, 1],
     [400, "g", 4, 1, 100],
     [500, "ml", 4, 5, 625],
     [1, "kg", 4, 5, 1.25],
-    [2, "tbsp", 2, 5, 5],
+    [30, "ml", 2, 5, 75],
   ])("%d %s for %d becomes %d for %d", (amount, unit, from, to, expected) => {
     expect(scale(amount, unit, from, to)).toBe(expected);
   });
@@ -121,4 +117,15 @@ test.each<[number, string]>([
   [1.3, "1.3"],
 ])("formatAmount(%d) is %s", (amount, expected) => {
   expect(formatAmount(amount)).toBe(expected);
+});
+
+test.each<[number, Unit, string]>([
+  [2.5, "ml", "2.5"],
+  [1.25, "ml", "1.25"],
+  [7.5, "g", "7.5"],
+  [12.25, "ml", "12.3"],
+  [0.5, "l", "½"],
+  [1.5, "pcs", "1½"],
+])("formatAmount(%d, %s) is %s", (amount, unit, expected) => {
+  expect(formatAmount(amount, unit)).toBe(expected);
 });

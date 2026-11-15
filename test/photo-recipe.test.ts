@@ -29,6 +29,7 @@ test("photos go to the API shrunk, as base64 JPEG, with the typed tool; the tool
       title: "Mormors frikadeller",
       description: "  Sunday meatballs from Granny's book.  ",
       feeds: 6,
+      minutes: 50,
       mainTypes: ["Meat", "Pasta"],
       tags: ["freezable"],
       lines: [
@@ -51,6 +52,7 @@ test("photos go to the API shrunk, as base64 JPEG, with the typed tool; the tool
       title: "Mormors frikadeller",
       description: "Sunday meatballs from Granny's book.",
       feeds: 6,
+      minutes: 50,
       types: ["Meat"],
       tags: ["freezable"],
       ageFromMonths: null,
@@ -95,18 +97,28 @@ test("cups, ounces and spelled-out units become metric; unknown units move into 
       { amount: 1, unit: "lb", ingredient: "Butter", note: "" },
       { amount: 3, unit: "", ingredient: "Egg", note: "" },
       { amount: 1, unit: "pinch", ingredient: "Salt", note: "" },
+      { amount: 0.5, unit: "tsp", ingredient: "Vanilla", note: "" },
     ],
     steps: ["Whisk."],
   });
   expect(notes).toEqual([]);
   expect(recipe.lines).toEqual([
     { amount: 4.8, unit: "dl", ingredient: "Milk", note: "" },
-    { amount: 1.5, unit: "tbsp", ingredient: "Sugar", note: "" },
+    { amount: 22.5, unit: "ml", ingredient: "Sugar", note: "" },
     { amount: 227, unit: "g", ingredient: "Flour", note: "sifted" },
     { amount: 454, unit: "g", ingredient: "Butter", note: "" },
     { amount: 3, unit: "pcs", ingredient: "Egg", note: "" },
     { amount: null, unit: null, ingredient: "Salt", note: "1 pinch" },
+    { amount: 2.5, unit: "ml", ingredient: "Vanilla", note: "" },
   ]);
+});
+
+test("reads the total time when the recipe gives one", () => {
+  const base = { title: "Stew", feeds: 4, mainTypes: ["Meat"], tags: [], lines: [], steps: [] };
+  expect(toDraft({ ...base, minutes: 75 }).recipe.minutes).toBe(75);
+  expect(toDraft({ ...base, minutes: null }).recipe.minutes).toBeNull();
+  expect(toDraft({ ...base, minutes: -5 }).recipe.minutes).toBeNull();
+  expect(toDraft(base).recipe.minutes).toBeNull();
 });
 
 test("lines the recipe parser refuses are left out with a note; bad feeds, types and tags are tidied", () => {
@@ -181,7 +193,8 @@ test("no photo, too many photos, or a file that isn't a photo get a plain answer
   const calls: CreateParams[] = [];
   const { send } = await setUp(fakeClient({}, calls));
   expect((await send()).status).toBe(400);
-  expect(await (await send(await photo(), await photo(), await photo(), await photo())).json()).toEqual({ error: "Pick at most 3 photos." });
+  const eleven = await Promise.all(Array.from({ length: 11 }, () => photo()));
+  expect(await (await send(...eleven)).json()).toEqual({ error: "Pick at most 10 photos." });
   const notPhoto = await send(new File(["hello"], "note.txt", { type: "text/plain" }));
   expect(notPhoto.status).toBe(400);
   expect(await notPhoto.json()).toEqual({ error: "That file isn't a photo we can read. Try a JPEG or PNG." });

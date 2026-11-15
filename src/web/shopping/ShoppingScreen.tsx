@@ -10,7 +10,7 @@ import "./shopping.css";
 const pollMs = 3000;
 const dayLetter = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" });
 const dayName = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", { weekday: "long", timeZone: "UTC" });
-const amountText = (amount: number, unit: Unit) => (unit === "pcs" ? formatAmount(amount) : `${formatAmount(amount)} ${unit}`);
+const amountText = (amount: number, unit: Unit) => (unit === "pcs" ? formatAmount(amount) : `${formatAmount(amount, unit)} ${unit}`);
 
 /** A tick the server may not have seen yet. `doneAt` is when the save finished. */
 type Pending = { ticked: boolean; doneAt?: number };
@@ -209,7 +209,7 @@ function Line({
 }) {
   const { ingredient } = line;
   const { packAmount, packUnit } = ingredient;
-  const pack = line.packs !== null && packAmount !== null && packUnit !== null ? `${formatAmount(packAmount)} ${packUnit}` : null;
+  const pack = line.packs !== null && packAmount !== null && packUnit !== null ? `${formatAmount(packAmount, packUnit)} ${packUnit}` : null;
   const need = line.amount !== null && line.unit !== null ? amountText(line.amount, line.unit) : null;
   return (
     <li className={ticked ? "item done" : "item"}>

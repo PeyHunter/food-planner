@@ -11,7 +11,7 @@ A meal planner and recipe book for Peyton and Ronja (and their baby, Runi Lee). 
 
 ## Recipes
 
-- Title, a short **description** (a few lines about the dish), **feeds N** (the amounts are written for N people, any N), one or more **main types** (Fish, Meat, Chicken, Vegetarian, Vegetables), free tags. Built-in tags: `freezable`, `kid-friendly`, `for Runi`.
+- Title, a short **description** (a few lines about the dish), optional **time** in minutes (shown as "45 min" or "1 h 15 min"), **feeds N** (the amounts are written for N people, any N), one or more **main types** (Fish, Meat, Chicken, Vegetarian, Vegetables), free tags. Built-in tags: `freezable`, `kid-friendly`, `for Runi`.
 - Ingredient lines: amount + unit + ingredient (from the shared ingredient list) + optional note ("finely chopped").
 - Steps as an ordered list.
 - One main dish photo plus a gallery of extra photos (ingredients, process, someone's handwritten recipe). Photos are resized on upload and stored on a volume.
@@ -27,8 +27,8 @@ A meal planner and recipe book for Peyton and Ronja (and their baby, Runi Lee). 
 
 ## Units and rounding
 
-- Units: g, kg, ml, dl, l, tsp, tbsp, pcs. Convert only within one kind (mass, volume, spoon-volume to volume is allowed, pieces never convert).
-- Scaling rounds **up**: pcs to a whole number (¾ onion becomes 1), g and ml to a tidy step (5 below 100, 25 below 1000, 50 above), tsp and tbsp to the nearest half.
+- Units: g, kg, ml, dl, l, pcs. Metric only: no tsp, tbsp, cups or ounces (1 tsp = 5 ml, 1 tbsp = 15 ml). Convert only within one kind (mass or volume; pieces never convert).
+- Scaling rounds **up**: pcs to a whole number (¾ onion becomes 1), g and ml to a tidy step (1 below 10, 5 below 100, 25 below 1000, 50 above).
 
 ## Browse
 

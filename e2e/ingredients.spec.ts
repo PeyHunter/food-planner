@@ -16,7 +16,7 @@ test("set an ingredient's shop section, pack size and always-at-home from the Re
       tags: [],
       lines: [
         { amount: 300, unit: "g", ingredient: `Rice ${tag}`, note: "" },
-        { amount: 1, unit: "tbsp", ingredient: `Oil ${tag}`, note: "" },
+        { amount: 15, unit: "ml", ingredient: `Oil ${tag}`, note: "" },
       ],
       steps: [],
     },

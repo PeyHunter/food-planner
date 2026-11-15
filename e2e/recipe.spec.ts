@@ -27,13 +27,14 @@ test("add a recipe with a photo, step 4 to 6 people, then log that I made it", a
   await page.getByRole("link", { name: "+ Add recipe" }).click();
   await page.getByLabel("Name").fill(title);
   await expect(page.getByLabel("Feeds (people)")).toHaveValue("4");
+  await page.getByLabel("Time (minutes)").fill("75");
   await page.getByRole("button", { name: "Fish" }).click();
   await page.getByRole("button", { name: "kid-friendly" }).click();
 
   const lines = [
     ["3", "pcs", "Onion", "finely chopped"],
     ["130", "g", "Butter", ""],
-    ["1", "tsp", "Salt", ""],
+    ["2.5", "ml", "Salt", ""],
   ];
   for (const [index, [amount, unit, ingredient, note]] of lines.entries()) {
     const n = index + 1;
@@ -50,14 +51,15 @@ test("add a recipe with a photo, step 4 to 6 people, then log that I made it", a
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
   await shownImage(page, title);
   const amounts = page.locator(".lines .amount");
-  await expect(amounts).toHaveText(["3 pcs", "130 g", "1 tsp"]);
+  await expect(amounts).toHaveText(["3 pcs", "130 g", "2.5 ml"]);
+  await expect(page.getByText("Takes 1 h 15 min")).toBeVisible();
   await expect(page.locator(".lines")).toContainText("Onion, finely chopped");
 
   await page.getByRole("button", { name: "More people" }).click();
   await page.getByRole("button", { name: "More people" }).click();
   await expect(page.getByText("Feeds 6")).toBeVisible();
-  // 4.5 onions → 5, 195 g → 200 g, 1.5 tsp stays 1½
-  await expect(amounts).toHaveText(["5 pcs", "200 g", "1½ tsp"]);
+  // 4.5 onions → 5, 195 g → 200 g, 3.75 ml → 4 ml
+  await expect(amounts).toHaveText(["5 pcs", "200 g", "4 ml"]);
   if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT, fullPage: true });
 
   await page.getByRole("button", { name: "I made this" }).click();
