@@ -63,7 +63,7 @@ const system = `You turn recipes with meat or chicken into vegetarian ones and s
 - Keep every other ingredient, amount and note as it is.
 - Change only the steps that need it, e.g. press and fry the tofu before it goes in. Keep the cook's own words in the rest.
 - The title gets the replacement, e.g. "Golden curry with tofu". Write in the language the recipe is written in.
-- Units must be one of: ${units.join(", ")}. Amounts are numbers. If there is no amount, set amount and unit to null.`;
+- Use metric only. Units must be one of: ${units.join(", ")}. Convert anything else: 1 tsp = 5 ml, 1 tbsp = 15 ml, 1 cup = 2.4 dl, 1 oz = 28 g, 1 lb = 450 g. Amounts are numbers. If there is no amount, set amount and unit to null.`;
 
 const replacementText = (replacement: Replacement) =>
   replacement === "tofu" ? "tofu" : replacement === "vegetables" ? "vegetables (pick ones that suit the dish)" : replacement.custom;
@@ -126,7 +126,7 @@ export function createVeggieRecipeRoutes({ database, now, photoRecipeClient }: A
     const id = c.req.param("id");
     if (!uuidPattern.test(id)) return c.json({ error: "No such recipe." }, 404);
     const [row] = await db
-      .select({ id: recipes.id, title: recipes.title, description: recipes.description, feeds: recipes.feeds, ageFromMonths: recipes.ageFromMonths, ageToMonths: recipes.ageToMonths })
+      .select({ id: recipes.id, title: recipes.title, description: recipes.description, feeds: recipes.feeds, minutes: recipes.minutes, ageFromMonths: recipes.ageFromMonths, ageToMonths: recipes.ageToMonths })
       .from(recipes)
       .where(and(eq(recipes.id, id), eq(recipes.kitchenId, c.get("member").kitchenId)));
     if (!row) return c.json({ error: "No such recipe." }, 404);
@@ -151,8 +151,8 @@ export function createVeggieRecipeRoutes({ database, now, photoRecipeClient }: A
     try {
       const output = await rewriteRecipe(photoRecipeClient, original, replacement, signal);
       if (output === undefined) return c.json({ error: noRecipe }, 422);
-      // Description, feeds and tags stay the original's; only the meat changes.
-      const draft = toDraft({ ...(output as object), description: row.description, feeds: row.feeds, tags: summary!.tags }, summary!.tags);
+      // Description, feeds, cooking time and tags stay the original's; only the meat changes.
+      const draft = toDraft({ ...(output as object), description: row.description, feeds: row.feeds, minutes: row.minutes, tags: summary!.tags }, summary!.tags);
       if (!draft.recipe.lines.length) return c.json({ error: noRecipe }, 422);
       const kept = draft.recipe.types.filter((type): type is MainType => type === "Vegetarian" || type === "Vegetables");
       draft.recipe.types = mainTypes.filter((type) => type === "Vegetarian" || kept.includes(type));

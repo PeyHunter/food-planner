@@ -11,6 +11,7 @@ const curry: RecipeInput = {
   title: "Golden curry",
   description: "The Japanese box curry.",
   feeds: 4,
+  minutes: 40,
   types: ["Chicken"],
   tags: ["freezable", "weeknight"],
   ageFromMonths: null,
@@ -43,7 +44,7 @@ async function setUp(photoRecipeClient?: PhotoRecipeClient) {
   return { app, headers, save, makeVegetarian };
 }
 
-test("a chicken curry comes back as a vegetarian draft; description, feeds and tags stay, and nothing is saved", async () => {
+test("a chicken curry comes back as a vegetarian draft; description, feeds, cooking time and tags stay, and nothing is saved", async () => {
   const calls: CreateParams[] = [];
   const { app, headers, save, makeVegetarian } = await setUp(fakeClient(tofuCurry, calls));
   const id = await save(curry);
@@ -56,6 +57,7 @@ test("a chicken curry comes back as a vegetarian draft; description, feeds and t
       title: "Golden curry with tofu",
       description: "The Japanese box curry.",
       feeds: 4,
+      minutes: 40,
       types: ["Vegetarian", "Vegetables"],
       tags: ["freezable", "weeknight"],
       ageFromMonths: null,
