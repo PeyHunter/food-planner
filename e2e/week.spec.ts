@@ -1,7 +1,16 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import sharp from "sharp";
 import { addDays, mondayOf } from "../src/shared/week.ts";
 import { e2ePasswords } from "./passwords.ts";
+
+/** Rules, swap ideas, Create week and Reduce waste sit behind the Suggestions button, closed at first. */
+async function openSuggestions(page: Page) {
+  const toggle = page.getByRole("button", { name: /^Suggestions/ });
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("button", { name: "Create week" })).toBeHidden();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+}
 
 const recipe = (title: string, types: string[], tags: string[]) => ({ title, feeds: 4, types, tags, ageFromMonths: null, ageToMonths: null, lines: [], steps: [] });
 
@@ -27,11 +36,21 @@ test("plan a fish dinner, set Wednesday to 5, mash it for Runi and take a swap",
   await expect(page.getByText("Next up")).toBeVisible();
   await page.getByRole("button", { name: "Next week" }).click();
   await expect(page.getByText("Next up")).toBeHidden();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: process.env.CLOSED_SHOT ?? "test-results/week-closed.png" });
+  await openSuggestions(page);
 
   const wednesday = page.getByRole("listitem", { name: "Wednesday" });
   await wednesday.getByRole("button", { name: "+ Pick a dinner" }).click();
   const sheet = page.getByRole("dialog", { name: "Dinner for Wednesday" });
   await sheet.getByLabel("Search recipes").fill(salmon);
+  const types = sheet.getByRole("group", { name: "Filter by type" });
+  await types.getByRole("button", { name: "Meat" }).click();
+  await expect(sheet.getByText("No recipe matches.")).toBeVisible();
+  await types.getByRole("button", { name: "Fish" }).click();
+  await expect(types.getByRole("button", { name: "Fish" })).toHaveAttribute("aria-pressed", "true");
+  await expect(sheet.getByRole("button", { name: new RegExp(salmon) })).toContainText("Fish");
+  await page.screenshot({ path: process.env.PICKER_SHOT ?? "test-results/week-picker.png" });
   await sheet.getByRole("button", { name: new RegExp(salmon) }).click();
   await expect(sheet).toBeHidden();
   await expect(wednesday.getByText(salmon)).toBeVisible();
@@ -45,6 +64,7 @@ test("plan a fish dinner, set Wednesday to 5, mash it for Runi and take a swap",
   await expect(wednesday.getByRole("button", { name: /Runi Lee/ })).toContainText("Same as dinner, mashed");
   await expect(wednesday.getByRole("group", { name: "People on Wednesday" })).toContainText("+½");
   await expect(page.getByLabel("Runi Lee: Fish at least 2 a week: 1 so far, not met yet")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Suggestions/ }).getByLabel(/ideas to meet the rules$/)).toBeVisible();
 
   const swap = page.getByRole("button", { name: /^Do it: Add .* on Runi Lee's Monday to get fish 2\/2$/ });
   await swap.click();
@@ -70,6 +90,8 @@ test("plan a fish dinner, set Wednesday to 5, mash it for Runi and take a swap",
   await page.reload();
   await page.getByRole("button", { name: "Next week" }).click();
   await expect(page.getByRole("listitem", { name: "Wednesday" }).getByText(salmon)).toBeVisible();
+  // Open stays open after a reload.
+  await expect(page.getByRole("button", { name: /^Suggestions/ })).toHaveAttribute("aria-expanded", "true");
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: process.env.WEEK_SHOT ?? "test-results/week.png", fullPage: true });
 });
@@ -157,6 +179,7 @@ test("Create week fills only the empty days, ticks the rules, and undo puts them
   await expect(page.getByRole("listitem", { name: "Wednesday" })).toContainText(`Pea curry ${stamp}`);
   await expect(page.getByRole("button", { name: "+ Pick a dinner" })).toHaveCount(5);
 
+  await openSuggestions(page);
   await page.getByRole("button", { name: "Create week" }).click();
   const note = page.getByRole("region", { name: "Create week" }).getByRole("status");
   await expect(note).toContainText("Filled 5 dinners and 7 meals for Runi Lee.");
@@ -230,6 +253,7 @@ test("Reduce waste suggests a dish for the leftover carrots, and accepting it lo
 
   await nav.getByRole("button", { name: "Week" }).click();
   await page.getByRole("button", { name: "Next week" }).click();
+  await openSuggestions(page);
   const idea = page.getByRole("region", { name: "Reduce waste" }).getByRole("status");
   const suggestion = new RegExp(`^(Add ${soup} on \\w+|Swap \\w+ for ${soup}) to use the 600 g ${carrots.toLowerCase()} left from Monday\\.`);
   await page.getByRole("button", { name: "Reduce waste" }).click();

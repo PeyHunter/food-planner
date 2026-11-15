@@ -19,8 +19,8 @@
   --muted:color-mix(in oklch,var(--ink) 62%,white);
   /* Day tiles, Monday to Sunday. */
   --day-1:var(--tomato);--day-2:var(--mint);--day-3:var(--lilac);--day-4:var(--sky);--day-5:var(--sun);--day-6:var(--tomato-soft);--day-7:var(--mint-soft);
-  --line:3px;
-  --pop:4px 4px 0 var(--ink);
+  --line:2px;
+  --pop:3px 3px 0 var(--ink);
   --pop-sm:2px 2px 0 var(--ink);
   --step-0:clamp(1rem,0.95rem + 0.25vw,1.125rem);
   --step-1:clamp(1.25rem,1.1rem + 0.7vw,1.6rem);
@@ -83,7 +83,7 @@ input{font:inherit;font-size:max(16px,1rem)}
 .login form{inline-size:100%;text-align:start}
 label{display:grid;gap:.35rem;font-weight:800}
 input{inline-size:100%;padding:.75rem .9rem;border:var(--line) solid var(--ink);border-radius:1rem;background:var(--paper);color:var(--ink)}
-[role=alert]{padding:.6rem .8rem;border:2px solid var(--ink);border-radius:.9rem;background:var(--tomato-soft);font-weight:700}
+[role=alert]{padding:.6rem .8rem;border:1.5px solid var(--ink);border-radius:.9rem;background:var(--tomato-soft);font-weight:700}
 
 /* tab bar */
 .tabbar{position:fixed;inset-inline:0;inset-block-end:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:.4rem;
