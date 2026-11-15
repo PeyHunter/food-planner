@@ -4,6 +4,7 @@ import { ageRangeLabel } from "../../shared/child-age.ts";
 import { formatAmount, scale } from "../../shared/units.ts";
 import { addToFreezer, getRecipe, logCook, showDate, today, uploadPhoto } from "./api.ts";
 import { SharePanel } from "./SharePanel.tsx";
+import { MakeVegetarian } from "./VegetarianSheet.tsx";
 
 export const typeColour: Record<string, string> = { Fish: "sky", Meat: "tomato", Chicken: "sun", Vegetarian: "mint", Vegetables: "mint" };
 
@@ -119,6 +120,7 @@ export function RecipePage({ id }: { id: string }) {
         <a className="ink-button white small" href={`#/recipes/${id}/edit`}>
           Edit
         </a>
+        <MakeVegetarian recipe={recipe} />
       </nav>
 
       <div className="hero">

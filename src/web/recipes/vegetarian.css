@@ -1,0 +1,14 @@
+/* Back arrow on the left, Edit and Make vegetarian together on the right. */
+.recipes .recipe-page > .bar > .back { margin-inline-end: auto; }
+
+/* the "Make vegetarian" sheet */
+.recipes .veggie-sheet { inline-size: min(100%, 36rem); max-inline-size: 100%; max-block-size: 85svh; margin: auto auto 0; padding: 1rem var(--gutter) calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  border: var(--line) solid var(--ink); border-block-end: 0; border-radius: 1.5rem 1.5rem 0 0; background: var(--paper); color: var(--ink); }
+.recipes .veggie-sheet::backdrop { background: color-mix(in oklch, var(--ink) 45%, transparent); }
+.recipes .veggie-sheet form { display: grid; gap: .9rem; }
+.recipes .veggie-sheet .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
+.recipes .veggie-sheet fieldset { gap: .5rem; }
+.recipes .veggie-option { display: flex; align-items: center; gap: .7rem; min-block-size: 3rem; padding: .45rem .9rem;
+  border: 2px solid var(--ink); border-radius: 1rem; background: var(--paper); font-weight: 700; }
+.recipes .veggie-option:has(:checked) { background: var(--mint-soft); box-shadow: var(--pop-sm); }
+.recipes .veggie-option input { inline-size: 1.25rem; block-size: 1.25rem; margin: 0; accent-color: var(--ink); }
