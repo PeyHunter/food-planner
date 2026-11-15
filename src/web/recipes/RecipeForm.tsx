@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { builtInTags, mainTypes, type IngredientSuggestion, type MainType, type PhotoRecipeDraft, type RecipeInput } from "../../shared/recipes.ts";
+import { builtInTags, kidTags, mainTypes, type IngredientSuggestion, type MainType, type PhotoRecipeDraft, type RecipeInput } from "../../shared/recipes.ts";
 import { isUnit, units } from "../../shared/units.ts";
+import { useKids } from "../kitchen.ts";
 import { createRecipe, deleteRecipe, getRecipe, go, suggestIngredients, updateRecipe, uploadPhoto } from "./api.ts";
 
 // Form fields hold text while typing; they become numbers on save.
@@ -88,6 +89,7 @@ function photoDraft({ recipe }: FromPhoto): Draft {
 
 export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Prefill; fromPhoto?: FromPhoto }) {
   const [draft, setDraft] = useState<Draft | undefined>(id ? undefined : fromPhoto ? photoDraft(fromPhoto) : start ? startDraft(start) : blank);
+  const kids = useKids();
   const [keepPhotos, setKeepPhotos] = useState(true);
   const [started] = useState(() => startPhoto(fromPhoto));
   const [photo, setPhoto] = useState<File | undefined>(started);
@@ -225,7 +227,7 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
       <fieldset>
         <legend>Tags</legend>
         <div className="chips">
-          {builtInTags.map((tag) => (
+          {builtInTags.filter((tag) => kids || !kidTags.includes(tag)).map((tag) => (
             <button key={tag} type="button" className="chip" aria-pressed={draft.tags.includes(tag)} onClick={() => set({ tags: toggle(draft.tags, tag) })}>
               {tag}
             </button>
@@ -237,19 +239,21 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
         </label>
       </fieldset>
 
-      <fieldset>
-        <legend>For babies and kids (leave empty if not)</legend>
-        <div className="row">
-          <label>
-            Suits babies from (months)
-            <input type="number" inputMode="numeric" min={0} max={240} value={draft.ageFrom} onChange={(event) => set({ ageFrom: event.target.value })} />
-          </label>
-          <label>
-            to (months)
-            <input type="number" inputMode="numeric" min={0} max={240} value={draft.ageTo} onChange={(event) => set({ ageTo: event.target.value })} />
-          </label>
-        </div>
-      </fieldset>
+      {kids && (
+        <fieldset>
+          <legend>For babies and kids (leave empty if not)</legend>
+          <div className="row">
+            <label>
+              Suits babies from (months)
+              <input type="number" inputMode="numeric" min={0} max={240} value={draft.ageFrom} onChange={(event) => set({ ageFrom: event.target.value })} />
+            </label>
+            <label>
+              to (months)
+              <input type="number" inputMode="numeric" min={0} max={240} value={draft.ageTo} onChange={(event) => set({ ageTo: event.target.value })} />
+            </label>
+          </div>
+        </fieldset>
+      )}
 
       <fieldset>
         <legend>Ingredients</legend>

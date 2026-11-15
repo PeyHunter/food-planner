@@ -13,6 +13,8 @@ export const users = pgTable("users", {
 export const kitchens = pgTable("kitchens", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  /** False for a kitchen without children: no Runi & kids tab, no child rules or meals. */
+  kids: boolean("kids").notNull().default(true),
 });
 
 export const kitchenMembers = pgTable(

@@ -1,10 +1,11 @@
 import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { KidsScreen } from "./kids/KidsScreen.tsx";
+import { KidsContext } from "./kitchen.ts";
 import { RecipesScreen } from "./recipes/RecipesScreen.tsx";
 import { ShoppingScreen } from "./shopping/ShoppingScreen.tsx";
 import { WeekScreen } from "./week/WeekScreen.tsx";
 
-type Me = { username: string; kitchen: { id: string; name: string } | null };
+type Me = { username: string; kitchen: { id: string; name: string; kids: boolean } | null };
 type State = { kind: "loading" } | { kind: "logged-out" } | { kind: "logged-in"; me: Me } | { kind: "offline" };
 
 const capitalise = (name: string) => name.charAt(0).toUpperCase() + name.slice(1);
@@ -99,7 +100,7 @@ function LoginScreen({ onLoggedIn }: { onLoggedIn: () => Promise<void> }) {
 type Tab = { id: string; label: string; icon: string; colour: string; screen?: () => ReactNode; soon: string };
 
 // Later PRs add a `screen` to a tab; until then it shows the "Coming soon" card.
-const tabs: Tab[] = [
+const allTabs: Tab[] = [
   { id: "recipes", label: "Recipes", icon: "📖", colour: "var(--tomato-soft)", screen: () => <RecipesScreen />, soon: "Flip through your recipe book and add new dishes." },
   { id: "week", label: "Week", icon: "📅", colour: "var(--sun-soft)", screen: () => <WeekScreen />, soon: "Plan dinners for the week and check the rules." },
   { id: "shopping", label: "Shopping", icon: "🛒", colour: "var(--mint-soft)", screen: () => <ShoppingScreen />, soon: "One list with everything the week needs." },
@@ -107,6 +108,8 @@ const tabs: Tab[] = [
 ];
 
 function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
+  const kids = me.kitchen?.kids ?? true;
+  const tabs = kids ? allTabs : allTabs.filter((tab) => tab.id !== "kids");
   // The hash picks the tab, so a reload or a link to #/recipes/... opens that tab.
   const tabOfHash = () => tabs.find((tab) => window.location.hash.startsWith(`#/${tab.id}`));
   const [current, setCurrent] = useState(() => tabOfHash() ?? tabs[1]!);
@@ -121,7 +124,7 @@ function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
   };
 
   return (
-    <>
+    <KidsContext.Provider value={kids}>
       <main className="app">
         <header className="top">
           <img className="logo" src="/icons/icon-192.png" alt="" width={48} height={48} />
@@ -151,7 +154,7 @@ function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
           </button>
         ))}
       </nav>
-    </>
+    </KidsContext.Provider>
   );
 }
 

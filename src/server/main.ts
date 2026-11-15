@@ -16,11 +16,14 @@ type Config = {
   photosDir: string | undefined;
   peytonPassword: string;
   ronjaPassword: string;
+  /** Isabel and Christopher's kitchen, without kids. Optional: made only when both passwords are set. */
+  isabelPassword: string | undefined;
+  christopherPassword: string | undefined;
 };
 
 function readConfig(env: NodeJS.ProcessEnv): Config | { error: string } {
   const production = env.NODE_ENV === "production";
-  const { DATABASE_URL, PEYTON_PASSWORD, RONJA_PASSWORD } = env;
+  const { DATABASE_URL, PEYTON_PASSWORD, RONJA_PASSWORD, ISABEL_PASSWORD, CHRISTOPHER_PASSWORD } = env;
   if (!DATABASE_URL) return { error: "DATABASE_URL is not set." };
   if (!PEYTON_PASSWORD || !RONJA_PASSWORD) return { error: "PEYTON_PASSWORD and RONJA_PASSWORD must both be set. They are the starting passwords for the two logins." };
   const port = Number(env.PORT ?? 3000);
@@ -28,7 +31,17 @@ function readConfig(env: NodeJS.ProcessEnv): Config | { error: string } {
   if ("error" in publicUrl) return publicUrl;
   const photosDir = env.PHOTOS_DIR || undefined;
   if (!photosDir && production) return { error: "PHOTOS_DIR is not set. Set it to a writable directory on a persistent volume." };
-  return { databaseUrl: DATABASE_URL, port, publicUrl, photosDir, peytonPassword: PEYTON_PASSWORD, ronjaPassword: RONJA_PASSWORD };
+  if (!ISABEL_PASSWORD !== !CHRISTOPHER_PASSWORD) return { error: "Set both ISABEL_PASSWORD and CHRISTOPHER_PASSWORD, or neither." };
+  return {
+    databaseUrl: DATABASE_URL,
+    port,
+    publicUrl,
+    photosDir,
+    peytonPassword: PEYTON_PASSWORD,
+    ronjaPassword: RONJA_PASSWORD,
+    isabelPassword: ISABEL_PASSWORD || undefined,
+    christopherPassword: CHRISTOPHER_PASSWORD || undefined,
+  };
 }
 
 function readPublicUrl(env: NodeJS.ProcessEnv, port: number): URL | { error: string } {
@@ -95,6 +108,16 @@ await ensureHousehold(database, [
   { username: "peyton", password: config.peytonPassword },
   { username: "ronja", password: config.ronjaPassword },
 ]);
+if (config.isabelPassword && config.christopherPassword) {
+  await ensureHousehold(
+    database,
+    [
+      { username: "isabel", password: config.isabelPassword },
+      { username: "christopher", password: config.christopherPassword },
+    ],
+    { name: "Isabel and Christopher's kitchen", kids: false },
+  );
+}
 
 const app = createApp({ database, now: () => new Date(), publicUrl: config.publicUrl, photosDir, webDir: "dist/web", photoRecipeClient: photoRecipeClient(process.env) });
 // The built phone UI; any path the API doesn't own falls back to the single page.
