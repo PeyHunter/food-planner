@@ -141,6 +141,9 @@ function getOnce(url: URL, accept: string, maxBytes: number, signal: AbortSignal
   });
 }
 
+/** A character from its number, or the text unchanged if the number isn't a real character. */
+const character = (code: number, text: string) => (Number.isInteger(code) && code >= 0 && code <= 0x10ffff ? String.fromCodePoint(code) : text);
+
 const decodeEntities = (value: string) =>
   value
     .replace(/&quot;/g, '"')
@@ -148,9 +151,49 @@ const decodeEntities = (value: string) =>
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&nbsp;/g, " ")
-    .replace(/&#(\d+);/g, (_, code: string) => String.fromCodePoint(Number(code)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, code: string) => String.fromCodePoint(parseInt(code, 16)))
+    .replace(/&#(\d{1,8});/g, (text, code: string) => character(Number(code), text))
+    .replace(/&#x([0-9a-f]{1,8});/gi, (text, code: string) => character(parseInt(code, 16), text))
     .replace(/&amp;/g, "&");
+
+// Pages can be broken or hostile, so tags are found by scanning left to right with indexOf, never with
+// backtracking patterns: the work stays in proportion to the page's size.
+
+/** Each `<name ...>` tag: its text up to `>`, and where the text after it starts. */
+function* openTags(html: string, lower: string, name: string) {
+  let at = 0;
+  while ((at = lower.indexOf(`<${name}`, at)) !== -1) {
+    const after = lower.charAt(at + name.length + 1);
+    const close = lower.indexOf(">", at);
+    if (close === -1) return;
+    if (after === ">" || after === "/" || /\s/.test(after)) yield { tag: html.slice(at, close + 1), end: close + 1 };
+    at = close + 1;
+  }
+}
+
+/** An attribute's value from one tag's text, e.g. content="…". */
+function attribute(tag: string, name: string) {
+  const lower = tag.toLowerCase();
+  let at = 0;
+  while ((at = lower.indexOf(name, at)) !== -1) {
+    const before = lower.charAt(at - 1);
+    let next = at + name.length;
+    at = next;
+    if (before && !/\s/.test(before)) continue;
+    while (/\s/.test(lower.charAt(next))) next++;
+    if (lower.charAt(next) !== "=") continue;
+    next++;
+    while (/\s/.test(lower.charAt(next))) next++;
+    const quote = tag.charAt(next);
+    if (quote === '"' || quote === "'") {
+      const end = tag.indexOf(quote, next + 1);
+      return end === -1 ? undefined : tag.slice(next + 1, end);
+    }
+    const end = tag.slice(next).search(/[\s>]/);
+    return tag.slice(next, end === -1 ? undefined : next + end);
+  }
+  return undefined;
+}
+
 
 const isRecipeType = (type: unknown) => (Array.isArray(type) ? type : [type]).some((value) => typeof value === "string" && /(^|\/)Recipe$/.test(value));
 
@@ -167,10 +210,14 @@ function* objectsIn(value: unknown, depth = 0): Generator<Record<string, unknown
 
 /** The schema.org Recipe most recipe sites put in the page for search engines, if there is one. */
 export function findRecipeData(html: string): Record<string, unknown> | undefined {
-  for (const [, body] of html.matchAll(/<script[^>]*type\s*=\s*["']?application\/ld\+json["']?[^>]*>([\s\S]*?)<\/script>/gi)) {
+  const lower = html.toLowerCase();
+  for (const { tag, end } of openTags(html, lower, "script")) {
+    const close = lower.indexOf("</script", end);
+    if (close === -1) return undefined;
+    if (!/application\/ld\+json/i.test(attribute(tag, "type") ?? "")) continue;
     let parsed: unknown;
     try {
-      parsed = JSON.parse(body!.trim());
+      parsed = JSON.parse(html.slice(end, close).trim());
     } catch {
       continue;
     }
@@ -192,8 +239,11 @@ const imageUrlOf = (value: unknown): string | undefined => {
 /** The dish picture: the recipe data's image, else the picture the page shows when shared (og:image). */
 export function findImageUrl(html: string, data: Record<string, unknown> | undefined, base: URL): URL | undefined {
   const fromData = data && imageUrlOf(data.image);
-  const meta = (name: string) =>
-    new RegExp(`<meta[^>]+(?:property|name)\\s*=\\s*["']${name}["'][^>]*>`, "i").exec(html)?.[0].match(/content\s*=\s*["']([^"']+)["']/i)?.[1];
+  const metas = [...openTags(html, html.toLowerCase(), "meta")].map(({ tag }) => tag);
+  const meta = (name: string) => {
+    const tag = metas.find((text) => (attribute(text, "property") ?? attribute(text, "name"))?.toLowerCase() === name);
+    return tag && attribute(tag, "content");
+  };
   const raw = fromData ?? meta("og:image") ?? meta("twitter:image");
   if (!raw) return undefined;
   const url = URL.parse(decodeEntities(raw), base);
@@ -202,14 +252,40 @@ export function findImageUrl(html: string, data: Record<string, unknown> | undef
 
 /** The words of a page without scripts, styles and tags, for pages with no recipe data. */
 export function pageText(html: string) {
-  const title = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1] ?? "";
-  const body = html
-    .replace(/<(script|style|noscript|svg|template|iframe)[\s\S]*?<\/\1>/gi, " ")
-    .replace(/<!--[\s\S]*?-->/g, " ")
-    .replace(/<(br|\/p|\/div|\/li|\/h\d|\/tr)[^>]*>/gi, "\n")
-    .replace(/<li[^>]*>/gi, "\n- ")
-    .replace(/<[^>]+>/g, " ");
-  return decodeEntities(`${title}\n${body}`)
+  const lower = html.toLowerCase();
+  const titleTag = openTags(html, lower, "title").next().value;
+  const titleEnd = titleTag ? lower.indexOf("</title", titleTag.end) : -1;
+  const title = titleTag && titleEnd !== -1 ? html.slice(titleTag.end, titleEnd) : "";
+  const skipped = new Set(["title", "script", "style", "noscript", "svg", "template", "iframe"]);
+  const newline = new Set(["br", "/p", "/div", "/li", "/h1", "/h2", "/h3", "/h4", "/h5", "/h6", "/tr"]);
+  let text = "";
+  let at = 0;
+  while (at < html.length && text.length < maxTextChars * 2) {
+    const open = lower.indexOf("<", at);
+    if (open === -1) {
+      text += html.slice(at);
+      break;
+    }
+    text += html.slice(at, open);
+    if (lower.startsWith("<!--", open)) {
+      const end = lower.indexOf("-->", open + 4);
+      if (end === -1) break;
+      at = end + 3;
+      continue;
+    }
+    const close = lower.indexOf(">", open);
+    if (close === -1) break;
+    const name = /^\/?[a-z0-9]*/.exec(lower.slice(open + 1, Math.min(close, open + 12)))![0];
+    at = close + 1;
+    if (skipped.has(name)) {
+      const end = lower.indexOf(`</${name}`, at);
+      if (end === -1) break;
+      const endClose = lower.indexOf(">", end);
+      at = endClose === -1 ? html.length : endClose + 1;
+      text += " ";
+    } else text += name === "li" ? "\n- " : newline.has(name) ? "\n" : " ";
+  }
+  return decodeEntities(`${title}\n${text}`)
     .replace(/[ \t\f\v\r]+/g, " ")
     .replace(/\n\s*\n+/g, "\n")
     .trim()
@@ -242,7 +318,8 @@ export async function fetchDishPhoto(url: URL | undefined, signal: AbortSignal, 
   if (!url) return null;
   try {
     const image = await open(url, "image/avif,image/webp,image/png,image/jpeg,image/*;q=0.8", maxImageBytes, signal);
-    const bytes = await sharp(image.body, { failOn: "error" })
+    // 40 megapixels is far more than any real dish photo; it keeps a tiny file from unpacking into gigabytes.
+    const bytes = await sharp(image.body, { failOn: "error", limitInputPixels: 40_000_000 })
       .rotate()
       .resize({ width: maxSide, height: maxSide, fit: "inside", withoutEnlargement: true })
       .jpeg({ quality: 85 })

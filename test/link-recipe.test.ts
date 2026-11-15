@@ -135,3 +135,19 @@ test("a page the model finds no recipe on is refused", async () => {
   expect(response.status).toBe(422);
   expect(((await response.json()) as { error: string }).error).toMatch(/couldn't find a recipe/);
 });
+
+test("broken or hostile pages are read quickly and never crash the reader", () => {
+  const hostile = "<script ".repeat(200_000) + "<!--".repeat(100_000) + "<meta ".repeat(100_000) + "<b".repeat(100_000);
+  const started = performance.now();
+  pageText(hostile);
+  findRecipeData(hostile);
+  findImageUrl(hostile, undefined, new URL("https://food.example/"));
+  expect(performance.now() - started).toBeLessThan(1500);
+
+  const text = pageText("<title>Boller &#99999999; &#x110000;</title><p>Rør &#229; godt</p>");
+  expect(text.startsWith("Boller &#99999999; &#x110000;\n")).toBe(true);
+  expect(text).toContain("Rør å godt");
+  expect(text.match(/Boller/g)).toHaveLength(1);
+  expect(findImageUrl("<meta content='https://img.example.com/a.jpg?x=1&amp;y=2' property=og:image>", undefined, new URL("https://food.example/"))?.href).toBe("https://img.example.com/a.jpg?x=1&y=2");
+  expect(findRecipeData('<script type=application/ld+json>{"@type":"Recipe","name":"Unquoted"}</script>')?.name).toBe("Unquoted");
+});
