@@ -59,7 +59,7 @@ spec:
                 secretKeyRef:
                   name: food-planner-secrets
                   key: RONJA_PASSWORD
-            # Isabel and Christopher's kitchen (no kids). Optional until scripts/add-isabel-christopher.sh has run.
+            # Kitchens without kids (see kidFreePairs in src/server/main.ts). Optional until scripts/add-kid-free-logins.sh has run.
             - name: ISABEL_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -71,6 +71,18 @@ spec:
                 secretKeyRef:
                   name: food-planner-secrets
                   key: CHRISTOPHER_PASSWORD
+                  optional: true
+            - name: MAGNUS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: food-planner-secrets
+                  key: MAGNUS_PASSWORD
+                  optional: true
+            - name: MADS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: food-planner-secrets
+                  key: MADS_PASSWORD
                   optional: true
             # Photo to recipe. Optional: without it the app runs and says the feature isn't set up yet.
             - name: ANTHROPIC_API_KEY
