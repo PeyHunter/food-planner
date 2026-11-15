@@ -88,9 +88,11 @@ export function WeekScreen() {
                 {shown.suggestions.map((suggestion) => (
                   <li key={suggestion.id}>
                     <p>{suggestion.text}</p>
-                    <button type="button" className="btn small mint" aria-label={`Do it: ${suggestion.text}`} onClick={() => act(() => acceptSuggestion(suggestion.id))}>
-                      Do it
-                    </button>
+                    {suggestion.kind !== "note" && (
+                      <button type="button" className="btn small mint" aria-label={`Do it: ${suggestion.text}`} onClick={() => act(() => acceptSuggestion(suggestion.id))}>
+                        Do it
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>

@@ -39,6 +39,8 @@ export type Recipe = RecipeSummary & {
   photos: Photo[];
   cooks: Cook[];
   createdBy: string;
+  /** The share link, or null while sharing is off. Comes with the recipe so the Share panel needs no extra call. */
+  shareUrl: string | null;
 };
 
 /** What the edit form sends. Ingredients go by name: a new name adds it to the kitchen's list. */
@@ -63,5 +65,7 @@ export type ShareLink = { url: string | null };
 
 /** An ingredient with the settings the shopping list uses. */
 export type Ingredient = IngredientSuggestion & { packAmount: number | null; packUnit: Unit | null; alwaysAtHome: boolean };
+/** A row on the Ingredients screen: `recipes` is how many recipes use it (only unused ones can be deleted). */
+export type IngredientRow = Ingredient & { recipes: number };
 /** What the Ingredients screen sends to PUT /api/ingredients/:id. */
 export type IngredientSettings = Omit<Ingredient, "id" | "name">;

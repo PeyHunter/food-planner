@@ -1,19 +1,12 @@
-import { useEffect, useState } from "react";
-import { getShareLink, turnShareOff, turnShareOn } from "./api.ts";
+import { useState } from "react";
+import { turnShareOff, turnShareOn } from "./api.ts";
 
-/** Share button (iPhone share sheet, or copy the link) and the switch that turns the link off. */
-export function SharePanel({ recipeId, title }: { recipeId: string; title: string }) {
-  const [link, setLink] = useState<string | null>();
+/** Share button (iPhone share sheet, or copy the link) and the switch that turns the link off. `shareUrl` comes with the recipe. */
+export function SharePanel({ recipeId, title, shareUrl }: { recipeId: string; title: string; shareUrl: string | null }) {
+  const [link, setLink] = useState(shareUrl);
   const [note, setNote] = useState<string>();
   const [problem, setProblem] = useState<string>();
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    getShareLink(recipeId).then(
-      (share) => setLink(share.url),
-      (error: Error) => setProblem(error.message),
-    );
-  }, [recipeId]);
 
   const run = async (work: () => Promise<void>) => {
     setBusy(true);
@@ -59,18 +52,18 @@ export function SharePanel({ recipeId, title }: { recipeId: string; title: strin
     <section className="panel share">
       <div className="bar">
         <h2>Share</h2>
-        <button type="button" className="ink-button small" disabled={busy || link === undefined} onClick={() => void share()}>
+        <button type="button" className="ink-button small" disabled={busy} onClick={() => void share()}>
           Share recipe
         </button>
       </div>
       <label className="switch">
-        <input type="checkbox" role="switch" checked={!!link} disabled={busy || link === undefined} onChange={(event) => void toggle(event.target.checked)} />
-        <span>Share link on</span>
+        <input type="checkbox" role="switch" aria-label="Share link" checked={!!link} disabled={busy} onChange={(event) => void toggle(event.target.checked)} />
+        <span>{link ? "Share link is on" : "Share link is off"}</span>
       </label>
       {link ? (
         <p className="hint share-url">Anyone with this link can see the recipe, no login needed: {link}</p>
       ) : (
-        link === null && <p className="hint">The link is off. Only you two can see this recipe.</p>
+        <p className="hint">The link is off. Only you two can see this recipe.</p>
       )}
       {note && (
         <p className="sticker mint tilt-l share-note" role="status">

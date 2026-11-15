@@ -5,12 +5,13 @@ import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { createMiddleware } from "hono/factory";
-import { mainTypes, shopSections, type Cook, type Ingredient, type IngredientSettings, type MainType, type Photo, type Recipe, type RecipeInput, type RecipeSummary, type ShareLink, type SharedRecipe, type ShopSection } from "../shared/recipes.ts";
+import { mainTypes, shopSections, type Cook, type Ingredient, type IngredientRow, type IngredientSettings, type MainType, type Photo, type Recipe, type RecipeInput, type RecipeSummary, type ShareLink, type SharedRecipe, type ShopSection } from "../shared/recipes.ts";
 import { isUnit } from "../shared/units.ts";
 import { sessionUser } from "./access.ts";
 import type { AppDependencies } from "./app.ts";
 import type { Database } from "./db.ts";
 import { photoStore, type StoredPhoto } from "./photos.ts";
+import { guessShopSection } from "../shared/shop-section-guess.ts";
 import { cooks, ingredients, kitchenMembers, photos, recipeLines, recipes, recipeTags, recipeTypes, steps, users } from "./schema.ts";
 
 type Member = { userId: string; kitchenId: string };
@@ -140,13 +141,25 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
         packAmount: ingredients.packAmount,
         packUnit: ingredients.packUnit,
         alwaysAtHome: ingredients.alwaysAtHome,
+        recipes: recipeCount,
       })
       .from(ingredients)
       .where(and(eq(ingredients.kitchenId, c.get("member").kitchenId), q ? sql`${ingredients.name} ilike ${likeText(q)}` : undefined))
       // Names that start with what was typed come first.
       .orderBy(sql`${ingredients.name} ilike ${likeText(q).slice(1)} desc`, asc(sql`lower(${ingredients.name})`))
       .limit(all ? 1000 : 8);
-    return c.json(rows.map(toIngredient));
+    return c.json(rows.map((row): IngredientRow => ({ ...toIngredient(row), recipes: row.recipes })));
+  });
+
+  routes.delete("/api/ingredients/:id", member, async (c) => {
+    const id = c.req.param("id");
+    if (!uuidPattern.test(id)) return c.json({ error: "No such ingredient." }, 404);
+    const mine = and(eq(ingredients.id, id), eq(ingredients.kitchenId, c.get("member").kitchenId));
+    const [row] = await db.select({ name: ingredients.name, recipes: recipeCount }).from(ingredients).where(mine);
+    if (!row) return c.json({ error: "No such ingredient." }, 404);
+    if (row.recipes > 0) return c.json({ error: `${row.name} is in a recipe, so it can't be deleted. Take it out of the recipe first.` }, 409);
+    await db.delete(ingredients).where(mine);
+    return c.body(null, 204);
   });
 
   routes.put("/api/ingredients/:id", member, async (c) => {
@@ -331,7 +344,7 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
     // New names join the kitchen's list; existing ones (any capitalisation) are reused.
     await tx
       .insert(ingredients)
-      .values(names.map((name) => ({ kitchenId, name, createdBy: userId })))
+      .values(names.map((name) => ({ kitchenId, name, shopSection: guessShopSection(name), createdBy: userId })))
       .onConflictDoNothing();
     const known = await tx
       .select({ id: ingredients.id, name: ingredients.name })
@@ -367,11 +380,12 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
         ageFromMonths: recipes.ageFromMonths,
         ageToMonths: recipes.ageToMonths,
         createdBy: sql<string>`coalesce(${users.username}, '')`,
+        shareToken: recipes.shareToken,
       })
       .from(recipes)
       .leftJoin(users, eq(users.id, recipes.createdBy))
       .where(eq(recipes.id, id));
-    const { createdBy, ageFromMonths, ageToMonths, ...summaryRow } = row!;
+    const { createdBy, ageFromMonths, ageToMonths, shareToken, ...summaryRow } = row!;
     const [[summary], lines, stepRows, photoRows, cookRows] = await Promise.all([
       summaries([summaryRow]),
       db
@@ -404,6 +418,7 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
       ageFromMonths,
       ageToMonths,
       createdBy,
+      shareUrl: shareLink(shareToken).url,
       lines: lines.map((line) => ({
         ...line,
         unit: isUnit(line.unit) ? line.unit : null,
@@ -417,6 +432,8 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
 
   return routes;
 }
+
+const recipeCount = sql<number>`(select count(distinct ${recipeLines.recipeId})::int from ${recipeLines} where ${recipeLines.ingredientId} = ${ingredients.id})`;
 
 const toIngredient = (row: { id: string; name: string; shopSection: string; packAmount: number | null; packUnit: string | null; alwaysAtHome: boolean }): Ingredient => ({
   id: row.id,

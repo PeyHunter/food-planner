@@ -50,10 +50,14 @@ test("share a recipe, open it logged out with the stepper, then turn the link of
   const id = await addRecipe(page, title);
   await page.goto(`/#/recipes/${id}`);
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
-  await expect(page.getByRole("switch", { name: "Share link on" })).not.toBeChecked();
+  // The state comes with the recipe, so the switch is ready at once and says what it is.
+  await expect(page.getByRole("switch", { name: "Share link" })).not.toBeChecked();
+  await expect(page.getByRole("switch", { name: "Share link" })).toBeEnabled();
+  await expect(page.getByText("Share link is off")).toBeVisible();
 
   await page.getByRole("button", { name: "Share recipe" }).click();
-  await expect(page.getByRole("switch", { name: "Share link on" })).toBeChecked();
+  await expect(page.getByRole("switch", { name: "Share link" })).toBeChecked();
+  await expect(page.getByText("Share link is on")).toBeVisible();
   const shared = await page.evaluate(() => (window as unknown as { shared: ShareData }).shared);
   expect(shared.title).toBe(title);
   expect(shared.url).toMatch(/\/s\/[A-Za-z0-9_-]{43}$/);
@@ -74,8 +78,9 @@ test("share a recipe, open it logged out with the stepper, then turn the link of
   await expect(amounts).toHaveText(["5 pcs", "200 g"]);
   if (process.env.SHOT) await stranger.screenshot({ path: process.env.SHOT, fullPage: true });
 
-  await page.getByRole("switch", { name: "Share link on" }).click();
-  await expect(page.getByRole("switch", { name: "Share link on" })).not.toBeChecked();
+  await page.getByRole("switch", { name: "Share link" }).click();
+  await expect(page.getByRole("switch", { name: "Share link" })).not.toBeChecked();
+  await expect(page.getByText("Share link is off")).toBeVisible();
   await expect(page.locator(".share-note")).toHaveText("Link turned off");
 
   const gone = await stranger.reload();

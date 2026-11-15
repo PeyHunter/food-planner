@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { shopSections, type Ingredient, type ShopSection } from "../../shared/recipes.ts";
+import { shopSections, type Ingredient, type IngredientRow, type ShopSection } from "../../shared/recipes.ts";
 import { units } from "../../shared/units.ts";
-import { listIngredients, saveIngredient } from "./api.ts";
+import { deleteIngredient, listIngredients, saveIngredient } from "./api.ts";
 
 const sectionColour: Record<ShopSection, string> = {
   Vegetables: "mint",
@@ -15,7 +15,7 @@ const sectionColour: Record<ShopSection, string> = {
 /** The kitchen's ingredient list: shop section, pack size and "always at home" for each one. */
 export function IngredientsScreen() {
   const [q, setQ] = useState("");
-  const [ingredients, setIngredients] = useState<Ingredient[]>();
+  const [ingredients, setIngredients] = useState<IngredientRow[]>();
   const [editing, setEditing] = useState<string>();
   const [problem, setProblem] = useState<string>();
 
@@ -34,7 +34,11 @@ export function IngredientsScreen() {
   }, [q]);
 
   const saved = (ingredient: Ingredient) => {
-    setIngredients((list) => list?.map((old) => (old.id === ingredient.id ? ingredient : old)));
+    setIngredients((list) => list?.map((old) => (old.id === ingredient.id ? { ...old, ...ingredient } : old)));
+    setEditing(undefined);
+  };
+  const deleted = (id: string) => {
+    setIngredients((list) => list?.filter((old) => old.id !== id));
     setEditing(undefined);
   };
 
@@ -55,7 +59,7 @@ export function IngredientsScreen() {
         {ingredients?.map((ingredient) =>
           editing === ingredient.id ? (
             <li key={ingredient.id}>
-              <IngredientForm ingredient={ingredient} onSaved={saved} onCancel={() => setEditing(undefined)} />
+              <IngredientForm ingredient={ingredient} onSaved={saved} onDeleted={deleted} onCancel={() => setEditing(undefined)} />
             </li>
           ) : (
             <li key={ingredient.id}>
@@ -79,7 +83,9 @@ export function IngredientsScreen() {
   );
 }
 
-function IngredientForm({ ingredient, onSaved, onCancel }: { ingredient: Ingredient; onSaved: (ingredient: Ingredient) => void; onCancel: () => void }) {
+type FormProps = { ingredient: IngredientRow; onSaved: (ingredient: Ingredient) => void; onDeleted: (id: string) => void; onCancel: () => void };
+
+function IngredientForm({ ingredient, onSaved, onDeleted, onCancel }: FormProps) {
   const [shopSection, setShopSection] = useState(ingredient.shopSection);
   const [packAmount, setPackAmount] = useState(ingredient.packAmount === null ? "" : String(ingredient.packAmount));
   const [packUnit, setPackUnit] = useState<string>(ingredient.packUnit ?? "g");
@@ -95,6 +101,19 @@ function IngredientForm({ ingredient, onSaved, onCancel }: { ingredient: Ingredi
     setProblem(undefined);
     try {
       onSaved(await saveIngredient(ingredient.id, { shopSection, packAmount: amount, packUnit: amount === null ? null : (packUnit as Ingredient["packUnit"]), alwaysAtHome }));
+    } catch (error) {
+      setProblem((error as Error).message);
+      setBusy(false);
+    }
+  };
+
+  const remove = async () => {
+    if (!window.confirm(`Delete ${ingredient.name}?`)) return;
+    setBusy(true);
+    setProblem(undefined);
+    try {
+      await deleteIngredient(ingredient.id);
+      onDeleted(ingredient.id);
     } catch (error) {
       setProblem((error as Error).message);
       setBusy(false);
@@ -127,6 +146,15 @@ function IngredientForm({ ingredient, onSaved, onCancel }: { ingredient: Ingredi
         <input type="checkbox" checked={alwaysAtHome} onChange={(event) => setAlwaysAtHome(event.target.checked)} />
         Always at home (never on the shopping list)
       </label>
+      {ingredient.recipes === 0 ? (
+        <button type="button" className="quiet danger" disabled={busy} onClick={remove}>
+          Delete {ingredient.name}
+        </button>
+      ) : (
+        <p className="hint">
+          Used in {ingredient.recipes === 1 ? "1 recipe" : `${ingredient.recipes} recipes`}, so it can't be deleted.
+        </p>
+      )}
       {problem && <p role="alert">{problem}</p>}
       <div className="row">
         <button type="button" className="ink-button white" onClick={onCancel}>

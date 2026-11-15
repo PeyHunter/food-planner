@@ -33,7 +33,9 @@ export type ShoppingLine = {
   unit: Unit | null;
   packs: number | null;
   leftover: string | null;
-  /** True when a pack size would help: there is an amount but no pack size yet. */
+  /** The same leftover as an amount, for "125 g left over" on the list. */
+  spare: { amount: number; unit: Unit } | null;
+  /** True when a pack size would help: a weight or volume with no pack size yet. */
   needsPackSize: boolean;
   /** "Mon: Salmon bake", "Tue: Cod mash for Runi Lee". */
   meals: string[];
@@ -52,8 +54,8 @@ export type ShoppingView = {
   cleared: number;
 };
 
-/** A child recipe day counts as one small portion. */
-export const childPortion = 0.5;
+/** A child recipe day is one serving of that recipe, as written for the child. Only "Same as dinner" counts as half. */
+export const childPortion = 1;
 
 type Measure = "mass" | "volume" | "pcs" | "none";
 const measureOf = (amount: number | null, unit: Unit | null): Measure => {
@@ -107,15 +109,15 @@ function total(measure: Exclude<Measure, "none">, parts: Part[]): { amount: numb
 
 function packsFor(amount: number, unit: Unit, ingredient: ShoppingIngredient) {
   const { packAmount, packUnit } = ingredient;
-  if (packAmount === null || packUnit === null) return { packs: null, leftover: null };
+  if (packAmount === null || packUnit === null) return { packs: null, leftover: null, spare: null };
   const kinds = [kindOf(unit), kindOf(packUnit)].map((kind) => (kind === "spoon" ? "volume" : kind));
-  if (kinds[0] !== kinds[1]) return { packs: null, leftover: null };
+  if (kinds[0] !== kinds[1]) return { packs: null, leftover: null, spare: null };
   const needed = convert(amount, unit, packUnit);
   const packs = Math.max(1, Math.ceil(needed / packAmount - 1e-9));
   const spare = packs * packAmount - needed;
-  if (spare <= packAmount * 1e-6) return { packs, leftover: null };
+  if (spare <= packAmount * 1e-6) return { packs, leftover: null, spare: null };
   const left = tidy(spare, packUnit);
-  return { packs, leftover: `${show(left.amount, left.unit, ingredient.name.toLowerCase())} left` };
+  return { packs, leftover: `${show(left.amount, left.unit, ingredient.name.toLowerCase())} left`, spare: left };
 }
 
 /**
@@ -151,12 +153,13 @@ export function buildShoppingList(days: ShoppingDay[]): ShoppingSection[] {
         for (const meal of meals) if (!measured.meals.includes(meal)) measured.meals.push(meal);
         continue;
       }
-      lines.push({ key, ingredient, amount: null, unit: null, packs: null, leftover: null, needsPackSize: false, meals });
+      lines.push({ key, ingredient, amount: null, unit: null, packs: null, leftover: null, spare: null, needsPackSize: false, meals });
       continue;
     }
     const { amount, unit } = total(measure, group.parts);
-    const { packs, leftover } = packsFor(amount, unit, ingredient);
-    lines.push({ key, ingredient, amount, unit, packs, leftover, needsPackSize: ingredient.packAmount === null, meals });
+    const { packs, leftover, spare } = packsFor(amount, unit, ingredient);
+    // Pieces are bought as counted ("3 onions"), so only weights and volumes ask for a pack size.
+    lines.push({ key, ingredient, amount, unit, packs, leftover, spare, needsPackSize: ingredient.packAmount === null && measure !== "pcs", meals });
   }
 
   return shopSections

@@ -19,6 +19,7 @@ test("two phones share one list: packs, leftovers, pack size, ticks and extras",
   const carrots = `Parsnips ${stamp}`;
   const leeks = `Leeks ${stamp}`;
   const milk = `Milk ${stamp}`;
+  const onions = `Onions ${stamp}`;
   const peyton = await logIn(browser, "peyton");
   const ronja = await logIn(browser, "ronja");
 
@@ -34,6 +35,7 @@ test("two phones share one list: packs, leftovers, pack size, ticks and extras",
       lines: [
         { amount: 400, unit: "g", ingredient: carrots, note: "" },
         { amount: 300, unit: "g", ingredient: leeks, note: "" },
+        { amount: 2, unit: "pcs", ingredient: onions, note: "" },
       ],
       steps: [],
     },
@@ -51,9 +53,14 @@ test("two phones share one list: packs, leftovers, pack size, ticks and extras",
   await openShopping(ronja);
 
   const carrotLine = (page: Page) => page.getByRole("listitem").filter({ has: page.getByRole("checkbox", { name: new RegExp(carrots) }) });
-  await expect(carrotLine(peyton)).toContainText("400 g");
-  await expect(carrotLine(peyton)).toContainText("1 × 1 kg");
-  await expect(carrotLine(peyton)).toContainText(`600 g ${carrots.toLowerCase()} left`);
+  await expect(carrotLine(peyton)).toContainText("Buy 1 pack (1 kg)");
+  await expect(carrotLine(peyton)).toContainText("You need 400 g · 600 g left over");
+
+  // New ingredients get a guessed shop section. Onions are counted, so they never ask for a pack size.
+  const vegetables = peyton.getByRole("region", { name: "Vegetables" });
+  const onionLine = vegetables.getByRole("listitem").filter({ has: peyton.getByRole("checkbox", { name: new RegExp(onions) }) });
+  await expect(onionLine).toContainText("2");
+  await expect(onionLine.getByRole("button", { name: "Set pack size" })).toHaveCount(0);
 
   // Leeks have no pack size yet, so the list asks for one.
   const leekLine = peyton.getByRole("listitem").filter({ has: peyton.getByRole("checkbox", { name: new RegExp(leeks) }) });
@@ -62,9 +69,14 @@ test("two phones share one list: packs, leftovers, pack size, ticks and extras",
   await packForm.getByLabel("Pack size").fill("500");
   await packForm.getByLabel("Unit").selectOption("g");
   await packForm.getByRole("button", { name: "Save" }).click();
-  await expect(leekLine).toContainText("1 × 500 g");
-  await expect(leekLine).toContainText(`200 g ${leeks.toLowerCase()} left`);
+  await expect(leekLine).toContainText("Buy 1 pack (500 g)");
+  await expect(leekLine).toContainText("You need 300 g · 200 g left over");
   await expect(leekLine.getByRole("button", { name: "Set pack size" })).toBeHidden();
+
+  // Onions move to Other right from the list, and stay there.
+  await onionLine.getByLabel(`Move ${onions} to another shop section`).selectOption("Other");
+  await expect(peyton.getByRole("region", { name: "Other" }).getByRole("checkbox", { name: new RegExp(onions) })).toBeVisible();
+  await expect(vegetables.getByRole("checkbox", { name: new RegExp(onions) })).toHaveCount(0);
 
   // Peyton ticks the parsnips in the shop; Ronja's phone shows it within 5 s.
   await peyton.getByRole("checkbox", { name: new RegExp(carrots) }).click();
