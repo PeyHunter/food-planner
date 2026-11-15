@@ -3,7 +3,7 @@ import type { PhotoRecipeDraft } from "../../shared/recipes.ts";
 import { photoRecipeReady, readRecipePhotos } from "./api.ts";
 import { RecipeForm } from "./RecipeForm.tsx";
 
-const maxPhotos = 3;
+const maxPhotos = 10;
 
 /** Photo to recipe: take or pick photos of a written recipe, then check what was read in the normal edit form. */
 export function PhotoRecipeScreen() {
@@ -87,7 +87,7 @@ export function PhotoRecipeScreen() {
           )}
           {reading && (
             <p className="hint" role="status">
-              Reading the recipe… This can take up to a minute.
+              Reading the recipe… This can take a minute or two.
             </p>
           )}
           {photos.length > 0 && !reading && (

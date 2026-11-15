@@ -24,6 +24,7 @@ test("photo to recipe: take a photo, check the draft in the edit form, save it w
   await expect(page.getByRole("img", { name: "New main photo" })).toBeVisible();
   await expect(page.getByText("The dish picture from the book.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Vegetarian" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Time (minutes)")).toHaveValue("30");
   // 2 cups → 4.8 dl, the pinch moves into the note, the line with -1 g is left out with a note.
   await expect(page.getByLabel("Amount 1")).toHaveValue("4.8");
   await expect(page.getByLabel("Unit 1")).toHaveValue("dl");
@@ -40,6 +41,7 @@ test("photo to recipe: take a photo, check the draft in the edit form, save it w
 
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
   await expect(page.locator(".description")).toHaveText("Thin pancakes like Granny made on Sundays.");
+  await expect(page.getByText("Takes 30 min")).toBeVisible();
   await expect(page.locator(".lines .amount")).toHaveText(["4.8 dl", "3 pcs", ""]);
   const recipeId = page.url().split("/").at(-1)!;
   const recipe = await (await page.request.get(`/api/recipes/${recipeId}`)).json();

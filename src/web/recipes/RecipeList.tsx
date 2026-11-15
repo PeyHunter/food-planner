@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { RecipeSummary } from "../../shared/recipes.ts";
+import { formatMinutes, type RecipeSummary } from "../../shared/recipes.ts";
 import { listRecipes } from "./api.ts";
 import { TypeStickers } from "./RecipePage.tsx";
 
@@ -57,6 +57,7 @@ export function RecipeList() {
               {recipe.mainPhoto ? <img src={recipe.mainPhoto.url} alt="" loading="lazy" /> : <span className="no-photo" aria-hidden="true" />}
               <span className="card-text">
                 <strong>{recipe.title}</strong>
+                {recipe.minutes !== null && <span className="card-time">{formatMinutes(recipe.minutes)}</span>}
                 <TypeStickers recipe={recipe} />
               </span>
             </a>

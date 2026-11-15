@@ -275,6 +275,17 @@
   color: var(--r-muted);
 }
 
+.recipes .time {
+  margin: -0.4rem 0 0;
+  font-weight: 800;
+}
+
+.recipes .card-time {
+  color: var(--r-muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
 .recipes .description {
   margin: -0.4rem 0 0;
   white-space: pre-line;
@@ -389,6 +400,12 @@
   inline-size: 7rem;
 }
 
+.recipes .narrow-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
 .recipes .row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -404,24 +421,52 @@
   list-style: none;
 }
 
+/* The ingredient name gets the whole first row; amount and unit are short, so they sit beside the note. */
 .recipes .line-row {
   display: grid;
-  grid-template-columns: 4.5rem 5rem 1fr 2.5rem;
+  grid-template-columns: 4rem 4.75rem minmax(0, 1fr) 2.5rem;
+  grid-template-areas:
+    "name name name remove"
+    "amount unit note note";
   gap: 0.4rem;
   padding: 0.6rem;
   border: var(--r-line);
   border-radius: 1rem;
-  background: var(--r-paper);
+  background: var(--sun-soft, #fff4c4);
+}
+
+.recipes .line-row:nth-child(4n + 2) {
+  background: var(--mint-soft, #d8f6e8);
+}
+
+.recipes .line-row:nth-child(4n + 3) {
+  background: var(--sky-soft, #dcefff);
+}
+
+.recipes .line-row:nth-child(4n + 4) {
+  background: var(--lilac-soft, #ece3fb);
+}
+
+.recipes .line-row .suggest-wrap {
+  grid-area: name;
+}
+
+.recipes .line-row .amount {
+  grid-area: amount;
+}
+
+.recipes .line-row select {
+  grid-area: unit;
+  padding-inline: 0.5rem;
 }
 
 .recipes .line-row .note {
-  grid-column: 1 / 4;
+  grid-area: note;
   color: var(--r-ink);
 }
 
 .recipes .line-row .remove {
-  grid-row: 1;
-  grid-column: 4;
+  grid-area: remove;
   padding: 0;
   font-size: 1.4rem;
 }

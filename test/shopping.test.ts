@@ -62,15 +62,15 @@ describe("scaling", () => {
     expect(line([day("2026-03-02", half), day("2026-03-03", half)], "Onion").amount).toBe(1);
   });
 
-  test("g rounds up to a tidy step and spoons to a half", () => {
+  test("g rounds up to a tidy step and small ml amounts to a whole ml", () => {
     const soup = recipe("Soup", 3, [
       [130, "g", carrot],
-      [1, "tsp", ingredient("Cumin", "Dry goods")],
+      [5, "ml", ingredient("Cumin", "Dry goods")],
     ]);
     const list = lines([day("2026-03-02", soup)]);
-    // 86.7 g goes up to 90 g; ⅔ tsp goes up to 1 tsp.
+    // 86.7 g goes up to 90 g; 3.3 ml goes up to 4 ml.
     expect(list.find((one) => one.ingredient.name === "Carrots")).toMatchObject({ amount: 90, unit: "g" });
-    expect(list.find((one) => one.ingredient.name === "Cumin")).toMatchObject({ amount: 1, unit: "tsp" });
+    expect(list.find((one) => one.ingredient.name === "Cumin")).toMatchObject({ amount: 4, unit: "ml" });
   });
 });
 
@@ -83,12 +83,12 @@ describe("adding up", () => {
     expect(line([day("2026-03-02", a), day("2026-03-03", c)], "Carrots")).toMatchObject({ amount: 1.4, unit: "kg" });
   });
 
-  test("volume and spoons add up as volume", () => {
+  test("dl and ml add up as ml", () => {
     const a = recipe("A", 2, [[2, "dl", milk]]);
-    const b = recipe("B", 2, [[2, "tbsp", milk]]);
+    const b = recipe("B", 2, [[30, "ml", milk]]);
     expect(line([day("2026-03-02", a), day("2026-03-03", b)], "Milk")).toMatchObject({ amount: 250, unit: "ml" });
-    const c = recipe("C", 2, [[1, "tsp", milk]]);
-    expect(line([day("2026-03-02", b), day("2026-03-03", c)], "Milk")).toMatchObject({ amount: 2.5, unit: "tbsp" });
+    const c = recipe("C", 2, [[5, "ml", milk]]);
+    expect(line([day("2026-03-02", b), day("2026-03-03", c)], "Milk")).toMatchObject({ amount: 35, unit: "ml" });
   });
 
   test("keeps a lone unit like dl or kg as written", () => {
@@ -110,11 +110,11 @@ describe("adding up", () => {
   test("a line with no amount shows once, and folds into a measured line of the same ingredient", () => {
     const pepper = ingredient("Pepper", "Dry goods");
     const a = recipe("A", 2, [[null, null, pepper]]);
-    const b = recipe("B", 2, [[1, "tsp", pepper]]);
+    const b = recipe("B", 2, [[5, "ml", pepper]]);
     expect(line([day("2026-03-02", a), day("2026-03-03", a)], "Pepper")).toMatchObject({ amount: null, needsPackSize: false, meals: ["Mon: A", "Tue: A"] });
     const both = lines([day("2026-03-02", a), day("2026-03-03", b)]).filter((one) => one.ingredient.name === "Pepper");
     expect(both).toHaveLength(1);
-    expect(both[0]).toMatchObject({ amount: 1, unit: "tsp", meals: ["Tue: B", "Mon: A"] });
+    expect(both[0]).toMatchObject({ amount: 5, unit: "ml", meals: ["Tue: B", "Mon: A"] });
   });
 
   test("the same dinner twice in one recipe line list is named once", () => {
@@ -167,7 +167,7 @@ describe("sections", () => {
       [1, "pcs", foil],
       [200, "g", peas],
       [100, "g", rice],
-      [1, "tsp", salt],
+      [5, "ml", salt],
       [300, "g", fish],
       [2, "dl", milk],
       [100, "g", carrot],

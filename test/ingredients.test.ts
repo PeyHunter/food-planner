@@ -18,7 +18,7 @@ async function kitchenWithIngredients() {
     tags: [],
     lines: [
       { amount: 500, unit: "g", ingredient: "Spaghetti", note: "" },
-      { amount: 1, unit: "tsp", ingredient: "salt", note: "" },
+      { amount: 5, unit: "ml", ingredient: "salt", note: "" },
       { amount: 200, unit: "ml", ingredient: "Cream", note: "" },
     ],
     steps: [],
@@ -95,7 +95,7 @@ test("a plural or singular spelling reuses the ingredient that is already there"
       { amount: 1, unit: "pcs", ingredient: "Spaghettis", note: "" },
       { amount: 2, unit: "pcs", ingredient: "carrots", note: "" },
       { amount: 1, unit: "pcs", ingredient: "Carrot", note: "" },
-      { amount: 1, unit: "tsp", ingredient: "SALT", note: "" },
+      { amount: 5, unit: "ml", ingredient: "SALT", note: "" },
     ],
     steps: [],
   });

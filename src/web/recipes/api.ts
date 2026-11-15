@@ -72,10 +72,31 @@ export const showDate = (day: string) => new Date(`${day}T12:00:00`).toLocaleDat
 
 export const photoRecipeReady = () => call<{ ready: boolean }>("/api/photo-recipe");
 
-/** Sends 1 to 3 photos of a written recipe; the server reads them into a draft for the edit form. */
-export function readRecipePhotos(photos: File[]) {
+/** Sends 1 to 10 photos of a written recipe; the server reads them into a draft for the edit form. */
+const readSide = 2400;
+
+/** A phone photo as a JPEG at most 2400 px on the long side, so ten of them fit in one upload.
+ * The server shrinks further to read it; 2400 keeps the cut-out dish picture sharp. Falls back to the original. */
+async function shrinkForReading(photo: File): Promise<Blob> {
+  try {
+    const bitmap = await createImageBitmap(photo, { imageOrientation: "from-image" });
+    const scale = Math.min(1, readSide / Math.max(bitmap.width, bitmap.height));
+    if (scale === 1 && photo.type === "image/jpeg") return photo;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.88));
+    return blob ?? photo;
+  } catch {
+    return photo;
+  }
+}
+
+export async function readRecipePhotos(photos: File[]) {
   const form = new FormData();
-  for (const photo of photos) form.append("photos", photo);
+  for (const photo of photos) form.append("photos", await shrinkForReading(photo), photo.name);
   return call<PhotoRecipeDraft>("/api/recipes/from-photo", { method: "POST", body: form });
 }
 

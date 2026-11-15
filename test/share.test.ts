@@ -56,6 +56,7 @@ test("a share link turns on, shows the recipe without a login, and turns off for
     title: "Fish pie",
     description: "",
     feeds: 4,
+    minutes: null,
     types: ["Fish"],
     tags: ["kid-friendly"],
     mainPhoto: null,

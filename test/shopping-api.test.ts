@@ -52,7 +52,7 @@ test("the list needs a login, a Monday and days in that week", async () => {
 
 test("builds from the planned days, people, Runi's mash and her own recipe", async () => {
   const { call, create, list } = await loggedIn();
-  const soup = await create(recipe("Carrot soup", [line(800, "g", "Carrots"), line(1, "tsp", "Salt")]));
+  const soup = await create(recipe("Carrot soup", [line(800, "g", "Carrots"), line(5, "ml", "Salt")]));
   const mash = await create(recipe("Carrot mash", [line(200, "g", "Carrots")], 2));
   const ingredients = (await (await call("/api/ingredients?all=1")).json()) as { id: string; name: string }[];
   const salt = ingredients.find((one) => one.name === "Salt")!;

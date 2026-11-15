@@ -72,6 +72,8 @@ export const recipes = pgTable(
     title: text("title").notNull(),
     description: text("description").notNull().default(""),
     feeds: integer("feeds").notNull(),
+    /** Total cooking time in minutes, or null when unknown. */
+    minutes: integer("minutes"),
     ageFromMonths: integer("age_from_months"),
     ageToMonths: integer("age_to_months"),
     /** Null while the recipe isn't shared. Turning sharing off clears it, so an old link never works again. */

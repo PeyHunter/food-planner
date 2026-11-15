@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import type { Recipe, RecipeLine, RecipeSummary } from "../../shared/recipes.ts";
+import { formatMinutes, type Recipe, type RecipeLine, type RecipeSummary } from "../../shared/recipes.ts";
 import { ageRangeLabel } from "../../shared/child-age.ts";
 import { formatAmount, scale } from "../../shared/units.ts";
 import { addToFreezer, getRecipe, logCook, showDate, today, uploadPhoto } from "./api.ts";
@@ -26,7 +26,7 @@ export function TypeStickers({ recipe }: { recipe: Pick<RecipeSummary, "types" |
 
 function lineAmount(line: RecipeLine, from: number, to: number) {
   if (line.amount === null || line.unit === null) return "";
-  return `${formatAmount(scale(line.amount, line.unit, from, to))} ${line.unit}`;
+  return `${formatAmount(scale(line.amount, line.unit, from, to), line.unit)} ${line.unit}`;
 }
 
 /** Ingredients with the − N + stepper that scales the amounts. Used on the recipe page and the public share page. */
@@ -127,6 +127,7 @@ export function RecipePage({ id }: { id: string }) {
         {ageRangeLabel(recipe) && <span className="sticker lilac tilt-r age-sticker">{ageRangeLabel(recipe)}</span>}
       </div>
       <h1>{recipe.title}</h1>
+      {recipe.minutes !== null && <p className="time">Takes {formatMinutes(recipe.minutes)}</p>}
       {recipe.description && <p className="description">{recipe.description}</p>}
       {recipe.lastMadeOn && (
         <p className="made">

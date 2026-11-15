@@ -6,7 +6,7 @@ import sharp from "sharp";
 import { builtInTags, mainTypes, type PhotoRecipeDraft, type RecipeInput } from "../shared/recipes.ts";
 import { isUnit, units, type Unit } from "../shared/units.ts";
 import type { AppDependencies } from "./app.ts";
-import { kitchenMember, parseInput, type MemberEnv } from "./recipes.ts";
+import { kitchenMember, maxMinutes, parseInput, type MemberEnv } from "./recipes.ts";
 import { recipes, recipeTags } from "./schema.ts";
 
 type CreateParams = Anthropic.Beta.Messages.MessageCreateParamsNonStreaming;
@@ -15,8 +15,9 @@ type RequestOptions = { signal: AbortSignal; maxRetries: number };
 export type PhotoRecipeClient = { beta: { messages: { create(params: CreateParams, options: RequestOptions): Promise<Anthropic.Beta.Messages.BetaMessage> } } };
 
 export const model = "claude-sonnet-5-5";
-const timeoutMs = 60_000;
-const maxPhotos = 3;
+// Ten pages take the model well over a minute to read.
+const timeoutMs = 150_000;
+const maxPhotos = 10;
 const maxSide = 1600;
 const megabyte = 1024 * 1024;
 const toolName = "save_recipe";
@@ -37,11 +38,12 @@ const tool: Anthropic.Beta.Messages.BetaTool = {
   input_schema: {
     type: "object",
     additionalProperties: false,
-    required: ["title", "description", "feeds", "mainTypes", "tags", "lines", "steps", "dishPhoto"],
+    required: ["title", "description", "feeds", "minutes", "mainTypes", "tags", "lines", "steps", "dishPhoto"],
     properties: {
       title: { type: "string", description: "The recipe's name, as written." },
       description: { type: "string", description: "The short text about the dish, like a book's intro above the recipe, in the cook's words. Empty if there is none." },
       feeds: { type: "integer", description: "How many people it feeds. 4 if the recipe doesn't say." },
+      minutes: nullable({ type: "integer", description: "Total time in minutes, if the recipe says. Null if not." }),
       mainTypes: { type: "array", items: { type: "string", enum: [...mainTypes] }, description: "What the dish is mostly made of. Pick one or more." },
       tags: { type: "array", items: { type: "string" }, description: "Only tags from the list in the message. Empty if none fit." },
       lines: {
@@ -78,7 +80,9 @@ const tool: Anthropic.Beta.Messages.BetaTool = {
 
 const system = `You read photos of written, handwritten or printed recipes and save them with the ${toolName} tool. Always answer by calling ${toolName} once.
 - Write the recipe in the language it is written in. Keep the cook's own words in the steps.
-- Units must be one of: ${units.join(", ")}. Convert anything else to metric: 1 cup = 2.4 dl, 1 oz = 28 g, 1 lb = 450 g, 1 fl oz = 30 ml. Use pcs for things you count (2 eggs = 2 pcs).
+- Use metric only. Units must be one of: ${units.join(", ")}. Convert US and imperial units: 1 cup = 2.4 dl (or 240 ml), 1 oz = 28 g, 1 lb = 450 g, 1 fl oz = 30 ml, 1 tsp = 5 ml, 1 tbsp = 15 ml. Use pcs for things you count (2 eggs = 2 pcs).
+- Convert in the steps too: °F to °C (350 °F = 175 °C), inches to cm (1 inch = 2.5 cm), and cups, ounces and spoons as above.
+- minutes is the total time the recipe says it takes (prep plus cooking), in whole minutes. Null if the recipe doesn't say.
 - Amounts are numbers (½ = 0.5). If there is no amount, like "salt to taste", set amount and unit to null and put the words in note.
 - If a part can't be read, leave it out rather than guess.
 - Recipe books often print a picture of the finished dish next to the recipe. If you see one, give its edges in dishPhoto, tight around the picture, without the text around it. Drawings, ingredient shots and the page itself don't count.`;
@@ -102,10 +106,12 @@ const unitAliases: Record<string, { unit: Unit; factor: number }> = {
   kilo: { unit: "kg", factor: 1 },
   litre: { unit: "l", factor: 1 },
   liter: { unit: "l", factor: 1 },
-  teaspoon: { unit: "tsp", factor: 1 },
-  teaspoons: { unit: "tsp", factor: 1 },
-  tablespoon: { unit: "tbsp", factor: 1 },
-  tablespoons: { unit: "tbsp", factor: 1 },
+  tsp: { unit: "ml", factor: 5 },
+  teaspoon: { unit: "ml", factor: 5 },
+  teaspoons: { unit: "ml", factor: 5 },
+  tbsp: { unit: "ml", factor: 15 },
+  tablespoon: { unit: "ml", factor: 15 },
+  tablespoons: { unit: "ml", factor: 15 },
   piece: { unit: "pcs", factor: 1 },
   pieces: { unit: "pcs", factor: 1 },
 };
@@ -155,6 +161,7 @@ export function toDraft(output: unknown, knownTags: readonly string[] = builtInT
     title: text(raw.title).slice(0, 200),
     description: text(raw.description).slice(0, 2000),
     feeds,
+    minutes: Number.isInteger(raw.minutes) && (raw.minutes as number) >= 1 && (raw.minutes as number) <= maxMinutes ? (raw.minutes as number) : null,
     types: mainTypes.filter((type) => list(raw.mainTypes).includes(type)),
     tags: [...new Set(list(raw.tags).map((tag) => spelling.get(text(tag).toLowerCase())).filter((tag) => tag !== undefined))].slice(0, 10),
     ageFromMonths: null,

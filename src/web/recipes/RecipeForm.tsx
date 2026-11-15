@@ -9,6 +9,7 @@ type Draft = {
   title: string;
   description: string;
   feeds: string;
+  minutes: string;
   types: MainType[];
   tags: string[];
   otherTags: string;
@@ -19,7 +20,7 @@ type Draft = {
 };
 
 const emptyLine = (): LineDraft => ({ amount: "", unit: "g", ingredient: "", note: "" });
-const blank: Draft = { title: "", description: "", feeds: "4", types: [], tags: [], otherTags: "", ageFrom: "", ageTo: "", lines: [emptyLine()], steps: [""] };
+const blank: Draft = { title: "", description: "", feeds: "4", minutes: "", types: [], tags: [], otherTags: "", ageFrom: "", ageTo: "", lines: [emptyLine()], steps: [""] };
 
 const toggle = <T,>(list: T[], item: T) => (list.includes(item) ? list.filter((value) => value !== item) : [...list, item]);
 const numberOrNull = (text: string) => (text.trim() === "" ? null : Number(text.replace(",", ".")));
@@ -33,6 +34,7 @@ function toInput(draft: Draft): RecipeInput {
     title: draft.title,
     description: draft.description,
     feeds: Number(draft.feeds),
+    minutes: numberOrNull(draft.minutes),
     types: draft.types,
     tags: [...new Set([...draft.tags, ...otherTags])],
     ageFromMonths: numberOrNull(draft.ageFrom),
@@ -75,6 +77,7 @@ function photoDraft({ recipe }: FromPhoto): Draft {
     title: recipe.title,
     description: recipe.description ?? "",
     feeds: String(recipe.feeds),
+    minutes: recipe.minutes == null ? "" : String(recipe.minutes),
     types: recipe.types,
     tags: recipe.tags.filter(isBuiltIn),
     otherTags: recipe.tags.filter((tag) => !isBuiltIn(tag)).join(", "),
@@ -101,6 +104,7 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
           title: recipe.title,
           description: recipe.description,
           feeds: String(recipe.feeds),
+          minutes: recipe.minutes === null ? "" : String(recipe.minutes),
           types: recipe.types,
           tags: recipe.tags.filter((tag) => (builtInTags as readonly string[]).includes(tag)),
           otherTags: recipe.tags.filter((tag) => !(builtInTags as readonly string[]).includes(tag)).join(", "),
@@ -196,10 +200,16 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
         Description
         <textarea rows={3} value={draft.description} onChange={(event) => set({ description: event.target.value })} maxLength={2000} placeholder="A few words about the dish" />
       </label>
-      <label className="narrow">
-        Feeds (people)
-        <input type="number" inputMode="numeric" min={1} max={100} value={draft.feeds} onChange={(event) => set({ feeds: event.target.value })} required />
-      </label>
+      <div className="narrow-row">
+        <label className="narrow">
+          Feeds (people)
+          <input type="number" inputMode="numeric" min={1} max={100} value={draft.feeds} onChange={(event) => set({ feeds: event.target.value })} required />
+        </label>
+        <label className="narrow">
+          Time (minutes)
+          <input type="number" inputMode="numeric" min={1} max={10080} placeholder="45" value={draft.minutes} onChange={(event) => set({ minutes: event.target.value })} />
+        </label>
+      </div>
 
       <fieldset>
         <legend>Main type</legend>
@@ -321,13 +331,6 @@ function IngredientRow({ index, line, onChange, onRemove }: { index: number; lin
 
   return (
     <li className="line-row">
-      <input className="amount" aria-label={`Amount ${n}`} inputMode="decimal" placeholder="2" value={line.amount} onChange={(event) => onChange({ amount: event.target.value })} />
-      <select aria-label={`Unit ${n}`} value={line.unit} onChange={(event) => onChange({ unit: event.target.value })}>
-        <option value="">—</option>
-        {units.map((unit) => (
-          <option key={unit}>{unit}</option>
-        ))}
-      </select>
       <div className="suggest-wrap">
         <input
           aria-label={`Ingredient ${n}`}
@@ -351,7 +354,14 @@ function IngredientRow({ index, line, onChange, onRemove }: { index: number; lin
           </ul>
         )}
       </div>
-      <input className="note" aria-label={`Note ${n}`} placeholder="note, e.g. finely chopped" value={line.note} onChange={(event) => onChange({ note: event.target.value })} />
+      <input className="amount" aria-label={`Amount ${n}`} inputMode="decimal" placeholder="200" value={line.amount} onChange={(event) => onChange({ amount: event.target.value })} />
+      <select aria-label={`Unit ${n}`} value={line.unit} onChange={(event) => onChange({ unit: event.target.value })}>
+        <option value="">—</option>
+        {units.map((unit) => (
+          <option key={unit}>{unit}</option>
+        ))}
+      </select>
+      <input className="note" aria-label={`Note ${n}`} placeholder="note, e.g. chopped" value={line.note} onChange={(event) => onChange({ note: event.target.value })} />
       <button type="button" className="quiet remove" aria-label={`Remove line ${n}`} onClick={onRemove}>
         ×
       </button>
