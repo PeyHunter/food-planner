@@ -74,9 +74,9 @@ test("unknown or made-up tokens get a 404", async () => {
   }
 });
 
-test("photos of a shared recipe open through the link only, and only while it is on", async () => {
+test("photos of a shared recipe open through the link only, and only while it is on; the page carries the recipe and is never cached", async () => {
   const { app, headers, addRecipe, upload, share, pathOf } = await setUp();
-  const recipeId = await addRecipe("Fish pie");
+  const recipeId = await addRecipe("Fish </script> pie");
   const main = await upload(recipeId, "main");
   const extra = await upload(recipeId, "gallery");
   const token = pathOf((await share(recipeId, "POST"))!).split("/")[2]!;
@@ -92,9 +92,26 @@ test("photos of a shared recipe open through the link only, and only while it is
   expect((await app.request(main.url)).status).toBe(401);
   expect((await app.request(main.url, { headers })).status).toBe(200);
 
+  // The page itself carries the recipe and a preload for its main photo, and must never be cached.
+  const page = await app.request(`/s/${token}`);
+  expect(page.status).toBe(200);
+  expect(page.headers.get("content-type")).toContain("text/html");
+  expect(page.headers.get("cache-control")).toBe("no-store");
+  const html = await page.text();
+  expect(html).toContain(`<link rel="preload" as="image" href="${shared.mainPhoto!.url}" fetchpriority="high" />`);
+  expect(html).toContain("<title>Fish &lt;/script&gt; pie · Food planner</title>");
+  const data = /<script id="share-data" type="application\/json">(.*?)<\/script>/.exec(html)?.[1];
+  expect(JSON.parse(data!)).toEqual(shared);
+
   await share(recipeId, "DELETE");
   expect((await app.request(shared.mainPhoto!.url)).status).toBe(404);
   expect((await app.request(shared.photos[1]!.url)).status).toBe(404);
+  const gone = await app.request(`/s/${token}`);
+  expect(gone.status).toBe(404);
+  expect(gone.headers.get("cache-control")).toBe("no-store");
+  const goneHtml = await gone.text();
+  expect(goneHtml).toContain('<script id="share-data" type="application/json">null</script>');
+  expect(goneHtml).not.toContain("Fish");
 });
 
 test("a share link never leaks another recipe or its photos", async () => {

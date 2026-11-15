@@ -5,11 +5,21 @@ import "./recipes.css";
 
 type State = { kind: "loading" } | { kind: "gone" } | { kind: "offline" } | { kind: "ready"; recipe: SharedRecipe };
 
+/** What the server put in the page: the recipe, or null for a dead link. Missing under the Vite dev server. */
+function fromPage(): State | undefined {
+  const data = document.getElementById("share-data")?.textContent;
+  if (!data) return undefined;
+  const recipe = JSON.parse(data) as SharedRecipe | null;
+  return recipe ? { kind: "ready", recipe } : { kind: "gone" };
+}
+
 /** The public page behind a share link, /s/<token>: one recipe, read-only, no login. */
 export function SharePage({ token }: { token: string }) {
-  const [state, setState] = useState<State>({ kind: "loading" });
+  const [state, setState] = useState<State>(() => fromPage() ?? { kind: "loading" });
+  const loaded = state.kind !== "loading";
 
   useEffect(() => {
+    if (loaded) return;
     fetch(`/api/share/${encodeURIComponent(token)}`)
       .then(async (response) => {
         if (response.status === 404) return setState({ kind: "gone" });
@@ -19,7 +29,7 @@ export function SharePage({ token }: { token: string }) {
         setState({ kind: "ready", recipe });
       })
       .catch(() => setState({ kind: "offline" }));
-  }, [token]);
+  }, [token, loaded]);
 
   return (
     <main className="app">
@@ -44,7 +54,7 @@ function SharedRecipeView({ recipe }: { recipe: SharedRecipe }) {
     <article className="shared">
       <span className="sticker white tilt-r shared-from">Shared from our food planner</span>
       <div className="hero">
-        {recipe.mainPhoto ? <img src={recipe.mainPhoto.url} alt={recipe.title} /> : <span className="no-photo" aria-hidden="true" />}
+        {recipe.mainPhoto ? <img src={recipe.mainPhoto.url} alt={recipe.title} fetchPriority="high" /> : <span className="no-photo" aria-hidden="true" />}
         <TypeStickers recipe={recipe} />
       </div>
       <h1>{recipe.title}</h1>
