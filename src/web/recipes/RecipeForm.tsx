@@ -66,7 +66,7 @@ function photoDraft({ recipe }: FromPhoto): Draft {
     types: recipe.types,
     tags: recipe.tags.filter(isBuiltIn),
     otherTags: recipe.tags.filter((tag) => !isBuiltIn(tag)).join(", "),
-    lines: [...recipe.lines.map((line) => ({ amount: line.amount === null ? "" : String(line.amount), unit: line.unit ?? "g", ingredient: line.ingredient, note: line.note })), emptyLine()],
+    lines: [...recipe.lines.map((line) => ({ amount: line.amount === null ? "" : String(line.amount), unit: line.unit ?? "", ingredient: line.ingredient, note: line.note })), emptyLine()],
     steps: [...recipe.steps, ""],
   };
 }
@@ -93,7 +93,7 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
           ageFrom: recipe.ageFromMonths === null ? "" : String(recipe.ageFromMonths),
           ageTo: recipe.ageToMonths === null ? "" : String(recipe.ageToMonths),
           lines: [
-            ...recipe.lines.map((line) => ({ amount: line.amount === null ? "" : String(line.amount), unit: line.unit ?? "g", ingredient: line.ingredient.name, note: line.note })),
+            ...recipe.lines.map((line) => ({ amount: line.amount === null ? "" : String(line.amount), unit: line.unit ?? "", ingredient: line.ingredient.name, note: line.note })),
             emptyLine(),
           ],
           steps: [...recipe.steps, ""],
@@ -303,6 +303,7 @@ function IngredientRow({ index, line, onChange, onRemove }: { index: number; lin
     <li className="line-row">
       <input className="amount" aria-label={`Amount ${n}`} inputMode="decimal" placeholder="2" value={line.amount} onChange={(event) => onChange({ amount: event.target.value })} />
       <select aria-label={`Unit ${n}`} value={line.unit} onChange={(event) => onChange({ unit: event.target.value })}>
+        <option value="">—</option>
         {units.map((unit) => (
           <option key={unit}>{unit}</option>
         ))}

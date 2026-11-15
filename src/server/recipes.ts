@@ -1,17 +1,18 @@
 import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { createMiddleware } from "hono/factory";
-import { mainTypes, shopSections, type Cook, type Ingredient, type IngredientRow, type IngredientSettings, type MainType, type Photo, type Recipe, type RecipeInput, type RecipeSummary, type ShareLink, type SharedRecipe, type ShopSection } from "../shared/recipes.ts";
+import { mainTypes, shopSections, type Cook, type Ingredient, type IngredientRow, type IngredientSettings, type MainType, type Photo, type Recipe, type RecipeInput, type RecipeSummary, type ShareLink, type SharedRecipe, type ShopSection, sharePhotoMedia } from "../shared/recipes.ts";
 import { isUnit } from "../shared/units.ts";
 import { sessionUser } from "./access.ts";
 import type { AppDependencies } from "./app.ts";
 import type { Database } from "./db.ts";
-import { photoStore, type StoredPhoto } from "./photos.ts";
+import { photoStore, sharePhotoFile, smallWidth, type StoredPhoto } from "./photos.ts";
 import { guessShopSection } from "../shared/shop-section-guess.ts";
+import { nameForms, sameIngredient } from "../shared/ingredient-names.ts";
 import { cooks, ingredients, kitchenMembers, photos, recipeLines, recipes, recipeTags, recipeTypes, steps, users } from "./schema.ts";
 
 type Member = { userId: string; kitchenId: string };
@@ -144,7 +145,7 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
         recipes: recipeCount,
       })
       .from(ingredients)
-      .where(and(eq(ingredients.kitchenId, c.get("member").kitchenId), q ? sql`${ingredients.name} ilike ${likeText(q)}` : undefined))
+      .where(and(eq(ingredients.kitchenId, c.get("member").kitchenId), q ? or(sql`${ingredients.name} ilike ${likeText(q)}`, inArray(sql`lower(${ingredients.name})`, nameForms(q))) : undefined))
       // Names that start with what was typed come first.
       .orderBy(sql`${ingredients.name} ilike ${likeText(q).slice(1)} desc`, asc(sql`lower(${ingredients.name})`))
       .limit(all ? 1000 : 8);
@@ -261,7 +262,8 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
     if (!id) return undefined;
     const { title, feeds, types, tags, mainPhoto, photos: all, lines, steps: stepTexts } = await loadRecipe(id);
     const viaLink = (photo: Photo): Photo => ({ ...photo, url: `/s/${token}/photos/${photo.id}.jpg` });
-    return { title, feeds, types, tags, mainPhoto: mainPhoto && viaLink(mainPhoto), photos: all.map(viaLink), lines, steps: stepTexts };
+    const main = mainPhoto && { ...viaLink(mainPhoto), smallUrl: `/s/${token}/photos/${mainPhoto.id}-${smallWidth}.jpg` };
+    return { title, feeds, types, tags, mainPhoto: main, photos: all.map(viaLink), lines, steps: stepTexts };
   }
 
   routes.get("/api/share/:token", async (c) => {
@@ -271,17 +273,20 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
   });
 
   routes.get("/s/:token/photos/:file", async (c) => {
-    const id = c.req.param("file").replace(/\.jpg$/, "");
+    const asked = sharePhotoFile(c.req.param("file"));
     const recipeId = await sharedRecipe(c.req.param("token"));
-    if (!recipeId || !store.isPhotoId(id)) return c.text("No such photo.", 404);
+    if (!recipeId || !asked) return c.text("No such photo.", 404);
+    const { id, small } = asked;
     const [row] = await db
       .select({ id: photos.id })
       .from(photos)
       .where(and(eq(photos.id, id), eq(photos.recipeId, recipeId)));
-    const file = row && (await store.read(id).catch(() => undefined));
+    const file = row && (await (small ? store.readSmall(id) : store.read(id)).catch(() => undefined));
     if (!file) return c.text("No such photo.", 404);
-    // Short, so a phone stops showing it soon after the link is turned off.
-    return c.body(new Uint8Array(file), 200, { "content-type": "image/jpeg", "cache-control": "private, max-age=600" });
+    // The full photo: short, so a phone stops showing it soon after the link is turned off.
+    // The small copy is what makes the page fast, so a phone keeps it.
+    const cache = small ? "private, max-age=31536000, immutable" : "private, max-age=600";
+    return c.body(new Uint8Array(file), 200, { "content-type": "image/jpeg", "cache-control": cache });
   });
 
   let sharePage: Promise<string> | undefined;
@@ -292,7 +297,10 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
     const [html, shared] = await Promise.all([sharePage, sharedView(c.req.param("token"))]);
     const head = shared
       ? `<title>${escapeHtml(shared.title)} · Food planner</title>` +
-        (shared.mainPhoto ? `<link rel="preload" as="image" href="${escapeHtml(shared.mainPhoto.url)}" fetchpriority="high" />` : "")
+        (shared.mainPhoto
+          ? `<link rel="preload" as="image" href="${escapeHtml(shared.mainPhoto.smallUrl)}" media="${sharePhotoMedia.narrow}" fetchpriority="high" />` +
+            `<link rel="preload" as="image" href="${escapeHtml(shared.mainPhoto.url)}" media="${sharePhotoMedia.wide}" fetchpriority="high" />`
+          : "")
       : "<title>Food planner</title>";
     const data = `<script id="share-data" type="application/json">${JSON.stringify(shared ?? null).replaceAll("<", "\\u003c")}</script>`;
     const page = html.replace("<title>Food planner</title>", head).replace('<div id="root"></div>', `<div id="root"></div>${data}`);
@@ -341,24 +349,24 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
     if (input.steps.length) await tx.insert(steps).values(input.steps.map((text, position) => ({ recipeId, position, text })));
     if (!input.lines.length) return;
     const names = [...new Map(input.lines.map((line) => [line.ingredient.toLowerCase(), line.ingredient])).values()];
-    // New names join the kitchen's list; existing ones (any capitalisation) are reused.
-    await tx
-      .insert(ingredients)
-      .values(names.map((name) => ({ kitchenId, name, shopSection: guessShopSection(name), createdBy: userId })))
-      .onConflictDoNothing();
-    const known = await tx
-      .select({ id: ingredients.id, name: ingredients.name })
-      .from(ingredients)
-      .where(
-        and(
-          eq(ingredients.kitchenId, kitchenId),
-          inArray(
-            sql`lower(${ingredients.name})`,
-            names.map((name) => name.toLowerCase()),
-          ),
-        ),
-      );
-    const idOf = new Map(known.map((row) => [row.name.toLowerCase(), row.id]));
+    // Existing ones are reused across capitals and singular/plural ("potatoes" uses "potato").
+    const known = () =>
+      tx
+        .select({ id: ingredients.id, name: ingredients.name })
+        .from(ingredients)
+        .where(and(eq(ingredients.kitchenId, kitchenId), inArray(sql`lower(${ingredients.name})`, names.flatMap(nameForms))));
+    const matchIn = (rows: { id: string; name: string }[], name: string) =>
+      rows.find((row) => row.name.toLowerCase() === name.toLowerCase()) ?? rows.find((row) => sameIngredient(name, row.name));
+    const before = await known();
+    const fresh: string[] = [];
+    for (const name of names) if (!matchIn(before, name) && !fresh.some((other) => sameIngredient(name, other))) fresh.push(name);
+    if (fresh.length)
+      await tx
+        .insert(ingredients)
+        .values(fresh.map((name) => ({ kitchenId, name, shopSection: guessShopSection(name), createdBy: userId })))
+        .onConflictDoNothing();
+    const after = fresh.length ? await known() : before;
+    const idOf = new Map(names.map((name) => [name.toLowerCase(), matchIn(after, name)!.id]));
     await tx.insert(recipeLines).values(
       input.lines.map((line, position) => ({
         recipeId,

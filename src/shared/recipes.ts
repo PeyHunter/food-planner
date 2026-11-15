@@ -61,7 +61,13 @@ export type PhotoRecipeDraft = { recipe: RecipeInput; notes: string[] };
 export type IngredientSuggestion ={ id: string; name: string; shopSection: ShopSection };
 
 /** What a share link shows: the recipe without who made it or when it was cooked. Photo urls go through the link. */
-export type SharedRecipe = Pick<Recipe, "title" | "feeds" | "types" | "tags" | "mainPhoto" | "photos" | "lines" | "steps">;
+export type SharedRecipe = Pick<Recipe, "title" | "feeds" | "types" | "tags" | "photos" | "lines" | "steps"> & {
+  /** smallUrl: an 800 px wide copy for phones. */
+  mainPhoto: (Photo & { smallUrl: string }) | null;
+};
+
+/** Share pages show the small copy of the main photo below this width (the content column is at most 34rem) and the full photo above it. */
+export const sharePhotoMedia = { narrow: "(max-width: 35.98rem)", wide: "(min-width: 36rem)" } as const;
 
 /** The recipe's share link, or null while sharing is off. */
 export type ShareLink = { url: string | null };

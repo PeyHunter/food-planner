@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import type { Ingredient, Recipe } from "../src/shared/recipes.ts";
+import type { Ingredient, IngredientRow, Recipe } from "../src/shared/recipes.ts";
 import { createTestApp, startingUsers } from "./support/test-app.ts";
 
 async function kitchenWithIngredients() {
@@ -81,6 +81,38 @@ test("new ingredients get a guessed shop section, and a user's choice is never o
     ["Spaghetti", "Dry goods"],
     ["Sweet potatoes", "Vegetables"],
   ]);
+});
+
+test("a plural or singular spelling reuses the ingredient that is already there", async () => {
+  const { call, list } = await kitchenWithIngredients();
+  await call("/api/recipes", "POST", {
+    title: "Mash",
+    feeds: 2,
+    types: ["Vegetarian"],
+    tags: [],
+    lines: [
+      { amount: 1, unit: "kg", ingredient: "potatoes", note: "" },
+      { amount: 1, unit: "pcs", ingredient: "Spaghettis", note: "" },
+      { amount: 2, unit: "pcs", ingredient: "carrots", note: "" },
+      { amount: 1, unit: "pcs", ingredient: "Carrot", note: "" },
+      { amount: 1, unit: "tsp", ingredient: "SALT", note: "" },
+    ],
+    steps: [],
+  });
+  const names = ((await list()) as IngredientRow[]).map((ingredient) => [ingredient.name, ingredient.recipes]);
+  expect(names).toEqual([
+    ["carrots", 1],
+    ["Cream", 1],
+    ["potatoes", 1],
+    ["salt", 2],
+    ["Spaghetti", 2],
+  ]);
+
+  // Suggestions find the other spelling too.
+  const suggest = async (q: string) => ((await (await call(`/api/ingredients?q=${q}`)).json()) as Ingredient[]).map((ingredient) => ingredient.name);
+  expect(await suggest("potato")).toEqual(["potatoes"]);
+  expect(await suggest("carrot")).toEqual(["carrots"]);
+  expect(await suggest("spaghettis")).toEqual(["Spaghetti"]);
 });
 
 test("an ingredient no recipe uses can be deleted", async () => {
