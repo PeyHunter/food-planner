@@ -1,3 +1,4 @@
+import type { KidFoodWarning } from "./kid-food.ts";
 import type { RecipeSummary } from "./recipes.ts";
 import type { RuleStatus } from "./rules.ts";
 import type { Suggestion } from "./rule-swaps.ts";
@@ -24,6 +25,8 @@ export type WeekView = {
   suggestions: Suggestion[];
   /** Recipes meant for a child: tag "for Runi" or an age range. */
   childRecipes: RecipeSummary[];
+  /** Child id → recipe id → what that child shouldn't have yet (or only with care) in that recipe. Only recipes with warnings. */
+  kidWarnings: Record<string, Record<string, KidFoodWarning[]>>;
   /** Dishes with portions in the freezer, for planning a night "from the freezer". */
   freezer: FreezerItem[];
 };

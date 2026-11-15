@@ -34,3 +34,15 @@
 .kids .kid-recipe-list img,.kids .kid-recipe-list .plate{flex:none;inline-size:3.5rem;block-size:3.5rem;border:1.5px solid var(--ink);border-radius:.9rem;object-fit:cover;background:var(--lilac-soft)}
 .kids .kid-recipe-list strong{flex:1;line-height:1.2}
 .kids .kid-recipe-list .sticker{flex:none;font-size:.8rem;font-weight:800}
+
+.kid-warning-panel{border-color:var(--tomato);display:grid;gap:.8rem}
+.kid-warning-panel h2{font-size:var(--step-0,1.05rem)}
+.kid-warnings{list-style:none;margin:0;padding:0;display:grid;gap:.7rem}
+.kid-warnings li{display:grid;grid-template-columns:auto 1fr;gap:.6rem;align-items:start}
+.kid-warnings .sticker{font-size:.72rem;font-weight:800;white-space:nowrap}
+.kid-warnings p{margin:.15rem 0 0}
+.kid-warnings .found{font-weight:600;opacity:.75}
+.kid-warnings .source{font-size:.8rem;opacity:.7}
+.warn-badge{display:inline-flex;align-items:center;gap:.2rem;padding:.05rem .45rem;border:1.5px solid var(--ink);border-radius:999px;font-size:.72rem;font-weight:800;white-space:nowrap}
+.warn-badge.not-yet{background:var(--tomato);color:var(--paper)}
+.warn-badge.careful{background:var(--sun-soft)}

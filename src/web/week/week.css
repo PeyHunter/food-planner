@@ -107,3 +107,7 @@
 .week .freezer-pick{display:grid;gap:.5rem;padding:.8rem;border:1.5px dashed var(--ink);border-radius:1.2rem;background:color-mix(in oklab,var(--sky) 25%,var(--paper))}
 .week .freezer-pick .hint{margin:0}
 .week .freezer-pick .sticker{justify-self:start;font-size:.8rem}
+.week .kid{flex-wrap:wrap}
+.week .kid .meal{min-inline-size:8rem}
+.week .kid .warn-badge{flex-basis:auto;margin-inline-start:1.6rem}
+.week .pick-list .warn-badge{margin-block-start:.25rem}
