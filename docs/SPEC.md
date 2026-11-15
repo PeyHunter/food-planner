@@ -6,7 +6,7 @@ A meal planner and recipe book for Peyton and Ronja (and their baby, Runi Lee). 
 
 - Two accounts, `peyton` and `ronja`, created at startup from env `PEYTON_PASSWORD` / `RONJA_PASSWORD` (create if missing, never overwrite a changed password). No sign-up page.
 - Both share one **Kitchen**: every recipe, plan, rule and list belongs to the kitchen, not a person. Record who added what.
-- Model users and kitchens so friend accounts can join later (users table, kitchen_members table). Not built now.
+- A second kitchen for `isabel` and `christopher` (env `ISABEL_PASSWORD` / `CHRISTOPHER_PASSWORD`, made only when both are set). It has no kids: no Runi & kids tab, no child meals or child rules, no kid tags or age ranges in the recipe form. Each kitchen only sees its own recipes, weeks and lists.
 - Stay logged in for a long time (cookie session, like LP-Collection's 400-day sessions).
 
 ## Recipes

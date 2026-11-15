@@ -51,6 +51,7 @@ export function createChildRoutes({ database, now }: AppDependencies) {
   });
 
   routes.post("/api/children", member, async (c) => {
+    if (!c.get("member").kids) return c.json({ error: "This kitchen has no children." }, 403);
     const input = parseChild(await c.req.json().catch(() => undefined), latestBirthday());
     if ("error" in input) return c.json(input, 400);
     const [row] = await db

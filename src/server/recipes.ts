@@ -13,9 +13,9 @@ import type { Database } from "./db.ts";
 import { photoStore, sharePhotoFile, smallWidth, type StoredPhoto } from "./photos.ts";
 import { guessShopSection } from "../shared/shop-section-guess.ts";
 import { nameForms, sameIngredient } from "../shared/ingredient-names.ts";
-import { cooks, ingredients, kitchenMembers, photos, recipeLines, recipes, recipeTags, recipeTypes, steps, users } from "./schema.ts";
+import { cooks, ingredients, kitchenMembers, kitchens, photos, recipeLines, recipes, recipeTags, recipeTypes, steps, users } from "./schema.ts";
 
-type Member = { userId: string; kitchenId: string };
+type Member = { userId: string; kitchenId: string; kids: boolean };
 export type MemberEnv = { Variables: { member: Member } };
 type Env = MemberEnv;
 
@@ -42,9 +42,14 @@ export const kitchenMember = ({ database, now }: Pick<AppDependencies, "database
   createMiddleware<MemberEnv>(async (c, next) => {
     const user = await sessionUser(database, now, c);
     if (!user) return c.json({ error: "Not logged in" }, 401);
-    const [row] = await database.db.select({ kitchenId: kitchenMembers.kitchenId }).from(kitchenMembers).where(eq(kitchenMembers.userId, user.id)).limit(1);
+    const [row] = await database.db
+      .select({ kitchenId: kitchenMembers.kitchenId, kids: kitchens.kids })
+      .from(kitchenMembers)
+      .innerJoin(kitchens, eq(kitchens.id, kitchenMembers.kitchenId))
+      .where(eq(kitchenMembers.userId, user.id))
+      .limit(1);
     if (!row) return c.json({ error: "You are not in a kitchen yet." }, 403);
-    c.set("member", { userId: user.id, kitchenId: row.kitchenId });
+    c.set("member", { userId: user.id, kitchenId: row.kitchenId, kids: row.kids });
     await next();
   });
 

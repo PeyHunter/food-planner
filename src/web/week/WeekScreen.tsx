@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { mainTypes, type MainType, type RecipeSummary } from "../../shared/recipes.ts";
+import { kidTags, mainTypes, type MainType, type RecipeSummary } from "../../shared/recipes.ts";
 import type { ReduceWaste as WasteIdea } from "../../shared/reduce-waste.ts";
 import type { RuleOp } from "../../shared/rules.ts";
 import { addDays, maxPeople, mondayOf, weekdayName, type Child, type CreatedWeek, type WeekDay, type WeekRule, type WeekView } from "../../shared/week.ts";
+import { useKids } from "../kitchen.ts";
 import { listRecipes, today } from "../recipes/api.ts";
 import { acceptSuggestion, addRule, createWeek, deleteRule, getWeek, reduceWaste, setChildDay, setDinner, setPeople, undoCreateWeek, updateRule, type RuleInput } from "./api.ts";
 import "./week.css";
@@ -574,9 +575,10 @@ function Picker({ picking, view, who, onClose, onChoose }: PickerProps) {
 const ruleWhats = [...mainTypes, "Freezable", "kid-friendly"];
 
 function RulesEditor({ view, onChange, onClose }: { view: WeekView; onChange: (change: () => Promise<unknown>) => Promise<void>; onClose: () => void }) {
+  const hasKids = useKids();
   return (
     <Sheet title="Edit rules" onClose={onClose}>
-      <p className="hint">Each rule counts the dinners (or the child's meals) in one week.</p>
+      <p className="hint">{hasKids ? "Each rule counts the dinners (or the child's meals) in one week." : "Each rule counts the dinners in one week."}</p>
       <ul className="rule-rows">
         {view.rules.map((rule, index) => (
           <RuleRow key={rule.id} rule={rule} n={index + 1} kids={view.children} onChange={onChange} />
@@ -597,18 +599,24 @@ function RuleRow({ rule, n, kids, onChange }: { rule: WeekRule; n: number; kids:
     setDraft(next);
     void onChange(() => updateRule(rule.id, next));
   };
-  const whats = ruleWhats.includes(draft.what) ? ruleWhats : [...ruleWhats, draft.what];
+  const hasKids = useKids();
+  const offered = hasKids ? ruleWhats : ruleWhats.filter((what) => !kidTags.includes(what));
+  const whats = offered.includes(draft.what) ? offered : [...offered, draft.what];
   return (
     <li>
-      <select aria-label={`Who ${n}`} value={draft.childId ?? ""} onChange={(event) => save({ childId: event.target.value || null })}>
-        <option value="">Adults</option>
-        {kids.map((kid) => (
-          <option key={kid.id} value={kid.id}>
-            {kid.name}
-          </option>
-        ))}
-      </select>
-      <span>:</span>
+      {hasKids && (
+        <>
+          <select aria-label={`Who ${n}`} value={draft.childId ?? ""} onChange={(event) => save({ childId: event.target.value || null })}>
+            <option value="">Adults</option>
+            {kids.map((kid) => (
+              <option key={kid.id} value={kid.id}>
+                {kid.name}
+              </option>
+            ))}
+          </select>
+          <span>:</span>
+        </>
+      )}
       <select aria-label={`What ${n}`} value={draft.what} onChange={(event) => save({ what: event.target.value })}>
         {whats.map((what) => (
           <option key={what}>{what}</option>

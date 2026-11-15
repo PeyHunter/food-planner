@@ -4,6 +4,8 @@ export const mainTypes = ["Fish", "Meat", "Chicken", "Vegetarian", "Vegetables"]
 export type MainType = (typeof mainTypes)[number];
 
 export const builtInTags = ["freezable", "kid-friendly", "for Runi"] as const;
+/** Tags that only make sense in a kitchen with children. */
+export const kidTags: readonly string[] = ["kid-friendly", "for Runi"];
 
 /** In the order the shop walk goes. */
 export const shopSections = ["Vegetables", "Dairy", "Meat & fish", "Dry goods", "Frozen", "Other"] as const;

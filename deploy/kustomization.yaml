@@ -1,6 +1,6 @@
 # Argo CD syncs this folder (prune + selfHeal).
 # Secret this folder reads, never committed (sealed in k3s-gitops):
-#   food-planner-secrets: POSTGRES_PASSWORD, SESSION_SECRET, PEYTON_PASSWORD, RONJA_PASSWORD, ANTHROPIC_API_KEY
+#   food-planner-secrets: POSTGRES_PASSWORD, SESSION_SECRET, PEYTON_PASSWORD, RONJA_PASSWORD, ISABEL_PASSWORD, CHRISTOPHER_PASSWORD, ANTHROPIC_API_KEY
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: food-planner

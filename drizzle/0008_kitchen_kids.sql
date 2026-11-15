@@ -1,0 +1,1 @@
+ALTER TABLE "kitchens" ADD COLUMN "kids" boolean DEFAULT true NOT NULL;

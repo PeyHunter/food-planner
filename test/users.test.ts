@@ -51,3 +51,35 @@ test("passwords are stored hashed, never as plain text", async () => {
   expect(row!.password_hash).toMatch(/^scrypt\$/);
   expect(row!.password_hash).not.toContain(startingUsers[0]!.password);
 });
+
+test("isabel and christopher get their own kitchen with no children and only adult rules", async () => {
+  const app = await createTestApp();
+  const family = [
+    { username: "isabel", password: randomUUID() },
+    { username: "christopher", password: randomUUID() },
+  ];
+  await ensureHousehold(app.database, family, { name: "Isabel and Christopher's kitchen", kids: false });
+  await ensureHousehold(app.database, family, { name: "Isabel and Christopher's kitchen", kids: false });
+
+  const members = await app.query<{ username: string; kitchen_id: string; kids: boolean }>(
+    "select u.username, m.kitchen_id, k.kids from users u join kitchen_members m on m.user_id = u.id join kitchens k on k.id = m.kitchen_id order by u.username",
+  );
+  const kitchenOf = Object.fromEntries(members.map((row) => [row.username, row]));
+  expect(kitchenOf.isabel!.kitchen_id).toBe(kitchenOf.christopher!.kitchen_id);
+  expect(kitchenOf.isabel!.kitchen_id).not.toBe(kitchenOf.peyton!.kitchen_id);
+  expect(kitchenOf.isabel!.kids).toBe(false);
+  expect(kitchenOf.peyton!.kids).toBe(true);
+  expect(await app.query("select * from children where kitchen_id = $1", [kitchenOf.isabel!.kitchen_id])).toHaveLength(0);
+  const rules = await app.query<{ child_id: string | null }>("select child_id from rules where kitchen_id = $1", [kitchenOf.isabel!.kitchen_id]);
+  expect(rules).toHaveLength(2);
+  expect(rules.every((rule) => rule.child_id === null)).toBe(true);
+
+  const cookie = (await app.logIn("isabel", family[0]!.password)).cookie!;
+  const me = await (await app.request("/api/me", { headers: { cookie } })).json();
+  expect(me.kitchen.kids).toBe(false);
+  expect(await (await app.request("/api/children", { headers: { cookie } })).json()).toEqual([]);
+  const added = await app.request("/api/children", { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ name: "Nope", birthday: null }) });
+  expect(added.status).toBe(403);
+  const week = await (await app.request("/api/plan/weeks/2026-03-02", { headers: { cookie } })).json();
+  expect(week.children).toEqual([]);
+});

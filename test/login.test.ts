@@ -19,7 +19,7 @@ test("logging in gives a 400-day session cookie and /api/me shows the user and k
   expect(setCookie).toContain("HttpOnly");
   const me = await app.request("/api/me", { headers: { cookie: cookie! } });
   expect(me.status).toBe(200);
-  expect(await me.json()).toEqual({ username: "peyton", kitchen: { id: expect.any(String), name: "Our kitchen" } });
+  expect(await me.json()).toEqual({ username: "peyton", kitchen: { id: expect.any(String), name: "Our kitchen", kids: true } });
 });
 
 test("the cookie is Secure when the app runs on https", async () => {

@@ -52,7 +52,7 @@ export function createAccessRoutes({ database, now, publicUrl }: AppDependencies
     const user = await sessionUser(database, now, c);
     if (!user) return c.json({ error: "Not logged in" }, 401);
     const [kitchen] = await db
-      .select({ id: kitchens.id, name: kitchens.name })
+      .select({ id: kitchens.id, name: kitchens.name, kids: kitchens.kids })
       .from(kitchenMembers)
       .innerJoin(kitchens, eq(kitchens.id, kitchenMembers.kitchenId))
       .where(eq(kitchenMembers.userId, user.id))
