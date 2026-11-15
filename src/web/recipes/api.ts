@@ -1,4 +1,4 @@
-import type { Ingredient, IngredientRow, IngredientSettings, IngredientSuggestion, Recipe, RecipeInput, RecipeSummary, ShareLink } from "../../shared/recipes.ts";
+import type { Ingredient, IngredientRow, IngredientSettings, IngredientSuggestion, PhotoRecipeDraft, Recipe, RecipeInput, RecipeSummary, ShareLink } from "../../shared/recipes.ts";
 
 export async function call<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
@@ -65,6 +65,15 @@ export function today() {
 }
 
 export const showDate = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+
+export const photoRecipeReady = () => call<{ ready: boolean }>("/api/photo-recipe");
+
+/** Sends 1 to 3 photos of a written recipe; the server reads them into a draft for the edit form. */
+export function readRecipePhotos(photos: File[]) {
+  const form = new FormData();
+  for (const photo of photos) form.append("photos", photo);
+  return call<PhotoRecipeDraft>("/api/recipes/from-photo", { method: "POST", body: form });
+}
 
 export const go = (path: string) => {
   window.location.hash = path;

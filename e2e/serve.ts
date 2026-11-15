@@ -10,4 +10,6 @@ process.env.DATABASE_URL = `${postgres.url}/food_planner`;
 process.env.PHOTOS_DIR = join(postgres.dir, "photos");
 process.env.PEYTON_PASSWORD = e2ePasswords.peyton;
 process.env.RONJA_PASSWORD = e2ePasswords.ronja;
+// Photo to recipe answers with a fixed recipe instead of calling the Anthropic API.
+process.env.PHOTO_RECIPE_FAKE = "1";
 await import("../src/server/main.ts");

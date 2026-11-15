@@ -4,6 +4,7 @@ import { afterAll, inject } from "vitest";
 import { createApp } from "../../src/server/app.ts";
 import { connectDatabase, migrate } from "../../src/server/db.ts";
 import { ensureHousehold, type StartingUser } from "../../src/server/household.ts";
+import type { PhotoRecipeClient } from "../../src/server/photo-recipe.ts";
 
 export const startingUsers: StartingUser[] = [
   { username: "peyton", password: randomUUID() },
@@ -14,7 +15,7 @@ export const startingUsers: StartingUser[] = [
  * Starts the app against a brand-new PostgreSQL database with peyton and ronja in one Kitchen.
  * Tests talk to it only through `request`, the same HTTP API the phone UI uses.
  */
-export async function createTestApp({ publicUrl = "http://localhost" }: { publicUrl?: string } = {}) {
+export async function createTestApp({ publicUrl = "http://localhost", photoRecipeClient }: { publicUrl?: string; photoRecipeClient?: PhotoRecipeClient } = {}) {
   const serverUrl = inject("postgresUrl");
   const name = `test_${randomUUID().replaceAll("-", "")}`;
   const admin = new pg.Client({ connectionString: `${serverUrl}/postgres` });
@@ -26,7 +27,7 @@ export async function createTestApp({ publicUrl = "http://localhost" }: { public
   await migrate(database);
   await ensureHousehold(database, startingUsers);
   let now = new Date("2026-03-01T12:00:00Z");
-  const app = createApp({ database, now: () => now, publicUrl: new URL(publicUrl), photosDir: inject("scratchDir"), webDir: "src/web" });
+  const app = createApp({ database, now: () => now, publicUrl: new URL(publicUrl), photosDir: inject("scratchDir"), webDir: "src/web", photoRecipeClient });
   afterAll(() => database.close());
 
   return {

@@ -3,9 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
+import Anthropic from "@anthropic-ai/sdk";
 import { createApp } from "./app.ts";
 import { connectDatabase, migrate } from "./db.ts";
 import { ensureHousehold } from "./household.ts";
+import { fakeClient, type PhotoRecipeClient } from "./photo-recipe.ts";
 
 type Config = {
   databaseUrl: string;
@@ -44,6 +46,27 @@ function readPublicUrl(env: NodeJS.ProcessEnv, port: number): URL | { error: str
   return new URL(url.origin);
 }
 
+/** The real API client when the key is set; PHOTO_RECIPE_FAKE (browser tests, never in production) gives a fake that always reads the same recipe. */
+function photoRecipeClient(env: NodeJS.ProcessEnv): PhotoRecipeClient | undefined {
+  if (env.PHOTO_RECIPE_FAKE === "1" && env.NODE_ENV !== "production") {
+    return fakeClient({
+      title: "Granny's pancakes",
+      feeds: 4,
+      mainTypes: ["Vegetarian"],
+      tags: ["quick"],
+      lines: [
+        { amount: 2, unit: "cups", ingredient: "Milk", note: "" },
+        { amount: 3, unit: "pcs", ingredient: "Egg", note: "" },
+        { amount: 1, unit: "pinch", ingredient: "Salt", note: "" },
+        { amount: -1, unit: "g", ingredient: "Butter", note: "" },
+      ],
+      steps: ["Whisk everything together.", "Fry thin pancakes in butter."],
+    });
+  }
+  if (!env.ANTHROPIC_API_KEY) return undefined;
+  return new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+}
+
 const config = readConfig(process.env);
 if ("error" in config) {
   console.error(`food-planner cannot start: ${config.error}`);
@@ -70,7 +93,7 @@ await ensureHousehold(database, [
   { username: "ronja", password: config.ronjaPassword },
 ]);
 
-const app = createApp({ database, now: () => new Date(), publicUrl: config.publicUrl, photosDir, webDir: "dist/web" });
+const app = createApp({ database, now: () => new Date(), publicUrl: config.publicUrl, photosDir, webDir: "dist/web", photoRecipeClient: photoRecipeClient(process.env) });
 // The built phone UI; any path the API doesn't own falls back to the single page.
 app.use("*", serveStatic({ root: "dist/web" }));
 app.get("*", serveStatic({ path: "dist/web/index.html" }));

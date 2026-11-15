@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { builtInTags, mainTypes, type IngredientSuggestion, type MainType, type RecipeInput } from "../../shared/recipes.ts";
+import { builtInTags, mainTypes, type IngredientSuggestion, type MainType, type PhotoRecipeDraft, type RecipeInput } from "../../shared/recipes.ts";
 import { isUnit, units } from "../../shared/units.ts";
 import { createRecipe, deleteRecipe, getRecipe, go, suggestIngredients, updateRecipe, uploadPhoto } from "./api.ts";
 
@@ -54,8 +54,26 @@ function startDraft({ tags, ageFrom }: Prefill): Draft {
   return { ...blank, tags: tags.filter(isBuiltIn), otherTags: tags.filter((tag) => !isBuiltIn(tag)).join(", "), ageFrom };
 }
 
-export function RecipeForm({ id, start }: { id?: string; start?: Prefill }) {
-  const [draft, setDraft] = useState<Draft | undefined>(id ? undefined : start ? startDraft(start) : blank);
+/** A recipe read from photos, to check before saving. The photos can be kept in the gallery. */
+export type FromPhoto = PhotoRecipeDraft & { photos: File[] };
+
+function photoDraft({ recipe }: FromPhoto): Draft {
+  const isBuiltIn = (tag: string) => (builtInTags as readonly string[]).includes(tag);
+  return {
+    ...blank,
+    title: recipe.title,
+    feeds: String(recipe.feeds),
+    types: recipe.types,
+    tags: recipe.tags.filter(isBuiltIn),
+    otherTags: recipe.tags.filter((tag) => !isBuiltIn(tag)).join(", "),
+    lines: [...recipe.lines.map((line) => ({ amount: line.amount === null ? "" : String(line.amount), unit: line.unit ?? "g", ingredient: line.ingredient, note: line.note })), emptyLine()],
+    steps: [...recipe.steps, ""],
+  };
+}
+
+export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Prefill; fromPhoto?: FromPhoto }) {
+  const [draft, setDraft] = useState<Draft | undefined>(id ? undefined : fromPhoto ? photoDraft(fromPhoto) : start ? startDraft(start) : blank);
+  const [keepPhotos, setKeepPhotos] = useState(true);
   const [photo, setPhoto] = useState<File>();
   const [preview, setPreview] = useState<string>();
   const [problem, setProblem] = useState<string>();
@@ -109,6 +127,10 @@ export function RecipeForm({ id, start }: { id?: string; start?: Prefill }) {
         // Once all of it is sent, the server still has to shrink it.
         await uploadPhoto(saved.id, photo, "main", (sent) => setBusy(sent < 1 ? `Uploading photo… ${Math.round(sent * 100)}%` : "Saving…"));
       }
+      if (fromPhoto && keepPhotos) {
+        setBusy("Saving the recipe photo…");
+        for (const page of fromPhoto.photos) await uploadPhoto(saved.id, page, "gallery");
+      }
       go(`/recipes/${saved.id}`);
     } catch (error) {
       setProblem((error as Error).message);
@@ -132,8 +154,25 @@ export function RecipeForm({ id, start }: { id?: string; start?: Prefill }) {
         <a className="back" href={id ? `#/recipes/${id}` : "#/recipes"} aria-label="Back">
           ←
         </a>
-        <h2>{id ? "Edit recipe" : "New recipe"}</h2>
+        <h2>{id ? "Edit recipe" : fromPhoto ? "Check the recipe" : "New recipe"}</h2>
       </nav>
+      {!id && !fromPhoto && (
+        <a className="ink-button white small" href="#/recipes/from-photo">
+          Photo to recipe
+        </a>
+      )}
+      {fromPhoto && (
+        <div className="hint">
+          <p>Read from your photo. Check it, fix anything that's wrong, then save.</p>
+          {fromPhoto.notes.length > 0 && (
+            <ul aria-label="Notes from reading">
+              {fromPhoto.notes.map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <label>
         Name
@@ -218,6 +257,13 @@ export function RecipeForm({ id, start }: { id?: string; start?: Prefill }) {
           <input type="file" accept="image/*" aria-label="Main photo" onChange={(event) => setPhoto(event.target.files?.[0])} />
         </label>
       </fieldset>
+
+      {fromPhoto && (
+        <label className="check">
+          <input type="checkbox" checked={keepPhotos} onChange={(event) => setKeepPhotos(event.target.checked)} />
+          Keep the handwritten recipe as a gallery photo
+        </label>
+      )}
 
       {problem && <p role="alert">{problem}</p>}
       <button type="submit" className="ink-button big" disabled={busy !== undefined}>
