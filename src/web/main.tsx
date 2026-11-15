@@ -11,7 +11,7 @@ if ("serviceWorker" in navigator) {
 // newer version and reloads into it (the address keeps the screen you were on).
 const scriptOf = (html: string) => /<script[^>]+src="([^"]+)"/.exec(html)?.[1];
 const running = document.querySelector<HTMLScriptElement>("script[type=module][src]")?.getAttribute("src");
-let hiddenAt = 0;
+let hiddenAt = Date.now();
 document.addEventListener("visibilitychange", async () => {
   if (document.hidden) return void (hiddenAt = Date.now());
   if (!running || Date.now() - hiddenAt < 30 * 60_000) return;
