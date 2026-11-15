@@ -19,9 +19,11 @@ export type CreateWeekInput = {
   children: PlannerChild[];
   /** Days before this are past and never filled. Dishes cooked in the 14 days before it are skipped. */
   today: string;
+  /** Portions in the freezer by recipe id. Each one can be a dinner "from the freezer". */
+  freezer?: Record<string, number>;
 };
 /** Put `recipeId` on `date`, as the dinner (childId null) or as that child's meal. With sameAsDinner, the child eats that day's dinner (recipeId) mashed. */
-export type Fill = { date: string; childId: string | null; recipeId: string; sameAsDinner?: true };
+export type Fill = { date: string; childId: string | null; recipeId: string; sameAsDinner?: true; fromFreezer?: true };
 export type CreateWeekResult = { fills: Fill[]; rules: RuleStatus[]; note: string };
 
 export const recentDays = 14;
@@ -38,10 +40,11 @@ function fitsChild(recipe: PlannerRecipe, child: PlannerChild) {
  * Fills only empty dinners, then each child's empty days, one at a time. A child first gets "Same as dinner, mashed" on days
  * whose dinner helps one of the child's at-least rules still short, then child recipes on the days left. Each recipe pick:
  * never pushes an at-most rule over, helps the most at-least rules still short, gives the adults a child recipe only
- * when it meets a rule a grown-up recipe can't, uses up the most leftover packs, then takes the dish not made for the longest time (then by title).
- * Skips dishes made in the last 14 days and dishes already in the week.
+ * when it meets a rule a grown-up recipe can't, takes a dinner from the freezer when there is a portion, uses up the most leftover packs,
+ * then takes the dish not made for the longest time (then by title).
+ * Skips dishes made in the last 14 days (unless a portion is in the freezer) and dishes already in the week.
  */
-export function createWeek({ rules, days, recipes, children, today }: CreateWeekInput): CreateWeekResult {
+export function createWeek({ rules, days, recipes, children, today, freezer = {} }: CreateWeekInput): CreateWeekResult {
   const plan: PlannerDay[] = days.map((day) => ({ ...day, children: { ...day.children } }));
   const byId = new Map(recipes.map((recipe) => [recipe.id, recipe]));
   const used = new Set<string>();
@@ -50,8 +53,9 @@ export function createWeek({ rules, days, recipes, children, today }: CreateWeek
     if (dish) used.add(dish.id);
   }
   const recent = addDays(today, -recentDays);
+  const frozen = new Map(Object.entries(freezer).filter(([, count]) => count > 0));
   const ordered = recipes
-    .filter((recipe) => recipe.lastMadeOn === null || recipe.lastMadeOn < recent)
+    .filter((recipe) => recipe.lastMadeOn === null || recipe.lastMadeOn < recent || frozen.has(recipe.id))
     .sort((a, b) => (a.lastMadeOn ?? "").localeCompare(b.lastMadeOn ?? "") || a.title.localeCompare(b.title) || a.id.localeCompare(b.id));
 
   const open = plan.filter((day) => day.date >= today);
@@ -89,6 +93,9 @@ export function createWeek({ rules, days, recipes, children, today }: CreateWeek
     let best: { recipe: PlannerRecipe; score: number[] } | undefined;
     for (const recipe of ordered) {
       if (used.has(recipe.id)) continue;
+      const fromFreezer = !child && frozen.has(recipe.id) ? 1 : 0;
+      // A dish cooked lately only comes back as a freezer portion.
+      if (!fromFreezer && recipe.lastMadeOn !== null && recipe.lastMadeOn >= recent) continue;
       if (child ? !fitsChild(recipe, child) : isBabyOnly(recipe.ageToMonths)) continue;
       const hits = touched.filter((rule) => matches(recipe, rule.what));
       if (hits.some((rule) => rule.op === "at-most" && counts.get(rule.id)! + 1 > rule.n)) continue;
@@ -97,7 +104,7 @@ export function createWeek({ rules, days, recipes, children, today }: CreateWeek
       // Child recipes stay for the children unless the adults need one to meet a rule.
       if (!grownUp && !helps) continue;
       const usesUp = new Set(recipe.lines.filter((line) => spare.has(line.ingredient.id)).map((line) => line.ingredient.id)).size;
-      const score = [helps, grownUp, usesUp];
+      const score = [helps, grownUp, fromFreezer, usesUp];
       if (!best || beats(score, best.score)) best = { recipe, score };
     }
     if (!best) continue;
@@ -105,6 +112,13 @@ export function createWeek({ rules, days, recipes, children, today }: CreateWeek
     if (child) day.children[child.id] = { kind: "recipe", dish: recipe };
     else day.dinner = recipe;
     used.add(recipe.id);
+    if (!child && frozen.has(recipe.id)) {
+      const left = frozen.get(recipe.id)! - 1;
+      if (left > 0) frozen.set(recipe.id, left);
+      else frozen.delete(recipe.id);
+      fills.push({ date: day.date, childId: null, recipeId: recipe.id, fromFreezer: true });
+      continue;
+    }
     fills.push({ date: day.date, childId: child?.id ?? null, recipeId: recipe.id });
   }
 
@@ -146,12 +160,17 @@ function leftoverIngredients(plan: PlannerDay[], children: PlannerChild[], byId:
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
+const fromFreezerNote = (fills: Fill[]) => {
+  const n = fills.filter((fill) => fill.fromFreezer).length;
+  return n ? ` (${n} from the freezer)` : "";
+};
+
 /** "Filled 4 dinners and 2 meals for Runi Lee. 3 days still empty: add more recipes to fill them. Fish 2/2 for Runi Lee ✓" */
 function noteFor(fills: Fill[], open: number, stillEmpty: number, statuses: RuleStatus[], children: PlannerChild[]) {
   if (!open) return "Nothing to fill. Every day is already planned.";
   if (!fills.length) return "No recipe fits the empty days. Add more recipes or loosen the rules.";
   const parts = [
-    ...(fills.some((fill) => fill.childId === null) ? [plural(fills.filter((fill) => fill.childId === null).length, "dinner")] : []),
+    ...(fills.some((fill) => fill.childId === null) ? [plural(fills.filter((fill) => fill.childId === null).length, "dinner") + fromFreezerNote(fills)] : []),
     ...children.flatMap((child) => {
       const n = fills.filter((fill) => fill.childId === child.id).length;
       return n ? [`${plural(n, "meal")} for ${child.name}`] : [];

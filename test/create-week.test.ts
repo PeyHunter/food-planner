@@ -209,3 +209,26 @@ test("plans a week from 200 recipes within 100 ms", () => {
   console.log(`createWeek: median ${median.toFixed(1)} ms over 7 runs`);
   expect(median).toBeLessThanOrEqual(100);
 });
+
+test("uses freezer portions for dinners, one night per portion, and never for a child", () => {
+  const stew = dish("Z stew", [], { lastMadeOn: "2026-03-01" });
+  const soup = dish("Z soup");
+  const fresh = Array.from({ length: 10 }, (_, index) => dish(`A dish ${index}`));
+  const mash = forRuni("Mash");
+  const result = createWeek(input({ recipes: [stew, soup, mash, ...fresh], freezer: { [stew.id]: 1, [soup.id]: 3, [mash.id]: 2 } }));
+  const frozen = result.fills.filter((fill) => fill.fromFreezer);
+  // Made yesterday, but a portion is in the freezer; each dish once a week.
+  expect(frozen.map((fill) => [fill.date, fill.recipeId])).toEqual([
+    [monday, soup.id],
+    ["2026-03-03", stew.id],
+  ]);
+  expect(result.fills.some((fill) => fill.childId !== null && fill.fromFreezer)).toBe(false);
+  expect(result.note).toContain("7 dinners (2 from the freezer)");
+});
+
+test("an empty freezer or a dish cooked lately without a portion plans as before", () => {
+  const stew = dish("Stew", [], { lastMadeOn: "2026-03-01" });
+  const pie = dish("Pie");
+  const result = createWeek(input({ recipes: [stew, pie], children: [], freezer: { [stew.id]: 0 } }));
+  expect(result.fills).toEqual([{ date: monday, childId: null, recipeId: pie.id }]);
+});

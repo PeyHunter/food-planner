@@ -686,3 +686,17 @@
 .recipes .freezer-offer input {
   inline-size: 5rem;
 }
+
+.recipes .freezer-add {
+  display: grid;
+  gap: 0.6rem;
+  justify-items: start;
+}
+
+.recipes .freezer-add h3 {
+  margin: 0;
+}
+
+.recipes .freezer-add select {
+  inline-size: 100%;
+}
