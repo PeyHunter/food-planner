@@ -9,6 +9,7 @@ import { createRecipeRoutes } from "./recipes.ts";
 import { createShoppingRoutes } from "./shopping.ts";
 import { createVeggieRecipeRoutes } from "./veggie-recipe.ts";
 import type { OpenUrl } from "./link-recipe.ts";
+import { createKidDocumentRoutes } from "./kid-documents.ts";
 import { createWeekRoutes } from "./week.ts";
 
 export type AppDependencies = {
@@ -43,6 +44,7 @@ export function createApp(dependencies: AppDependencies) {
   app.route("/", createChildRoutes(dependencies));
   app.route("/", createShoppingRoutes(dependencies));
   app.route("/", createFreezerRoutes(dependencies));
+  app.route("/", createKidDocumentRoutes(dependencies));
 
   return app;
 }

@@ -11,3 +11,6 @@ export type ChildRecipes = {
   all: ChildRecipe[];
 };
 export type ChildInput = { name: string; birthday: string | null };
+
+/** A reference paper kept for the kids, e.g. the health visitor's food plan. */
+export type KidDocument = { id: string; title: string; fileType: "pdf" | "jpeg" | "png" | "webp"; bytes: number; createdAt: string; by: string; url: string };

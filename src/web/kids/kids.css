@@ -34,3 +34,16 @@
 .kids .kid-recipe-list img,.kids .kid-recipe-list .plate{flex:none;inline-size:3.5rem;block-size:3.5rem;border:1.5px solid var(--ink);border-radius:.9rem;object-fit:cover;background:var(--lilac-soft)}
 .kids .kid-recipe-list strong{flex:1;line-height:1.2}
 .kids .kid-recipe-list .sticker{flex:none;font-size:.8rem;font-weight:800}
+
+.kids .food-plans{display:grid;gap:.7rem}
+.kids .papers{list-style:none;margin:0;padding:0;display:grid;gap:.5rem}
+.kids .papers li{display:flex;align-items:center;gap:.5rem}
+.kids .papers a{flex:1;display:flex;align-items:center;gap:.7rem;padding:.55rem .7rem;border:1.5px solid var(--ink);border-radius:1rem;background:var(--paper);color:inherit;text-decoration:none}
+.kids .papers a > span:first-child{font-size:1.4rem}
+.kids .papers strong{display:block;line-height:1.2}
+.kids .papers small{color:var(--muted);font-weight:600}
+.kids .papers .remove{inline-size:2.5rem;block-size:2.5rem;border:1.5px solid var(--ink);border-radius:50%;background:var(--paper);font-weight:800}
+.kids .add-paper{display:grid;gap:.6rem;justify-items:start}
+.kids .add-paper label:not(.file-button){display:grid;gap:.3rem;inline-size:100%;font-weight:700}
+.kids .file-button{position:relative;overflow:hidden;cursor:pointer}
+.kids .file-button input{position:absolute;inset:0;opacity:0;cursor:pointer}

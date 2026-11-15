@@ -64,6 +64,13 @@
       "when": 1794773554803,
       "tag": "0008_kitchen_kids",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794781079510,
+      "tag": "0009_kid_documents",
+      "breakpoints": true
     }
   ]
 }
