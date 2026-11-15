@@ -13,4 +13,4 @@ resources:
 # CI rewrites newTag to the sha-<commit> it just pushed.
 images:
   - name: ghcr.io/peyhunter/food-planner
-    newTag: "sha-2c4c6b8"
+    newTag: "sha-02dc48a"
