@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type { Recipe, RecipeLine, RecipeSummary } from "../../shared/recipes.ts";
+import { ageRangeLabel } from "../../shared/child-age.ts";
 import { formatAmount, scale } from "../../shared/units.ts";
 import { getRecipe, logCook, showDate, today, uploadPhoto } from "./api.ts";
 import { SharePanel } from "./SharePanel.tsx";
@@ -122,6 +123,7 @@ export function RecipePage({ id }: { id: string }) {
       <div className="hero">
         {recipe.mainPhoto ? <img src={recipe.mainPhoto.url} alt={recipe.title} /> : <span className="no-photo" aria-hidden="true" />}
         <TypeStickers recipe={recipe} />
+        {ageRangeLabel(recipe) && <span className="sticker lilac tilt-r age-sticker">{ageRangeLabel(recipe)}</span>}
       </div>
       <h1>{recipe.title}</h1>
       {recipe.lastMadeOn && (

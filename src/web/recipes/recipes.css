@@ -568,3 +568,12 @@
   block-size: 1.5rem;
   accent-color: var(--r-ink);
 }
+
+/* "For 6–12 months": the child colour, bottom right of the photo */
+.recipes .hero .age-sticker {
+  align-self: end;
+  justify-self: end;
+  margin: 0.8rem;
+  background: var(--lilac);
+  font-weight: 800;
+}

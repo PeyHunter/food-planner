@@ -46,8 +46,16 @@ function toInput(draft: Draft): RecipeInput {
   };
 }
 
-export function RecipeForm({ id }: { id?: string }) {
-  const [draft, setDraft] = useState<Draft | undefined>(id ? undefined : blank);
+/** What a new recipe starts with, e.g. from "+ New recipe for Runi". */
+export type Prefill = { tags: string[]; ageFrom: string };
+
+function startDraft({ tags, ageFrom }: Prefill): Draft {
+  const isBuiltIn = (tag: string) => (builtInTags as readonly string[]).includes(tag);
+  return { ...blank, tags: tags.filter(isBuiltIn), otherTags: tags.filter((tag) => !isBuiltIn(tag)).join(", "), ageFrom };
+}
+
+export function RecipeForm({ id, start }: { id?: string; start?: Prefill }) {
+  const [draft, setDraft] = useState<Draft | undefined>(id ? undefined : start ? startDraft(start) : blank);
   const [photo, setPhoto] = useState<File>();
   const [preview, setPreview] = useState<string>();
   const [problem, setProblem] = useState<string>();
@@ -163,14 +171,14 @@ export function RecipeForm({ id }: { id?: string }) {
       </fieldset>
 
       <fieldset>
-        <legend>Child age (months, if it is a child recipe)</legend>
+        <legend>For babies and kids (leave empty if not)</legend>
         <div className="row">
           <label>
-            From
+            Suits babies from (months)
             <input type="number" inputMode="numeric" min={0} max={240} value={draft.ageFrom} onChange={(event) => set({ ageFrom: event.target.value })} />
           </label>
           <label>
-            To
+            to (months)
             <input type="number" inputMode="numeric" min={0} max={240} value={draft.ageTo} onChange={(event) => set({ ageTo: event.target.value })} />
           </label>
         </div>
