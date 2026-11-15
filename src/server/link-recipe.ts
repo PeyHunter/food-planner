@@ -44,9 +44,9 @@ export function isPrivateAddress(address: string) {
   const family = isIP(address);
   if (family === 4) return privateNets.check(address, "ipv4");
   if (family !== 6) return true;
-  // ::ffff:10.0.0.1 is an IPv4 address in disguise.
-  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(address)?.[1];
-  return mapped ? privateNets.check(mapped, "ipv4") : privateNets.check(address, "ipv6");
+  // An IPv4 address written as IPv6 (::ffff:10.0.0.1, ::ffff:a00:1, ::a00:1) is never a real website.
+  if (/^::(ffff:)?(\d+\.\d+\.\d+\.\d+|[0-9a-f]{1,4}:[0-9a-f]{1,4})$/i.test(address)) return true;
+  return privateNets.check(address, "ipv6");
 }
 
 /** Looks the name up like normal, but refuses if any address it gets is private. Checked at connect time, so a redirect or a changed DNS answer can't get past it. */

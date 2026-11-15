@@ -16,10 +16,10 @@ const recipePage = (image = "https://img.example.com/salmon.jpg") => `<!doctype 
 
 test("only public web addresses are opened", () => {
   for (const ok of ["https://www.bbcgoodfood.com/recipes/x", "http://valdemarsro.dk/laks/"]) expect(parseLink(ok)?.href).toBe(ok);
-  for (const bad of ["ftp://x.com/a", "javascript:alert(1)", "https://user:pw@x.com/", "http://localhost:3000/", "http://127.0.0.1/", "http://10.0.0.5/", "http://192.168.1.1/admin", "http://[::1]/", "http://169.254.169.254/latest/meta-data", "http://postgres:5432/", "http://web.food-planner.svc.cluster.local/", "not a link", 42]) {
+  for (const bad of ["ftp://x.com/a", "javascript:alert(1)", "https://user:pw@x.com/", "http://localhost:3000/", "http://127.0.0.1/", "http://10.0.0.5/", "http://192.168.1.1/admin", "http://[::1]/", "http://169.254.169.254/latest/meta-data", "http://[::ffff:127.0.0.1]/", "http://[::ffff:a00:1]/", "http://2130706433/", "http://0x7f.1/", "http://[::127.0.0.1]/", "http://postgres:5432/", "http://web.food-planner.svc.cluster.local/", "not a link", 42]) {
     expect(parseLink(bad)).toBeUndefined();
   }
-  for (const address of ["10.1.2.3", "172.20.0.1", "192.168.0.10", "127.0.0.1", "169.254.169.254", "100.64.1.1", "::1", "fd00::1", "fe80::1", "::ffff:10.0.0.1"]) expect(isPrivateAddress(address)).toBe(true);
+  for (const address of ["10.1.2.3", "172.20.0.1", "192.168.0.10", "127.0.0.1", "169.254.169.254", "100.64.1.1", "::1", "fd00::1", "fe80::1", "::ffff:10.0.0.1", "::ffff:7f00:1", "::7f00:1"]) expect(isPrivateAddress(address)).toBe(true);
   for (const address of ["8.8.8.8", "151.101.1.69", "2606:4700::1111"]) expect(isPrivateAddress(address)).toBe(false);
 });
 
