@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { mainTypes, type RecipeSummary } from "../../shared/recipes.ts";
 import type { RuleOp } from "../../shared/rules.ts";
-import { addDays, maxPeople, mondayOf, weekdayName, type Child, type WeekDay, type WeekRule, type WeekView } from "../../shared/week.ts";
+import { addDays, maxPeople, mondayOf, weekdayName, type Child, type CreatedWeek, type WeekDay, type WeekRule, type WeekView } from "../../shared/week.ts";
 import { listRecipes, today } from "../recipes/api.ts";
-import { acceptSuggestion, addRule, deleteRule, getWeek, setChildDay, setDinner, setPeople, updateRule, type RuleInput } from "./api.ts";
+import { acceptSuggestion, addRule, createWeek, deleteRule, getWeek, setChildDay, setDinner, setPeople, undoCreateWeek, updateRule, type RuleInput } from "./api.ts";
 import "./week.css";
 
 type Picking = { date: string; childId: string | null };
@@ -79,6 +79,7 @@ export function WeekScreen() {
       {problem && <p role="alert">{problem}</p>}
       {shown && (
         <>
+          <CreateWeek monday={monday} onDone={load} setProblem={setProblem} />
           <RulesCard view={shown} onEdit={() => setEditingRules(true)} />
           {shown.suggestions.length > 0 && (
             <section className="swaps" aria-label="Ideas to meet the rules">
@@ -169,6 +170,50 @@ function usePeople(load: () => Promise<void>, setProblem: (problem: string) => v
     );
   };
   return { count, change };
+}
+
+/** Fills the empty days in one go, then says how the rules came out, with an undo for just that. */
+function CreateWeek({ monday, onDone, setProblem }: { monday: string; onDone: () => Promise<void>; setProblem: (problem: string) => void }) {
+  const [made, setMade] = useState<{ monday: string } & CreatedWeek>();
+  const [busy, setBusy] = useState(false);
+  const shown = made?.monday === monday ? made : undefined;
+
+  const run = async (change: () => Promise<void>) => {
+    setBusy(true);
+    try {
+      await change();
+    } catch (error) {
+      setProblem((error as Error).message);
+    }
+    await onDone();
+    setBusy(false);
+  };
+  const create = () => run(async () => setMade({ monday, ...(await createWeek(monday)) }));
+  const undo = (week: CreatedWeek) =>
+    run(async () => {
+      await undoCreateWeek(monday, week.fills);
+      setMade(undefined);
+    });
+
+  return (
+    <section className="create-week" aria-label="Create week">
+      <button type="button" className="btn sun" disabled={busy} onClick={create}>
+        Create week
+      </button>
+      <div role="status">
+        {shown && (
+          <div className="created">
+            <p>{shown.note}</p>
+            {shown.fills.length > 0 && (
+              <button type="button" className="btn small white" disabled={busy} onClick={() => undo(shown)}>
+                Undo
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
+  );
 }
 
 function RulesCard({ view, onEdit }: { view: WeekView; onEdit: () => void }) {
