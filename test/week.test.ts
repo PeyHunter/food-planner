@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import type { RecipeInput } from "../src/shared/recipes.ts";
-import type { WeekView } from "../src/shared/week.ts";
+import type { CreatedWeek, WeekView } from "../src/shared/week.ts";
 import { createTestApp, startingUsers } from "./support/test-app.ts";
 
 // The test clock says 2026-03-01 (a Sunday), so this whole week is still ahead.
@@ -124,6 +124,38 @@ test("a missed rule comes with a swap that one call accepts", async () => {
   expect(after.days[0]!.dinner?.title).toBe("Salmon");
   expect(after.rules[0]).toMatchObject({ count: 1, met: true });
   expect((await call("/api/plan/suggestions/accept", "POST", { id: adults.id })).status).toBe(409);
+});
+
+test("Create week fills only the empty days, and undo takes back just those", async () => {
+  const { call, create, week } = await loggedIn();
+  const pie = await create(recipe("Planned pie", ["Meat"]));
+  const salmon = await create(recipe("Salmon", ["Fish"], { tags: ["freezable"] }));
+  await create(recipe("Dal", ["Vegetarian"]));
+  await create(recipe("Cod mash", ["Fish", "Vegetables"], { tags: ["for Runi"] }));
+  await create(recipe("Pea mash", ["Fish", "Vegetables"], { ageFromMonths: 6, ageToMonths: null }));
+  await call(`/api/plan/days/${wednesday}`, "PUT", { dinnerRecipeId: pie, people: 4 });
+
+  const response = await call(`/api/plan/weeks/${monday}/create`, "POST", {});
+  expect(response.status).toBe(200);
+  const created = (await response.json()) as CreatedWeek;
+  // Runi Lee has no birthday yet, so only the "for Runi" recipe fits her.
+  expect(created.note).toBe("Filled 2 dinners and 1 meal for Runi Lee. Fish 1/1 ✓ · Freezable 1/1 ✓ · Fish 1/2 for Runi Lee not met yet · Vegetables 1/5 for Runi Lee not met yet");
+  expect(created.fills[0]).toEqual({ date: monday, childId: null, recipeId: salmon });
+
+  const filled = await week();
+  expect(filled.days[2]).toMatchObject({ people: 4, dinner: { id: pie } });
+  expect(filled.days.filter((day) => day.dinner).map((day) => day.dinner!.title)).toEqual(["Salmon", "Dal", "Planned pie"]);
+  expect(filled.days[0]!.children[0]).toMatchObject({ kind: "recipe", recipe: { title: "Cod mash" } });
+
+  // Someone changes Tuesday before pressing undo: that day stays.
+  await call(`/api/plan/days/2026-03-03`, "PUT", { dinnerRecipeId: pie });
+  expect((await call(`/api/plan/weeks/${monday}/undo-create`, "POST", { fills: created.fills })).status).toBe(204);
+  const undone = await week();
+  expect(undone.days.map((day) => day.dinner?.title ?? null)).toEqual([null, "Planned pie", "Planned pie", null, null, null, null]);
+  expect(undone.days[0]!.children[0]!.kind).toBe("empty");
+
+  expect((await call(`/api/plan/weeks/${monday}/undo-create`, "POST", { fills: [{ date: "2026-04-01", childId: null, recipeId: pie }] })).status).toBe(400);
+  expect((await call(`/api/plan/weeks/2026-03-03/create`, "POST", {})).status).toBe(400);
 });
 
 test("rules can be added, changed and removed", async () => {

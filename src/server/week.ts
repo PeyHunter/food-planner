@@ -1,11 +1,15 @@
-import { and, asc, between, eq, inArray } from "drizzle-orm";
+import { and, asc, between, eq, inArray, isNull } from "drizzle-orm";
 import { Hono } from "hono";
+import { monthsOld } from "../shared/child-age.ts";
+import { createWeek } from "../shared/create-week.ts";
+import type { ShopSection } from "../shared/recipes.ts";
 import { isBabyOnly, suggestSwaps } from "../shared/rule-swaps.ts";
 import { checkRules, ruleOps, ruleSentence, type ChildMeal, type PlanDay, type Rule, type RuleOp } from "../shared/rules.ts";
-import { childRecipeTag, defaultPeople, isDate, maxPeople, mondayOf, sameAsDinnerPortion, weekDates, type Child, type ChildDayKind, type WeekView } from "../shared/week.ts";
+import { childRecipeTag, defaultPeople, isDate, maxPeople, mondayOf, sameAsDinnerPortion, weekDates, type Child, type ChildDayKind, type CreatedWeek, type WeekView } from "../shared/week.ts";
+import type { Unit } from "../shared/units.ts";
 import type { AppDependencies } from "./app.ts";
 import { kitchenMember, recipeSummaries, type MemberEnv } from "./recipes.ts";
-import { childDays, children, planDays, recipes, rules } from "./schema.ts";
+import { childDays, children, ingredients, planDays, recipeLines, recipes, rules } from "./schema.ts";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const childKinds: ChildDayKind[] = ["empty", "same-as-dinner", "recipe"];
@@ -41,7 +45,8 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
     return row?.id;
   }
 
-  async function loadWeek(kitchenId: string, monday: string, today: string): Promise<WeekView> {
+  /** The week's plan and everything the rules and the planner need, before it becomes a WeekView. */
+  async function loadPlan(kitchenId: string, monday: string) {
     const dates = weekDates(monday);
     const sunday = dates[6]!;
     const [kids, recipeRows, dayRows, ruleRows] = await Promise.all([
@@ -116,6 +121,11 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
       )
       .map(({ id, childId, op, n, what }) => ({ id, childId, op: op as RuleOp, n, what }));
     const childNames = Object.fromEntries(kids.map((kid) => [kid.id, kid.name]));
+    return { kids, recipeRows, summaries, forChildren, babyOnly, days, plan, ordered, childNames };
+  }
+
+  async function loadWeek(kitchenId: string, monday: string, today: string): Promise<WeekView> {
+    const { kids, summaries, forChildren, babyOnly, days, plan, ordered, childNames } = await loadPlan(kitchenId, monday);
     const statuses = checkRules(ordered, plan);
 
     return {
@@ -211,6 +221,100 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
     if (!suggestion) return c.json({ error: "That swap no longer fits the week. Have another look." }, 409);
     if (suggestion.childId) await setChildDay(suggestion.childId, suggestion.date, "recipe", suggestion.recipeId);
     else await setDinner(kitchenId, suggestion.date, { dinnerRecipeId: suggestion.recipeId });
+    return c.body(null, 204);
+  });
+
+  const mondayError = { error: "A week starts on a Monday (YYYY-MM-DD)." };
+
+  // Fills the week's empty days and says which, so the phone can undo just those.
+  routes.post("/api/plan/weeks/:monday/create", member, async (c) => {
+    const monday = c.req.param("monday");
+    if (!isDate(monday) || mondayOf(monday) !== monday) return c.json(mondayError, 400);
+    const { kitchenId } = c.get("member");
+    const today = todayFrom((await readBody(c.req)).today);
+    const { kids, recipeRows, summaries, days, plan, ordered } = await loadPlan(kitchenId, monday);
+    const lineRows = await db
+      .select({
+        recipeId: recipeLines.recipeId,
+        amount: recipeLines.amount,
+        unit: recipeLines.unit,
+        ingredient: {
+          id: ingredients.id,
+          name: ingredients.name,
+          shopSection: ingredients.shopSection,
+          packAmount: ingredients.packAmount,
+          packUnit: ingredients.packUnit,
+          alwaysAtHome: ingredients.alwaysAtHome,
+        },
+      })
+      .from(recipeLines)
+      .innerJoin(ingredients, eq(ingredients.id, recipeLines.ingredientId))
+      .innerJoin(recipes, eq(recipes.id, recipeLines.recipeId))
+      .where(eq(recipes.kitchenId, kitchenId))
+      .orderBy(asc(recipeLines.recipeId), asc(recipeLines.position));
+    const ranges = new Map(recipeRows.map((row) => [row.id, row]));
+    const result = createWeek({
+      rules: ordered,
+      days: plan.map((day, index) => ({ ...day, people: days[index]!.people })),
+      recipes: summaries.map((summary) => ({
+        ...summary,
+        ageFromMonths: ranges.get(summary.id)!.ageFrom,
+        ageToMonths: ranges.get(summary.id)!.ageTo,
+        lines: lineRows
+          .filter((line) => line.recipeId === summary.id)
+          .map(({ amount, unit, ingredient }) => ({
+            amount,
+            unit: unit as Unit | null,
+            ingredient: { ...ingredient, shopSection: ingredient.shopSection as ShopSection, packUnit: ingredient.packUnit as Unit | null },
+          })),
+      })),
+      children: kids.map((kid) => ({ id: kid.id, name: kid.name, ageMonths: kid.birthday ? monthsOld(kid.birthday, today) : null })),
+      today,
+    });
+    await db.transaction(async (tx) => {
+      for (const fill of result.fills) {
+        // Only an empty day is filled, even if someone planned it a moment ago.
+        if (fill.childId) {
+          await tx.insert(childDays).values({ childId: fill.childId, date: fill.date, kind: "recipe", recipeId: fill.recipeId }).onConflictDoNothing();
+        } else {
+          await tx
+            .insert(planDays)
+            .values({ kitchenId, date: fill.date, people: defaultPeople, dinnerRecipeId: fill.recipeId })
+            .onConflictDoUpdate({ target: [planDays.kitchenId, planDays.date], set: { dinnerRecipeId: fill.recipeId }, setWhere: isNull(planDays.dinnerRecipeId) });
+        }
+      }
+    });
+    const created: CreatedWeek = { fills: result.fills, note: result.note };
+    return c.json(created);
+  });
+
+  // Takes back what Create week put in, leaving any day changed since then as it is.
+  routes.post("/api/plan/weeks/:monday/undo-create", member, async (c) => {
+    const monday = c.req.param("monday");
+    if (!isDate(monday) || mondayOf(monday) !== monday) return c.json(mondayError, 400);
+    const { kitchenId } = c.get("member");
+    const body = await readBody(c.req);
+    const dates = weekDates(monday);
+    const fills: unknown[] = Array.isArray(body.fills) ? body.fills : [];
+    const valid = fills.every((fill) => {
+      const { date, childId, recipeId } = (fill ?? {}) as Body;
+      return typeof date === "string" && dates.includes(date) && typeof recipeId === "string" && uuidPattern.test(recipeId) && (childId === null || typeof childId === "string");
+    });
+    if (!valid || fills.length > 7 * 8) return c.json({ error: "That is not what Create week did." }, 400);
+    for (const fill of fills as CreatedWeek["fills"]) {
+      if (fill.childId === null) {
+        await db
+          .update(planDays)
+          .set({ dinnerRecipeId: null })
+          .where(and(eq(planDays.kitchenId, kitchenId), eq(planDays.date, fill.date), eq(planDays.dinnerRecipeId, fill.recipeId)));
+        continue;
+      }
+      const childId = await ownChildId(kitchenId, fill.childId);
+      if (!childId) continue;
+      await db
+        .delete(childDays)
+        .where(and(eq(childDays.childId, childId), eq(childDays.date, fill.date), eq(childDays.kind, "recipe"), eq(childDays.recipeId, fill.recipeId)));
+    }
     return c.body(null, 204);
   });
 

@@ -15,7 +15,8 @@
 .week .rules-card{display:grid;gap:.8rem;padding:1rem;border:var(--line) solid var(--ink);border-radius:1.5rem;background:var(--paper);box-shadow:var(--pop)}
 .week .rules-card .head{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
 .week .rules-card .end{margin-inline-start:auto}
-.week .rule-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr));gap:.6rem}
+/* Two groups side by side only when each has room for a line like "Vegetables 0/5"; on a phone they stack. */
+.week .rule-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:.6rem}
 .week .rule-groups>div{display:grid;gap:.45rem;align-content:start;padding:.6rem;border:2px solid var(--ink);border-radius:1rem;background:var(--sky-soft)}
 .week .rule-groups>.kid-rules{background:var(--lilac-soft)}
 .week .rule-groups ul{list-style:none;margin:0;padding:0;display:grid;gap:.35rem}
@@ -76,3 +77,10 @@
 .week .rule-rows li{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;padding:.6rem;border:2px solid var(--ink);border-radius:1rem;background:var(--sky-soft);font-weight:800}
 .week .rule-rows select{inline-size:auto;min-block-size:2.5rem;padding-block:.3rem}
 .week .rule-rows .remove{margin-inline-start:auto;inline-size:2.5rem;block-size:2.5rem;border:2px solid var(--ink);border-radius:50%;background:var(--paper);font-weight:800}
+
+/* create week */
+.week .create-week{display:grid;justify-items:start}
+.week .create-week>.btn{rotate:-1.5deg}
+.week .create-week>[role=status]{justify-self:stretch}
+.week .created{display:flex;align-items:center;gap:.75rem;margin-block-start:.75rem;padding:.7rem .8rem;border:var(--line) solid var(--ink);border-radius:1.2rem;background:var(--mint-soft);box-shadow:var(--pop-sm)}
+.week .created p{flex:1;font-weight:700;line-height:1.3}

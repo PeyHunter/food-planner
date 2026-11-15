@@ -1,5 +1,5 @@
 import type { RuleOp } from "../../shared/rules.ts";
-import type { ChildDayKind, WeekView } from "../../shared/week.ts";
+import type { ChildDayKind, CreatedWeek, WeekView } from "../../shared/week.ts";
 import { call, json, today } from "../recipes/api.ts";
 
 export type RuleInput = { childId: string | null; op: RuleOp; n: number; what: string };
@@ -13,3 +13,5 @@ export const acceptSuggestion = (id: string) => call<void>("/api/plan/suggestion
 export const addRule = (rule: RuleInput) => call<{ id: string }>("/api/rules", json("POST", rule));
 export const updateRule = (id: string, rule: RuleInput) => call<{ id: string }>(`/api/rules/${id}`, json("PUT", rule));
 export const deleteRule = (id: string) => call<void>(`/api/rules/${id}`, { method: "DELETE" });
+export const createWeek = (monday: string) => call<CreatedWeek>(`/api/plan/weeks/${monday}/create`, json("POST", { today: today() }));
+export const undoCreateWeek = (monday: string, fills: CreatedWeek["fills"]) => call<void>(`/api/plan/weeks/${monday}/undo-create`, json("POST", { fills }));

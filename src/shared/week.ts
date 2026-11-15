@@ -24,6 +24,9 @@ export type WeekView = {
   childRecipes: RecipeSummary[];
 };
 
+/** What Create week put in, so the phone can undo just that, and a short note on how the rules came out. */
+export type CreatedWeek = { fills: { date: string; childId: string | null; recipeId: string }[]; note: string };
+
 export const childRecipeTag = "for Runi";
 export const defaultPeople = 2;
 export const maxPeople = 50;

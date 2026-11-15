@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import sharp from "sharp";
+import { addDays, mondayOf } from "../src/shared/week.ts";
 import { e2ePasswords } from "./passwords.ts";
 
 const recipe = (title: string, types: string[], tags: string[]) => ({ title, feeds: 4, types, tags, ageFromMonths: null, ageToMonths: null, lines: [], steps: [] });
@@ -34,7 +35,7 @@ test("plan a fish dinner, set Wednesday to 5, mash it for Runi and take a swap",
   await sheet.getByRole("button", { name: new RegExp(salmon) }).click();
   await expect(sheet).toBeHidden();
   await expect(wednesday.getByText(salmon)).toBeVisible();
-  await expect(page.getByLabel("Adults: Fish at least 1 a week: 1 so far, met")).toBeVisible();
+  await expect(page.getByLabel(/^Adults: Fish at least 1 a week: \d so far, met$/)).toBeVisible();
 
   for (let step = 0; step < 3; step++) await wednesday.getByRole("button", { name: "One more person on Wednesday" }).click();
   await expect(wednesday.getByRole("group", { name: "People on Wednesday" })).toContainText("5");
@@ -47,7 +48,7 @@ test("plan a fish dinner, set Wednesday to 5, mash it for Runi and take a swap",
 
   const swap = page.getByRole("button", { name: /^Do it: Add .* on Runi Lee's Monday to get fish 2\/2$/ });
   await swap.click();
-  await expect(page.getByLabel("Runi Lee: Fish at least 2 a week: 2 so far, met")).toBeVisible();
+  await expect(page.getByLabel(/^Runi Lee: Fish at least 2 a week: \d so far, met$/)).toBeVisible();
 
   await page.getByRole("button", { name: "Edit rules" }).click();
   const rules = page.getByRole("dialog", { name: "Edit rules" });
@@ -131,4 +132,69 @@ test("quick taps on people all count, stickers fit, and mashing needs a dinner",
   }
   await page.setViewportSize({ width: 375, height: 800 });
   await thursday.screenshot({ path: process.env.STICKER_SHOT ?? "test-results/week-stickers.png" });
+});
+
+test("Create week fills only the empty days, ticks the rules, and undo puts them back", async ({ page }) => {
+  const stamp = Date.now();
+  await page.goto("/");
+  await page.getByLabel("Name").fill("peyton");
+  await page.getByLabel("Password").fill(e2ePasswords.peyton);
+  await page.getByRole("button", { name: "Log in" }).click();
+  await expect(page.getByText("Next up")).toBeVisible();
+
+  // Four weeks ahead: no other test plans that week, and no day is past.
+  const monday = addDays(mondayOf(new Date().toLocaleDateString("en-CA")), 28);
+  const post = async (data: ReturnType<typeof recipe>) => ((await (await page.request.post("/api/recipes", { data })).json()) as { id: string }).id;
+  const pie = await post(recipe(`Fish pie ${stamp}`, ["Fish"], ["freezable"]));
+  const curry = await post(recipe(`Pea curry ${stamp}`, ["Vegetarian"], []));
+  for (const name of ["Tacos", "Dal", "Soup", "Risotto", "Stew"]) await post(recipe(`${name} ${stamp}`, ["Vegetarian"], []));
+  for (const name of ["Cod", "Salmon"]) await post(recipe(`${name} and pea mash ${stamp}`, ["Fish", "Vegetables"], ["for Runi"]));
+  for (const name of ["Carrot", "Squash", "Broccoli", "Parsnip", "Pumpkin"]) await post(recipe(`${name} mash ${stamp}`, ["Vegetables"], ["for Runi"]));
+  await page.request.put(`/api/plan/days/${monday}`, { data: { dinnerRecipeId: pie } });
+  await page.request.put(`/api/plan/days/${addDays(monday, 2)}`, { data: { dinnerRecipeId: curry } });
+
+  for (let week = 0; week < 4; week++) await page.getByRole("button", { name: "Next week" }).click();
+  await expect(page.getByRole("listitem", { name: "Wednesday" })).toContainText(`Pea curry ${stamp}`);
+  await expect(page.getByRole("button", { name: "+ Pick a dinner" })).toHaveCount(5);
+
+  await page.getByRole("button", { name: "Create week" }).click();
+  const note = page.getByRole("status");
+  await expect(note).toContainText("Filled 5 dinners and 7 meals for Runi Lee.");
+  // Other tests add recipes to the same kitchen, so counts can go past the goal.
+  await expect(note).toContainText(/Fish \d\/2 for Runi Lee ✓/);
+  await expect(page.getByRole("button", { name: "+ Pick a dinner" })).toHaveCount(0);
+  await expect(page.getByRole("listitem", { name: "Monday" })).toContainText(`Fish pie ${stamp}`);
+  await expect(page.getByRole("listitem", { name: "Wednesday" })).toContainText(`Pea curry ${stamp}`);
+  await expect(page.getByText("Nothing yet")).toHaveCount(0);
+  await expect(page.getByLabel(/^Adults: Fish at least 1 a week: \d so far, met$/)).toBeVisible();
+  await expect(page.getByLabel(/^Runi Lee: Fish at least 2 a week: \d so far, met$/)).toBeVisible();
+  await expect(page.getByLabel(/^Runi Lee: Vegetables at least \d a week: \d so far, met$/)).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: process.env.CREATE_SHOT ?? "test-results/create-week.png" });
+
+  await note.getByRole("button", { name: "Undo" }).click();
+  await expect(note).toHaveText("");
+  await expect(page.getByRole("button", { name: "+ Pick a dinner" })).toHaveCount(5);
+  await expect(page.getByText("Nothing yet")).toHaveCount(7);
+  await expect(page.getByRole("listitem", { name: "Monday" })).toContainText(`Fish pie ${stamp}`);
+  await expect(page.getByRole("listitem", { name: "Wednesday" })).toContainText(`Pea curry ${stamp}`);
+
+  // At 375 px each rule keeps a gap between its name and its count.
+  await page.setViewportSize({ width: 375, height: 800 });
+  const squeezed = await page.locator(".rule-groups li").evaluateAll((lines) =>
+    lines
+      .filter((line) => {
+        // The text, not its box: a squeezed box lets the word spill over the count.
+        const text = document.createRange();
+        text.selectNodeContents(line.querySelector(".what")!);
+        const what = text.getBoundingClientRect();
+        const count = line.querySelector(".count")!.getBoundingClientRect();
+        const group = line.closest(".rule-groups > div")!.getBoundingClientRect();
+        const sameRow = count.top < what.bottom && what.top < count.bottom;
+        return (sameRow && count.left - what.right < 4) || count.right > group.right || what.right > group.right;
+      })
+      .map((line) => line.textContent),
+  );
+  expect(squeezed, "rules with no room between name and count").toEqual([]);
+  await page.locator(".rules-card").screenshot({ path: process.env.RULES_SHOT ?? "test-results/rules-375.png" });
 });
