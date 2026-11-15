@@ -187,12 +187,14 @@ export function toDishBox(output: unknown, photoCount: number): DishBox | undefi
 /** Cuts the dish picture out of the full photo (not the shrunk copy, so it stays sharp) as a JPEG data URL, at most 1600 px. */
 export async function cutOutDish(photo: Uint8Array, box: DishBox): Promise<string | null> {
   try {
-    const { data, info } = await sharp(photo, { failOn: "error" }).rotate().toBuffer({ resolveWithObject: true });
-    const left = Math.floor(box.left * info.width);
-    const top = Math.floor(box.top * info.height);
-    const width = Math.max(1, Math.min(info.width - left, Math.ceil((box.right - box.left) * info.width)));
-    const height = Math.max(1, Math.min(info.height - top, Math.ceil((box.bottom - box.top) * info.height)));
-    const bytes = await sharp(data)
+    // The model saw the photo turned upright, so the edges are measured on the upright size.
+    const { autoOrient } = await sharp(photo, { failOn: "error" }).metadata();
+    const left = Math.floor(box.left * autoOrient.width);
+    const top = Math.floor(box.top * autoOrient.height);
+    const width = Math.max(1, Math.min(autoOrient.width - left, Math.ceil((box.right - box.left) * autoOrient.width)));
+    const height = Math.max(1, Math.min(autoOrient.height - top, Math.ceil((box.bottom - box.top) * autoOrient.height)));
+    const bytes = await sharp(photo, { failOn: "error" })
+      .rotate()
       .extract({ left, top, width, height })
       .resize({ width: maxSide, height: maxSide, fit: "inside", withoutEnlargement: true })
       .jpeg({ quality: 85 })

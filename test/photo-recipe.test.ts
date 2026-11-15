@@ -251,3 +251,16 @@ test("a dish box that is missing, too small or on a photo that wasn't sent is ig
 test("a photo that can't be cut gives no dish picture instead of failing", async () => {
   expect(await cutOutDish(new TextEncoder().encode("not a photo"), { photo: 1, left: 0, top: 0, right: 1, bottom: 1 })).toBeNull();
 });
+
+test("a phone photo saved sideways (EXIF orientation) is turned upright before the dish is cut out", async () => {
+  const upright = Buffer.from(await (await bookPage()).arrayBuffer());
+  // Stored turned a quarter left, with a tag telling viewers to turn it back.
+  const sideways = await sharp(upright).rotate(270).withMetadata({ orientation: 6 }).jpeg().toBuffer();
+  const cut = await cutOutDish(new Uint8Array(sideways), { photo: 1, left: 1 / 3, top: 0.2, right: 2 / 3, bottom: 0.6 });
+  const bytes = Buffer.from(cut!.split(",")[1]!, "base64");
+  const { width, height } = await sharp(bytes).metadata();
+  expect([width, height]).toEqual([1000, 800]);
+  const { channels } = await sharp(bytes).stats();
+  expect(channels[0]!.mean).toBeGreaterThan(190);
+  expect(channels[1]!.mean).toBeLessThan(60);
+});

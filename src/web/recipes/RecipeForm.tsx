@@ -65,13 +65,8 @@ function dataUrlToFile(dataUrl: string, name: string) {
   return new File([Uint8Array.from(atob(base64), (char) => char.charCodeAt(0))], name, { type });
 }
 
-/** The main photo a scanned recipe starts with: the dish picture cut out of the book, or else the first page. */
-function startPhoto(fromPhoto?: FromPhoto): { file: File; from: "dish" | "page" } | undefined {
-  if (!fromPhoto) return undefined;
-  if (fromPhoto.dishPhoto) return { file: dataUrlToFile(fromPhoto.dishPhoto, "dish.jpg"), from: "dish" };
-  const page = fromPhoto.photos[0];
-  return page && { file: page, from: "page" };
-}
+/** The main photo a scanned recipe starts with: the dish picture cut out of the book, if the page had one. The pages themselves go in the gallery. */
+const startPhoto = (fromPhoto?: FromPhoto) => (fromPhoto?.dishPhoto ? dataUrlToFile(fromPhoto.dishPhoto, "dish.jpg") : undefined);
 
 function photoDraft({ recipe }: FromPhoto): Draft {
   const isBuiltIn = (tag: string) => (builtInTags as readonly string[]).includes(tag);
@@ -92,7 +87,7 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
   const [draft, setDraft] = useState<Draft | undefined>(id ? undefined : fromPhoto ? photoDraft(fromPhoto) : start ? startDraft(start) : blank);
   const [keepPhotos, setKeepPhotos] = useState(true);
   const [started] = useState(() => startPhoto(fromPhoto));
-  const [photo, setPhoto] = useState<File | undefined>(started?.file);
+  const [photo, setPhoto] = useState<File | undefined>(started);
   const [preview, setPreview] = useState<string>();
   const [problem, setProblem] = useState<string>();
   // What the save button says while it works, e.g. "Uploading photo… 60%".
@@ -148,8 +143,7 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
       }
       if (fromPhoto && keepPhotos) {
         setBusy("Saving the recipe photo…");
-        // The first page is already the main photo when the book had no dish picture.
-        for (const page of fromPhoto.photos) if (page !== photo) await uploadPhoto(saved.id, page, "gallery");
+        for (const page of fromPhoto.photos) await uploadPhoto(saved.id, page, "gallery");
       }
       go(`/recipes/${saved.id}`);
     } catch (error) {
@@ -276,9 +270,8 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
       <fieldset>
         <legend>Main photo</legend>
         {preview && <img className="preview" src={preview} alt="New main photo" />}
-        {started && photo === started.file && (
-          <p className="hint">{started.from === "dish" ? "The dish picture from the book. Pick another photo if it isn't right." : "No dish picture found, so the recipe photo is used. Pick another photo if you have one."}</p>
-        )}
+        {started && photo === started && <p className="hint">The dish picture from the book. Pick another photo if it isn't right.</p>}
+        {fromPhoto && !started && <p className="hint">No dish picture on the page. Add one when you've made it.</p>}
         <label className="ink-button white small file-button">
           {photo ? "Pick another photo" : id ? "Change main photo" : "Pick a photo"}
           <input type="file" accept="image/*" aria-label="Main photo" onChange={(event) => setPhoto(event.target.files?.[0])} />
