@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
+import type { Context } from "hono";
 import Anthropic from "@anthropic-ai/sdk";
 import { createApp } from "./app.ts";
 import { connectDatabase, migrate } from "./db.ts";
@@ -131,8 +132,12 @@ for (const { name, people } of config.kidFreeKitchens) await ensureHousehold(dat
 
 const app = createApp({ database, now: () => new Date(), publicUrl: config.publicUrl, photosDir, webDir: "dist/web", photoRecipeClient: photoRecipeClient(process.env) });
 // The built phone UI; any path the API doesn't own falls back to the single page.
-app.use("*", serveStatic({ root: "dist/web" }));
-app.get("*", serveStatic({ path: "dist/web/index.html" }));
+// Built files carry a hash in their name, so they never change; the page and the service worker must be asked for
+// again each time, or a phone keeps showing last week's app after an update.
+const cacheRules = (path: string, c: Context) =>
+  c.header("cache-control", /\/assets\//.test(path) ? "public, max-age=31536000, immutable" : "no-cache");
+app.use("*", serveStatic({ root: "dist/web", onFound: cacheRules }));
+app.get("*", serveStatic({ path: "dist/web/index.html", onFound: cacheRules }));
 
 const server = serve({ fetch: app.fetch, port: config.port }, (info) => console.log(`food-planner listening on :${info.port}`));
 

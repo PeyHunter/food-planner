@@ -19,6 +19,7 @@ test("peyton logs in on an iPhone, stays logged in, and logs out", async ({ page
   await page.reload();
   await expect(page.getByRole("heading", { name: "Hi Peyton" })).toBeVisible();
 
+  await page.getByText("Hi Peyton").click();
   await page.getByRole("button", { name: "Log out" }).click();
   await expect(page.getByRole("button", { name: "Log in" })).toBeVisible();
   await page.reload();

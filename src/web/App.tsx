@@ -128,10 +128,15 @@ function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
       <main className="app">
         <header className="top">
           <img className="logo" src="/icons/icon-192.png" alt="" width={48} height={48} />
-          <h1>Hi {capitalise(me.username)}</h1>
-          <button type="button" className="btn white small end" onClick={logOut}>
-            Log out
-          </button>
+          {/* Logging out is rare, so it hides behind your name. */}
+          <details className="me">
+            <summary>
+              <h1>Hi {capitalise(me.username)}</h1>
+            </summary>
+            <button type="button" className="btn white small" onClick={logOut}>
+              Log out
+            </button>
+          </details>
         </header>
         {current.screen ? current.screen() : <ComingSoon tab={current} />}
       </main>
