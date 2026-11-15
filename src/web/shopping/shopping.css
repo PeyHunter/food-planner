@@ -19,15 +19,16 @@
 .shopping .what{display:grid;gap:.1rem;flex:1}
 .shopping .what strong{font-size:1.1rem;letter-spacing:-.01em;line-height:1.15}
 .shopping .what small{color:var(--muted);font-size:.78rem;font-weight:600;line-height:1.25}
-.shopping .packs{font-weight:800;font-size:.9rem}
-.shopping .left{inline-size:fit-content;padding:0 .45em;border:2px solid var(--ink);border-radius:999px;background:var(--sun-soft);font-size:.75rem;font-weight:800}
+.shopping .buy{inline-size:fit-content;margin-block-start:.15rem;padding:.1em .5em;border:2px solid var(--ink);border-radius:.6rem;background:var(--mint-soft);font-weight:800;font-size:.95rem}
+.shopping .need{font-size:.8rem;font-weight:700}
 .shopping .amount{flex:none;padding:.25em .6em;border:2px solid var(--ink);border-radius:.7rem;background:var(--mint-soft);font-weight:800;white-space:nowrap}
 .shopping .done{background:color-mix(in oklch,var(--mint) 12%,white);box-shadow:none;translate:2px 2px}
 .shopping .done .box{background:var(--mint)}
 .shopping .done .what strong{text-decoration:line-through 3px;color:var(--muted)}
 
 .shopping .link{inline-size:fit-content;padding:.35rem .5rem;border:0;background:none;font-weight:800;font-size:.85rem;text-decoration:underline 2px;text-underline-offset:3px}
-.shopping .pack-link{margin-inline-start:2.9rem}
+.shopping .line-tools{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem .5rem;margin-inline-start:2.9rem}
+.shopping .move{flex:none;inline-size:auto;min-block-size:0;padding:.2rem .5rem;border:2px solid var(--ink);border-radius:999px;background:var(--paper);font:inherit;font-size:16px;font-weight:800}
 .shopping .pack{display:flex;flex-wrap:wrap;align-items:end;gap:.5rem;padding:.6rem;border:2px dashed var(--ink);border-radius:.9rem;background:var(--mint-soft)}
 .shopping .pack label{flex:1 1 5rem;font-size:.85rem}
 .shopping .pack input,.shopping .pack select{min-block-size:2.75rem;padding:.4rem .6rem}

@@ -218,8 +218,9 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
     if (!isDate(date)) return c.json({ error: "No such suggestion." }, 404);
     const week = await loadWeek(kitchenId, mondayOf(date), todayFrom(body.today));
     const suggestion = week.suggestions.find((candidate) => candidate.id === id);
-    if (!suggestion) return c.json({ error: "That swap no longer fits the week. Have another look." }, 409);
-    if (suggestion.childId) await setChildDay(suggestion.childId, suggestion.date, "recipe", suggestion.recipeId);
+    if (!suggestion || suggestion.kind === "note") return c.json({ error: "That swap no longer fits the week. Have another look." }, 409);
+    if (suggestion.kind === "same-as-dinner") await setChildDay(suggestion.childId!, suggestion.date, "same-as-dinner", null);
+    else if (suggestion.childId) await setChildDay(suggestion.childId, suggestion.date, "recipe", suggestion.recipeId);
     else await setDinner(kitchenId, suggestion.date, { dinnerRecipeId: suggestion.recipeId });
     return c.body(null, 204);
   });

@@ -32,7 +32,7 @@ test("the Ingredients screen lists every ingredient with its settings, and can s
   const { call, list } = await kitchenWithIngredients();
 
   expect(await list()).toEqual([
-    expect.objectContaining({ name: "Cream", shopSection: "Other", packAmount: null, packUnit: null, alwaysAtHome: false }),
+    expect.objectContaining({ name: "Cream", shopSection: "Dairy", packAmount: null, packUnit: null, alwaysAtHome: false, recipes: 1 }),
     expect.objectContaining({ name: "salt" }),
     expect.objectContaining({ name: "Spaghetti" }),
   ]);
@@ -45,19 +45,58 @@ test("an ingredient's shop section, pack size and always-at-home flag can be set
   const { call, list, recipeId } = await kitchenWithIngredients();
   const [cream, salt] = await list();
 
-  const saved = await call(`/api/ingredients/${cream!.id}`, "PUT", { shopSection: "Dairy", packAmount: 2.5, packUnit: "dl", alwaysAtHome: false });
+  const saved = await call(`/api/ingredients/${cream!.id}`, "PUT", { shopSection: "Frozen", packAmount: 2.5, packUnit: "dl", alwaysAtHome: false });
   expect(saved.status).toBe(200);
-  expect(await saved.json()).toEqual({ id: cream!.id, name: "Cream", shopSection: "Dairy", packAmount: 2.5, packUnit: "dl", alwaysAtHome: false });
+  expect(await saved.json()).toEqual({ id: cream!.id, name: "Cream", shopSection: "Frozen", packAmount: 2.5, packUnit: "dl", alwaysAtHome: false });
   await call(`/api/ingredients/${salt!.id}`, "PUT", { shopSection: "Dry goods", packAmount: null, packUnit: null, alwaysAtHome: true });
 
   const now = await list();
   expect(now.map((ingredient) => [ingredient.name, ingredient.shopSection, ingredient.packAmount, ingredient.packUnit, ingredient.alwaysAtHome])).toEqual([
-    ["Cream", "Dairy", 2.5, "dl", false],
+    ["Cream", "Frozen", 2.5, "dl", false],
     ["salt", "Dry goods", null, null, true],
-    ["Spaghetti", "Other", null, null, false],
+    ["Spaghetti", "Dry goods", null, null, false],
   ]);
   const recipe = (await (await call(`/api/recipes/${recipeId}`)).json()) as Recipe;
-  expect(recipe.lines.find((line) => line.ingredient.name === "Cream")?.ingredient.shopSection).toBe("Dairy");
+  expect(recipe.lines.find((line) => line.ingredient.name === "Cream")?.ingredient.shopSection).toBe("Frozen");
+});
+
+test("new ingredients get a guessed shop section, and a user's choice is never overwritten", async () => {
+  const { call, list } = await kitchenWithIngredients();
+  const [cream] = await list();
+  await call(`/api/ingredients/${cream!.id}`, "PUT", { shopSection: "Other", packAmount: null, packUnit: null, alwaysAtHome: false });
+  await call("/api/recipes", "POST", {
+    title: "Fish pie",
+    feeds: 2,
+    types: ["Fish"],
+    tags: [],
+    lines: ["cream", "Salmon", "Sweet potatoes", "Frozen peas", "Saffron"].map((ingredient) => ({ amount: 1, unit: "pcs", ingredient, note: "" })),
+    steps: [],
+  });
+  expect((await list()).map((ingredient) => [ingredient.name, ingredient.shopSection])).toEqual([
+    ["Cream", "Other"],
+    ["Frozen peas", "Frozen"],
+    ["Saffron", "Other"],
+    ["Salmon", "Meat & fish"],
+    ["salt", "Dry goods"],
+    ["Spaghetti", "Dry goods"],
+    ["Sweet potatoes", "Vegetables"],
+  ]);
+});
+
+test("an ingredient no recipe uses can be deleted", async () => {
+  const { call, list, recipeId } = await kitchenWithIngredients();
+  const [cream] = await list();
+  const remove = async () => {
+    const response = await call(`/api/ingredients/${cream!.id}`, "DELETE");
+    return [response.status, response.status === 204 ? undefined : ((await response.json()) as { error: string }).error];
+  };
+
+  expect(await remove()).toEqual([409, "Cream is in a recipe, so it can't be deleted. Take it out of the recipe first."]);
+  expect((await call(`/api/recipes/${recipeId}`, "DELETE")).status).toBe(204);
+  expect((await list())[0]).toMatchObject({ name: "Cream", recipes: 0 });
+  expect(await remove()).toEqual([204, undefined]);
+  expect((await list()).map((ingredient) => ingredient.name)).not.toContain("Cream");
+  expect((await remove())[0]).toBe(404);
 });
 
 test("bad settings are refused in plain words", async () => {
@@ -74,7 +113,7 @@ test("bad settings are refused in plain words", async () => {
   expect(await put({ ...fine, packUnit: "cups" })).toEqual([400, "Pick a unit for the pack size."]);
   expect(await put({ ...fine, packUnit: null })).toEqual([400, "A pack size needs both an amount and a unit."]);
   expect(await put({ ...fine, alwaysAtHome: "yes" })).toEqual([400, "Say if it is always at home."]);
-  expect((await list())[0]!.shopSection).toBe("Other");
+  expect((await list())[0]!.shopSection).toBe("Dairy");
 });
 
 test("ingredients need a login and stay in their kitchen", async () => {

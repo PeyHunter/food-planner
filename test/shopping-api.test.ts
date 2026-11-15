@@ -65,13 +65,13 @@ test("builds from the planned days, people, Runi's mash and her own recipe", asy
   await call(`/api/plan/days/2026-03-03/children/${runi}`, "PUT", { kind: "recipe", recipeId: mash });
 
   const shopping = await list();
-  // Soup: 800 g for 4, eaten by 3.5 = 700 g. Mash: 200 g for 2, one small portion = 50 g.
+  // Soup: 800 g for 4, eaten by 3.5 = 700 g. Mash: 200 g for 2, one serving for Runi = 100 g.
   expect(shopping.sections).toHaveLength(1);
-  expect(shopping.sections[0]!.lines[0]).toMatchObject({ amount: 750, unit: "g", ticked: false, meals: ["Mon: Carrot soup", "Tue: Carrot mash for Runi Lee"] });
+  expect(shopping.sections[0]!.lines[0]).toMatchObject({ amount: 800, unit: "g", ticked: false, meals: ["Mon: Carrot soup", "Tue: Carrot mash for Runi Lee"] });
   expect(names(shopping)).not.toContain("Salt");
 
   const tuesdayOnly = await list("?days=2026-03-03");
-  expect(tuesdayOnly.sections[0]!.lines[0]!.amount).toBe(50);
+  expect(tuesdayOnly.sections[0]!.lines[0]!.amount).toBe(100);
   expect((await list("?days=")).sections).toEqual([]);
 });
 

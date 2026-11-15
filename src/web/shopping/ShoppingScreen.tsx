@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { shopSections, type ShopSection } from "../../shared/recipes.ts";
 import { restOfWeek, type ShoppingItem, type ShoppingView } from "../../shared/shopping.ts";
 import { formatAmount, units, type Unit } from "../../shared/units.ts";
 import { addDays, mondayOf, weekDates } from "../../shared/week.ts";
@@ -126,6 +127,12 @@ export function ShoppingScreen() {
                       setEditing(undefined);
                     })
                   }
+                  onMove={(shopSection) =>
+                    act(() => {
+                      const { packAmount, packUnit, alwaysAtHome } = line.ingredient;
+                      return saveIngredient(line.ingredient.id, { shopSection, packAmount, packUnit, alwaysAtHome });
+                    })
+                  }
                 />
               ))}
             </ul>
@@ -190,6 +197,7 @@ function Line({
   editing,
   onEdit,
   onSavePack,
+  onMove,
 }: {
   line: ShoppingItem;
   ticked: boolean;
@@ -197,8 +205,12 @@ function Line({
   editing: boolean;
   onEdit: (open: boolean) => void;
   onSavePack: (amount: number, unit: Unit) => void;
+  onMove: (section: ShopSection) => void;
 }) {
   const { ingredient } = line;
+  const { packAmount, packUnit } = ingredient;
+  const pack = line.packs !== null && packAmount !== null && packUnit !== null ? `${formatAmount(packAmount)} ${packUnit}` : null;
+  const need = line.amount !== null && line.unit !== null ? amountText(line.amount, line.unit) : null;
   return (
     <li className={ticked ? "item done" : "item"}>
       <button type="button" role="checkbox" aria-checked={ticked} className="tick" onClick={() => onTick(!ticked)}>
@@ -207,20 +219,37 @@ function Line({
         </span>
         <span className="what">
           <strong>{ingredient.name}</strong>
-          {line.packs !== null && ingredient.packAmount !== null && ingredient.packUnit !== null && (
-            <span className="packs">
-              {line.packs} × {amountText(ingredient.packAmount, ingredient.packUnit)}
-            </span>
+          {pack && (
+            <>
+              <span className="buy">{line.packs === 1 ? `Buy 1 pack (${pack})` : `Buy ${line.packs} packs (${pack} each)`}</span>
+              <span className="need">
+                You need {need}
+                {line.spare && ` · ${amountText(line.spare.amount, line.spare.unit)} left over`}
+              </span>
+            </>
           )}
-          {line.leftover && <span className="left">{line.leftover}</span>}
           <small>{line.meals.join(" · ")}</small>
         </span>
-        {line.amount !== null && line.unit !== null && <span className="amount">{amountText(line.amount, line.unit)}</span>}
+        {!pack && need && <span className="amount">{need}</span>}
       </button>
-      {line.needsPackSize && !editing && (
-        <button type="button" className="link pack-link" onClick={() => onEdit(true)}>
-          Set pack size
-        </button>
+      {!editing && (
+        <div className="line-tools">
+          {line.needsPackSize && (
+            <button type="button" className="link" onClick={() => onEdit(true)}>
+              Set pack size
+            </button>
+          )}
+          <select className="move" aria-label={`Move ${ingredient.name} to another shop section`} value="" onChange={(event) => onMove(event.target.value as ShopSection)}>
+            <option value="" disabled>
+              Move to…
+            </option>
+            {shopSections
+              .filter((section) => section !== ingredient.shopSection)
+              .map((section) => (
+                <option key={section}>{section}</option>
+              ))}
+          </select>
+        </div>
       )}
       {editing && <PackEditor name={ingredient.name} unit={line.unit ?? "g"} onSave={onSavePack} onCancel={() => onEdit(false)} />}
     </li>

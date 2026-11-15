@@ -41,6 +41,7 @@ test("fills an empty day first, with the dish not made for the longest time", ()
     id: "fish:2026-11-11:Cod",
     ruleId: "fish",
     childId: null,
+    kind: "recipe",
     date: "2026-11-11",
     recipeId: "Cod",
     text: "Add Cod on Wednesday to get fish 1/1",
@@ -62,7 +63,7 @@ test("never breaks a rule that is met now", () => {
 test("skips days that are already past", () => {
   const [swap] = suggest([rule("fish", null, "at-least", 1, "Fish")], week([]), [salmon], "2026-11-13");
   expect(swap?.date).toBe("2026-11-13");
-  expect(suggest([rule("fish", null, "at-least", 1, "Fish")], week([]), [salmon], "2026-11-16")).toEqual([]);
+  expect(suggest([rule("fish", null, "at-least", 1, "Fish")], week([]), [salmon], "2026-11-16").map((s) => s.kind)).toEqual(["note"]);
 });
 
 test("a child's rule picks a child recipe for the child's own row", () => {
@@ -114,11 +115,41 @@ test("adults get a grown-up recipe on a later day before a child recipe on an ea
 
 test("adults never get a recipe for babies only (age range ends before 18 months)", () => {
   const babyFish = recipe("Baby fish puree", ["Fish"], { forChildren: true, babyOnly: true });
-  expect(suggest([rule("fish", null, "at-least", 1, "Fish")], week(full(pasta)), [babyFish])).toEqual([]);
+  expect(suggest([rule("fish", null, "at-least", 1, "Fish")], week(full(pasta)), [babyFish])).toMatchObject([{ kind: "note" }]);
   const [swap] = suggest([rule("fish", "runi", "at-least", 1, "Fish")], week(full(pasta)), [babyFish]);
   expect(swap?.recipeId).toBe("Baby fish puree");
 });
 
 test("isBabyOnly: only an age range that ends below 18 months", () => {
   expect([isBabyOnly(null), isBabyOnly(12), isBabyOnly(17), isBabyOnly(18), isBabyOnly(36)]).toEqual([false, true, true, false, false]);
+});
+
+test("a child gets a matching dinner, mashed, before an extra recipe", () => {
+  const [swap] = suggest([rule("fish", "runi", "at-least", 2, "Fish")], week([pasta, null, salmon]), [salmonMash]);
+  expect(swap).toEqual({
+    id: "fish:2026-11-11:same-as-dinner",
+    ruleId: "fish",
+    childId: "runi",
+    kind: "same-as-dinner",
+    date: "2026-11-11",
+    recipeId: null,
+    text: "Give Runi Lee Wednesday's dinner (Salmon), mashed, to get fish 1/2",
+  });
+});
+
+test("when nothing helps, a plain note says what to do", () => {
+  const rules = [rule("fish", "runi", "at-least", 2, "Fish"), rule("fish-adults", null, "at-least", 1, "Fish"), rule("meat", "runi", "at-most", 0, "Meat")];
+  const runi = [{ kind: "recipe", dish: meatMash }] as ChildMeal[];
+  // Every day is in the past, so no change is possible.
+  const notes = suggest(rules, week(full(pasta), runi), [salmon, salmonMash], "2026-11-16");
+  expect(notes.map((s) => [s.kind, s.date, s.text])).toEqual([
+    ["note", null, "Runi Lee needs 2 more fish meals this week. Plan a fish dinner and choose Same as dinner, or add a fish recipe for Runi Lee."],
+    ["note", null, "Adults need 1 more fish meal this week. Add a fish recipe to the book, then plan it on a free day."],
+    ["note", null, "Runi Lee: 1 meat meal too many this week. Swap one for something else."],
+  ]);
+});
+
+test("a child rule with no fish recipe and no fish dinner gets a note", () => {
+  const [swap] = suggest([rule("fish", "runi", "at-least", 1, "Fish")], week(full(pasta)), [carrotMash, salmon]);
+  expect(swap).toMatchObject({ kind: "note", text: "Runi Lee needs 1 more fish meal this week. Plan a fish dinner and choose Same as dinner, or add a fish recipe for Runi Lee." });
 });

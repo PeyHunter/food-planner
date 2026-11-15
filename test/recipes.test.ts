@@ -55,6 +55,7 @@ test("a new recipe saves with its lines, steps, types and tags", async () => {
     tags: ["freezable", "kid-friendly"],
     steps: ["Fry the onion.", "Bake for 30 minutes."],
     createdBy: "peyton",
+    shareUrl: null,
     mainPhoto: null,
     photos: [],
     cooks: [],
@@ -66,7 +67,7 @@ test("a new recipe saves with its lines, steps, types and tags", async () => {
     [130, "g", "Butter", ""],
     [null, null, "Salt", "to taste"],
   ]);
-  expect(recipe.lines[0]!.ingredient.shopSection).toBe("Other");
+  expect(recipe.lines.map((line) => line.ingredient.shopSection)).toEqual(["Vegetables", "Dairy", "Dry goods"]);
 });
 
 test("the child age range is stored and can be changed", async () => {

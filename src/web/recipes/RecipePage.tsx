@@ -134,7 +134,7 @@ export function RecipePage({ id }: { id: string }) {
 
       <IngredientsPanel recipe={recipe} />
       <StepsPanel steps={recipe.steps} />
-      <SharePanel recipeId={id} title={recipe.title} />
+      <SharePanel key={id} recipeId={id} title={recipe.title} shareUrl={recipe.shareUrl} />
 
       <section className="panel">
         <div className="bar">

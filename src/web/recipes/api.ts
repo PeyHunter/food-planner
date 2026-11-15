@@ -1,4 +1,4 @@
-import type { Ingredient, IngredientSettings, IngredientSuggestion, Recipe, RecipeInput, RecipeSummary, ShareLink } from "../../shared/recipes.ts";
+import type { Ingredient, IngredientRow, IngredientSettings, IngredientSuggestion, Recipe, RecipeInput, RecipeSummary, ShareLink } from "../../shared/recipes.ts";
 
 export async function call<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
@@ -21,11 +21,11 @@ export const getRecipe = (id: string) => call<Recipe>(`/api/recipes/${id}`);
 export const createRecipe = (input: RecipeInput) => call<{ id: string }>("/api/recipes", json("POST", input));
 export const updateRecipe = (id: string, input: RecipeInput) => call<{ id: string }>(`/api/recipes/${id}`, json("PUT", input));
 export const deleteRecipe = (id: string) => call<void>(`/api/recipes/${id}`, { method: "DELETE" });
-export const listIngredients = (q: string) => call<Ingredient[]>(`/api/ingredients?all=1&q=${encodeURIComponent(q)}`);
+export const listIngredients = (q: string) => call<IngredientRow[]>(`/api/ingredients?all=1&q=${encodeURIComponent(q)}`);
 export const saveIngredient = (id: string, settings: IngredientSettings) => call<Ingredient>(`/api/ingredients/${id}`, json("PUT", settings));
+export const deleteIngredient = (id: string) => call<void>(`/api/ingredients/${id}`, { method: "DELETE" });
 export const suggestIngredients = (q: string) => call<IngredientSuggestion[]>(`/api/ingredients?q=${encodeURIComponent(q)}`);
 
-export const getShareLink = (id: string) => call<ShareLink>(`/api/recipes/${id}/share`);
 export const turnShareOn = (id: string) => call<ShareLink>(`/api/recipes/${id}/share`, { method: "POST" });
 export const turnShareOff = (id: string) => call<ShareLink>(`/api/recipes/${id}/share`, { method: "DELETE" });
 

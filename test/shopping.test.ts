@@ -40,10 +40,16 @@ describe("scaling", () => {
     expect(line([day("2026-03-02", soup, { sameAsDinner: 2 })], "Carrots").amount).toBe(300);
   });
 
-  test("a child recipe adds one small portion: half a person of its feeds", () => {
+  test("a child recipe that feeds 1 is used as written", () => {
+    const mash = recipe("V1 Runi mash", 1, [[150, "g", carrot]]);
+    const view = line([day("2026-03-02", null, { childMeals: [{ childName: "Runi Lee", recipe: mash }] })], "Carrots");
+    expect(view).toMatchObject({ amount: 150, unit: "g", meals: ["Mon: V1 Runi mash for Runi Lee"] });
+  });
+
+  test("a child recipe adds one of its servings: amounts / feeds", () => {
     const mash = recipe("Cod mash", 2, [[200, "g", carrot]]);
     const view = line([day("2026-03-02", null, { childMeals: [{ childName: "Runi Lee", recipe: mash }] })], "Carrots");
-    expect(view).toMatchObject({ amount: 50, unit: "g", meals: ["Mon: Cod mash for Runi Lee"] });
+    expect(view).toMatchObject({ amount: 100, unit: "g", meals: ["Mon: Cod mash for Runi Lee"] });
   });
 
   test("pieces round up to whole after adding, not before", () => {
@@ -124,7 +130,7 @@ describe("packs", () => {
   test("rounds up to whole packs and says what is left", () => {
     const bag = ingredient("Carrots", "Vegetables", { packAmount: 1, packUnit: "kg" });
     const a = recipe("A", 2, [[400, "g", bag]]);
-    expect(line([day("2026-03-02", a)], "Carrots")).toMatchObject({ amount: 400, unit: "g", packs: 1, leftover: "600 g carrots left", needsPackSize: false });
+    expect(line([day("2026-03-02", a)], "Carrots")).toMatchObject({ amount: 400, unit: "g", packs: 1, leftover: "600 g carrots left", spare: { amount: 600, unit: "g" }, needsPackSize: false });
     const b = recipe("B", 2, [[700, "g", bag]]);
     expect(line([day("2026-03-02", a), day("2026-03-03", b)], "Carrots")).toMatchObject({ amount: 1.1, unit: "kg", packs: 2, leftover: "900 g carrots left" });
   });
@@ -144,8 +150,10 @@ describe("packs", () => {
     expect(line([day("2026-03-02", recipe("A", 2, [[300, "g", odd]]))], "Leeks")).toMatchObject({ amount: 300, packs: null, leftover: null, needsPackSize: false });
   });
 
-  test("asks for a pack size only when there is an amount and no pack size", () => {
+  test("asks for a pack size only for a weight or volume with no pack size", () => {
     expect(line([day("2026-03-02", recipe("A", 2, [[300, "g", carrot]]))], "Carrots").needsPackSize).toBe(true);
+    expect(line([day("2026-03-02", recipe("A", 2, [[2, "dl", carrot]]))], "Carrots").needsPackSize).toBe(true);
+    expect(line([day("2026-03-02", recipe("A", 2, [[3, "pcs", carrot]]))], "Carrots").needsPackSize).toBe(false);
   });
 });
 

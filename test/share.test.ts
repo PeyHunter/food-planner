@@ -1,6 +1,6 @@
 import sharp from "sharp";
 import { expect, test } from "vitest";
-import type { Photo, ShareLink, SharedRecipe } from "../src/shared/recipes.ts";
+import type { Photo, Recipe, ShareLink, SharedRecipe } from "../src/shared/recipes.ts";
 import { createTestApp, startingUsers } from "./support/test-app.ts";
 
 const smallPhoto = () => sharp({ create: { width: 80, height: 60, channels: 3, background: "#e8a33c" } }).jpeg().toBuffer();
@@ -33,7 +33,7 @@ async function setUp() {
 }
 
 test("a share link turns on, shows the recipe without a login, and turns off for good", async () => {
-  const { app, addRecipe, share, pathOf } = await setUp();
+  const { app, headers, addRecipe, share, pathOf } = await setUp();
   const recipeId = await addRecipe("Fish pie");
 
   expect(await share(recipeId, "GET")).toBeNull();
@@ -41,6 +41,9 @@ test("a share link turns on, shows the recipe without a login, and turns off for
   expect(url).toMatch(/^https:\/\/food\.example\/s\/[A-Za-z0-9_-]{43}$/);
   expect(await share(recipeId, "POST")).toBe(url);
   expect(await share(recipeId, "GET")).toBe(url);
+  const recipe = async () => (await (await app.request(`/api/recipes/${recipeId}`, { headers })).json()) as Recipe;
+  // The recipe carries its link, so the Share panel needs no second call.
+  expect((await recipe()).shareUrl).toBe(url);
   const token = pathOf(url).split("/")[2]!;
 
   const response = await app.request(`/api/share/${token}`);
@@ -58,6 +61,7 @@ test("a share link turns on, shows the recipe without a login, and turns off for
   });
 
   expect(await share(recipeId, "DELETE")).toBeNull();
+  expect((await recipe()).shareUrl).toBeNull();
   expect((await app.request(`/api/share/${token}`)).status).toBe(404);
   expect((await app.request(pathOf(url))).status).toBe(404);
 
