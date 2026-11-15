@@ -59,7 +59,7 @@ function startDraft({ tags, ageFrom }: Prefill): Draft {
 }
 
 /** A recipe read from photos, to check before saving. The photos can be kept in the gallery. */
-export type FromPhoto = PhotoRecipeDraft & { photos: File[] };
+export type FromPhoto = PhotoRecipeDraft & { photos: File[]; intro?: string };
 
 function dataUrlToFile(dataUrl: string, name: string) {
   const [head = "", base64 = ""] = dataUrl.split(",");
@@ -181,7 +181,7 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
       )}
       {fromPhoto && (
         <div className="hint">
-          <p>Read from your photo. Check it, fix anything that's wrong, then save.</p>
+          <p>{fromPhoto.intro ?? "Read from your photo. Check it, fix anything that's wrong, then save."}</p>
           {fromPhoto.notes.length > 0 && (
             <ul aria-label="Notes from reading">
               {fromPhoto.notes.map((note) => (
@@ -288,7 +288,7 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
         </label>
       </fieldset>
 
-      {fromPhoto && (
+      {fromPhoto && fromPhoto.photos.length > 0 && (
         <label className="check">
           <input type="checkbox" checked={keepPhotos} onChange={(event) => setKeepPhotos(event.target.checked)} />
           Keep the recipe pages as gallery photos

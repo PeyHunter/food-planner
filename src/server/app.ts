@@ -7,6 +7,7 @@ import { createFreezerRoutes } from "./freezer.ts";
 import { createPhotoRecipeRoutes, type PhotoRecipeClient } from "./photo-recipe.ts";
 import { createRecipeRoutes } from "./recipes.ts";
 import { createShoppingRoutes } from "./shopping.ts";
+import { createVeggieRecipeRoutes } from "./veggie-recipe.ts";
 import { createWeekRoutes } from "./week.ts";
 
 export type AppDependencies = {
@@ -34,6 +35,7 @@ export function createApp(dependencies: AppDependencies) {
   app.route("/", createAccessRoutes(dependencies));
   app.route("/", createRecipeRoutes(dependencies));
   app.route("/", createPhotoRecipeRoutes(dependencies));
+  app.route("/", createVeggieRecipeRoutes(dependencies));
   app.route("/", createWeekRoutes(dependencies));
   app.route("/", createChildRoutes(dependencies));
   app.route("/", createShoppingRoutes(dependencies));
