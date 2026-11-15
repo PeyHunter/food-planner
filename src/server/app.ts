@@ -3,6 +3,7 @@ import { compress } from "hono/compress";
 import { createAccessRoutes } from "./access.ts";
 import { createChildRoutes } from "./children.ts";
 import type { Database } from "./db.ts";
+import { createFreezerRoutes } from "./freezer.ts";
 import { createPhotoRecipeRoutes, type PhotoRecipeClient } from "./photo-recipe.ts";
 import { createRecipeRoutes } from "./recipes.ts";
 import { createShoppingRoutes } from "./shopping.ts";
@@ -36,6 +37,7 @@ export function createApp(dependencies: AppDependencies) {
   app.route("/", createWeekRoutes(dependencies));
   app.route("/", createChildRoutes(dependencies));
   app.route("/", createShoppingRoutes(dependencies));
+  app.route("/", createFreezerRoutes(dependencies));
 
   return app;
 }

@@ -39,7 +39,7 @@ export function createShoppingRoutes({ database, now }: AppDependencies) {
         .where(and(eq(children.kitchenId, kitchenId), inArray(childDays.date, dates)))
         .orderBy(asc(children.createdAt), asc(children.id)),
     ]);
-    const recipeIds = [...new Set([...dayRows.map((row) => row.dinnerRecipeId), ...childRows.map((row) => (row.kind === "recipe" ? row.recipeId : null))].filter((id) => id !== null))];
+    const recipeIds = [...new Set([...dayRows.map((row) => (row.fromFreezer ? null : row.dinnerRecipeId)), ...childRows.map((row) => (row.kind === "recipe" ? row.recipeId : null))].filter((id) => id !== null))];
     const [recipeRows, lineRows] = recipeIds.length
       ? await Promise.all([
           db
@@ -80,7 +80,8 @@ export function createShoppingRoutes({ database, now }: AppDependencies) {
       return {
         date,
         people: row?.people ?? defaultPeople,
-        dinner: (row?.dinnerRecipeId && byId.get(row.dinnerRecipeId)) || null,
+        // A dinner from the freezer is already cooked, so it needs nothing from the shop.
+        dinner: (row?.dinnerRecipeId && !row.fromFreezer && byId.get(row.dinnerRecipeId)) || null,
         sameAsDinner: meals.filter((meal) => meal.kind === "same-as-dinner").length,
         childMeals: meals.flatMap((meal) => {
           const recipe = meal.kind === "recipe" && meal.recipeId ? byId.get(meal.recipeId) : undefined;

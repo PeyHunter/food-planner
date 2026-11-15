@@ -159,6 +159,8 @@ export const planDays = pgTable(
     date: date("date", { mode: "string" }).notNull(),
     people: integer("people").notNull().default(2),
     dinnerRecipeId: uuid("dinner_recipe_id").references(() => recipes.id, { onDelete: "set null" }),
+    /** The dinner is a portion taken from the freezer: it adds nothing to the shopping list. */
+    fromFreezer: boolean("from_freezer").notNull().default(false),
   },
   (table) => [primaryKey({ columns: [table.kitchenId, table.date] }), check("plan_days_people", sql`${table.people} between 1 and 50`)],
 );
@@ -218,4 +220,17 @@ export const shoppingExtras = pgTable(
     createdAt: at("created_at").notNull().defaultNow(),
   },
   (table) => [index("shopping_extras_week").on(table.kitchenId, table.monday)],
+);
+
+/** Portions of a dish in the freezer. Planning a night "from the freezer" takes one out. */
+export const freezerPortions = pgTable(
+  "freezer_portions",
+  {
+    kitchenId: kitchenId(),
+    recipeId: recipeId(),
+    count: integer("count").notNull().default(0),
+    updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+    updatedAt: at("updated_at").notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.kitchenId, table.recipeId] }), check("freezer_portions_count", sql`${table.count} >= 0`)],
 );

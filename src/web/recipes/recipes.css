@@ -589,3 +589,49 @@
   background: var(--lilac);
   font-weight: 800;
 }
+
+/* Freezer list and the "put portions in the freezer" offer */
+.recipes .freezer {
+  display: grid;
+  gap: 1rem;
+}
+
+.recipes .freezer-rows {
+  display: grid;
+  gap: 0.8rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recipes .freezer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  background: color-mix(in oklab, var(--sky) 25%, var(--r-paper));
+}
+
+.recipes .freezer-row.gone {
+  opacity: 0.6;
+}
+
+.recipes .freezer-dish {
+  display: grid;
+  gap: 0.35rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.recipes .freezer-offer {
+  background: color-mix(in oklab, var(--sky) 25%, var(--r-paper));
+}
+
+.recipes .freezer-offer .bar {
+  flex-wrap: wrap;
+}
+
+.recipes .freezer-offer input {
+  inline-size: 5rem;
+}

@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import type { Recipe, RecipeLine, RecipeSummary } from "../../shared/recipes.ts";
 import { ageRangeLabel } from "../../shared/child-age.ts";
 import { formatAmount, scale } from "../../shared/units.ts";
-import { getRecipe, logCook, showDate, today, uploadPhoto } from "./api.ts";
+import { addToFreezer, getRecipe, logCook, showDate, today, uploadPhoto } from "./api.ts";
 import { SharePanel } from "./SharePanel.tsx";
 
 export const typeColour: Record<string, string> = { Fish: "sky", Meat: "tomato", Chicken: "sun", Vegetarian: "mint", Vegetables: "mint" };
@@ -81,6 +81,7 @@ export function RecipePage({ id }: { id: string }) {
   const [problem, setProblem] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [logging, setLogging] = useState(false);
+  const [offerFreezer, setOfferFreezer] = useState(false);
 
   const load = () =>
     getRecipe(id).then(
@@ -166,10 +167,13 @@ export function RecipePage({ id }: { id: string }) {
           recipeId={id}
           onDone={async () => {
             setLogging(false);
+            setOfferFreezer(recipe.tags.includes("freezable"));
             await load();
           }}
           onCancel={() => setLogging(false)}
         />
+      ) : offerFreezer ? (
+        <FreezerOffer recipeId={id} feeds={recipe.feeds} onDone={() => setOfferFreezer(false)} />
       ) : (
         <button type="button" className="ink-button big" onClick={() => setLogging(true)}>
           I made this
@@ -191,6 +195,63 @@ export function RecipePage({ id }: { id: string }) {
         </section>
       )}
     </article>
+  );
+}
+
+/** After cooking a freezable dish: how many spare portions go in the freezer. */
+function FreezerOffer({ recipeId, feeds, onDone }: { recipeId: string; feeds: number; onDone: () => void }) {
+  const [problem, setProblem] = useState<string>();
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState<number>();
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const portions = Number(new FormData(event.currentTarget).get("portions"));
+    setBusy(true);
+    setProblem(undefined);
+    try {
+      await addToFreezer(recipeId, portions);
+      setSaved(portions);
+    } catch (error) {
+      setProblem((error as Error).message);
+    }
+    setBusy(false);
+  };
+
+  if (saved !== undefined)
+    return (
+      <section className="panel freezer-offer" role="status">
+        <p>
+          <span className="sticker sky tilt-l">❄ {saved} in the freezer</span>
+        </p>
+        <div className="bar">
+          <a className="ink-button white small" href="#/recipes/freezer">
+            See the freezer
+          </a>
+          <button type="button" className="ink-button small" onClick={onDone}>
+            Done
+          </button>
+        </div>
+      </section>
+    );
+
+  return (
+    <form className="panel freezer-offer" aria-labelledby="freezer-offer-title" onSubmit={submit}>
+      <h2 id="freezer-offer-title">Put portions in the freezer?</h2>
+      <label>
+        Portions
+        <input type="number" name="portions" min={1} max={50} step={1} defaultValue={feeds} required />
+      </label>
+      {problem && <p role="alert">{problem}</p>}
+      <div className="bar">
+        <button type="button" className="ink-button white" onClick={onDone}>
+          No thanks
+        </button>
+        <button type="submit" className="ink-button" disabled={busy}>
+          ❄ Put in the freezer
+        </button>
+      </div>
+    </form>
   );
 }
 

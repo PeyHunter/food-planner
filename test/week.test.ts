@@ -139,20 +139,24 @@ test("Create week fills only the empty days, and undo takes back just those", as
   expect(response.status).toBe(200);
   const created = (await response.json()) as CreatedWeek;
   // Runi Lee has no birthday yet, so only the "for Runi" recipe fits her.
-  expect(created.note).toBe("Filled 2 dinners and 1 meal for Runi Lee. Fish 1/1 ✓ · Freezable 1/1 ✓ · Fish 1/2 for Runi Lee not met yet · Vegetables 1/5 for Runi Lee not met yet");
+  // Monday's salmon also goes to Runi Lee mashed, since she needs fish.
+  expect(created.note).toBe(
+    "Filled 2 dinners and 2 meals for Runi Lee. 5 days still empty: add more recipes to fill them. Fish 1/1 ✓ · Freezable 1/1 ✓ · Fish 2/2 for Runi Lee ✓ · Vegetables 1/5 for Runi Lee not met yet",
+  );
   expect(created.fills[0]).toEqual({ date: monday, childId: null, recipeId: salmon });
 
   const filled = await week();
   expect(filled.days[2]).toMatchObject({ people: 4, dinner: { id: pie } });
   expect(filled.days.filter((day) => day.dinner).map((day) => day.dinner!.title)).toEqual(["Salmon", "Dal", "Planned pie"]);
-  expect(filled.days[0]!.children[0]).toMatchObject({ kind: "recipe", recipe: { title: "Cod mash" } });
+  expect(filled.days[0]!.children[0]).toMatchObject({ kind: "same-as-dinner" });
+  expect(filled.days[1]!.children[0]).toMatchObject({ kind: "recipe", recipe: { title: "Cod mash" } });
 
   // Someone changes Tuesday before pressing undo: that day stays.
   await call(`/api/plan/days/2026-03-03`, "PUT", { dinnerRecipeId: pie });
   expect((await call(`/api/plan/weeks/${monday}/undo-create`, "POST", { fills: created.fills })).status).toBe(204);
   const undone = await week();
   expect(undone.days.map((day) => day.dinner?.title ?? null)).toEqual([null, "Planned pie", "Planned pie", null, null, null, null]);
-  expect(undone.days[0]!.children[0]!.kind).toBe("empty");
+  expect(undone.days.map((day) => day.children[0]!.kind)).toEqual(Array(7).fill("empty"));
 
   expect((await call(`/api/plan/weeks/${monday}/undo-create`, "POST", { fills: [{ date: "2026-04-01", childId: null, recipeId: pie }] })).status).toBe(400);
   expect((await call(`/api/plan/weeks/2026-03-03/create`, "POST", {})).status).toBe(400);

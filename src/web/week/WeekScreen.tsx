@@ -76,6 +76,10 @@ export function WeekScreen() {
           →
         </button>
       </div>
+      <a className="btn small white freezer-link" href="#/recipes/freezer">
+        ❄ Freezer
+        {shown && shown.freezer.length > 0 && <span className="sticker sky">{shown.freezer.reduce((sum, item) => sum + item.count, 0)}</span>}
+      </a>
       {problem && <p role="alert">{problem}</p>}
       {shown && (
         <>
@@ -304,6 +308,7 @@ function DayCard({ day, index, people, kids, onPick, onPeople }: DayCardProps) {
                 <Plate recipe={day.dinner} />
                 <span className="dish-text">
                   <strong>{day.dinner.title}</strong>
+                  {day.fromFreezer && <span className="sticker sky tilt-r from-freezer">❄ From the freezer</span>}
                   <Stickers recipe={day.dinner} />
                 </span>
               </>
@@ -413,6 +418,25 @@ function Picker({ picking, view, who, onClose, onChoose }: PickerProps) {
           </button>
         )}
       </div>
+      {childId === null && view.freezer.length > 0 && (
+        <section className="freezer-pick" aria-label="From the freezer">
+          <h3>❄ From the freezer</h3>
+          <p className="hint">Takes one portion out. Nothing goes on the shopping list.</p>
+          <ul className="pick-list">
+            {view.freezer.map(({ recipe, count }) => (
+              <li key={recipe.id}>
+                <button type="button" aria-label={`From the freezer: ${recipe.title}`} onClick={() => onChoose(() => setDinner(date, recipe.id, true))}>
+                  <Plate recipe={recipe} />
+                  <span className="dish-text">
+                    <strong>{recipe.title}</strong>
+                    <span className="sticker sky">{count} left</span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {recipes && recipes.length === 0 && (
         <p className="hint">{childId === null ? "No recipe matches." : `No recipes for ${who} yet. Tag a recipe "for Runi" or give it an age range.`}</p>
       )}

@@ -84,3 +84,11 @@
 .week .create-week>[role=status]{justify-self:stretch}
 .week .created{display:flex;align-items:center;gap:.75rem;margin-block-start:.75rem;padding:.7rem .8rem;border:var(--line) solid var(--ink);border-radius:1.2rem;background:var(--mint-soft);box-shadow:var(--pop-sm)}
 .week .created p{flex:1;font-weight:700;line-height:1.3}
+
+/* freezer */
+.week .freezer-link{justify-self:end;gap:.4rem}
+.week .freezer-link .sticker{padding:.05em .55em;font-size:.8rem}
+.week .from-freezer{justify-self:start;font-size:.8rem}
+.week .freezer-pick{display:grid;gap:.5rem;padding:.8rem;border:2px dashed var(--ink);border-radius:1.2rem;background:color-mix(in oklab,var(--sky) 25%,var(--paper))}
+.week .freezer-pick .hint{margin:0}
+.week .freezer-pick .sticker{justify-self:start;font-size:.8rem}
