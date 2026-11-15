@@ -8,6 +8,7 @@ import { createPhotoRecipeRoutes, type PhotoRecipeClient } from "./photo-recipe.
 import { createRecipeRoutes } from "./recipes.ts";
 import { createShoppingRoutes } from "./shopping.ts";
 import { createVeggieRecipeRoutes } from "./veggie-recipe.ts";
+import type { OpenUrl } from "./link-recipe.ts";
 import { createWeekRoutes } from "./week.ts";
 
 export type AppDependencies = {
@@ -19,6 +20,8 @@ export type AppDependencies = {
   webDir: string;
   /** Reads recipe photos; undefined while ANTHROPIC_API_KEY is not set. */
   photoRecipeClient?: PhotoRecipeClient;
+  /** Opens recipe links; only tests pass their own. */
+  openUrl?: OpenUrl;
 };
 
 export function createApp(dependencies: AppDependencies) {

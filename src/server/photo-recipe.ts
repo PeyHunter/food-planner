@@ -7,6 +7,7 @@ import { builtInTags, mainTypes, type PhotoRecipeDraft, type RecipeInput } from 
 import { isUnit, units, type Unit } from "../shared/units.ts";
 import type { AppDependencies } from "./app.ts";
 import { kitchenMember, maxMinutes, parseInput, type MemberEnv } from "./recipes.ts";
+import { fetchDishPhoto, fetchPublic, LinkProblem, pageTimeoutMs, parseLink, readLinkPage, type LinkPage } from "./link-recipe.ts";
 import { recipes, recipeTags } from "./schema.ts";
 
 type CreateParams = Anthropic.Beta.Messages.MessageCreateParamsNonStreaming;
@@ -78,14 +79,23 @@ const tool: Anthropic.Beta.Messages.BetaTool = {
   },
 };
 
-const system = `You read photos of written, handwritten or printed recipes and save them with the ${toolName} tool. Always answer by calling ${toolName} once.
-- Write the recipe in the language it is written in. Keep the cook's own words in the steps.
+const rules = `- Write the recipe in the language it is written in. Keep the cook's own words in the steps.
 - Use metric only. Units must be one of: ${units.join(", ")}. Convert US and imperial units: 1 cup = 2.4 dl (or 240 ml), 1 oz = 28 g, 1 lb = 450 g, 1 fl oz = 30 ml, 1 tsp = 5 ml, 1 tbsp = 15 ml. Use pcs for things you count (2 eggs = 2 pcs).
 - Convert in the steps too: °F to °C (350 °F = 175 °C), inches to cm (1 inch = 2.5 cm), and cups, ounces and spoons as above.
 - minutes is the total time the recipe says it takes (prep plus cooking), in whole minutes. Null if the recipe doesn't say.
 - Amounts are numbers (½ = 0.5). If there is no amount, like "salt to taste", set amount and unit to null and put the words in note.
-- If a part can't be read, leave it out rather than guess.
+- If a part can't be read, leave it out rather than guess.`;
+
+const system = `You read photos of written, handwritten or printed recipes and save them with the ${toolName} tool. Always answer by calling ${toolName} once.
+${rules}
 - Recipe books often print a picture of the finished dish next to the recipe. If you see one, give its edges in dishPhoto, tight around the picture, without the text around it. Drawings, ingredient shots and the page itself don't count.`;
+
+const linkSystem = `You read one recipe from a web page and save it with the ${toolName} tool. Always answer by calling ${toolName} once.
+${rules}
+- You get either the page's recipe data (JSON from schema.org) or the page's text. Use only the recipe itself, not comments, ads or other recipes on the page.
+- Ingredient lines in the data are often whole sentences like "2 cups flour, sifted": split them into amount, unit, ingredient and note.
+- The description is the page's short intro to the dish, at most a few sentences. Empty if there is none.
+- dishPhoto is always null.`;
 
 // Units the model may still send, and how they become allowed ones.
 const unitAliases: Record<string, { unit: Unit; factor: number }> = {
@@ -231,6 +241,25 @@ async function shrink(photo: File) {
 
 /** Sends the photos and returns what the tool call held, or undefined when the model didn't call it. */
 export async function readRecipe(client: PhotoRecipeClient, images: string[], signal: AbortSignal, tags: readonly string[] = builtInTags) {
+  return askForRecipe(
+    client,
+    system,
+    [
+      ...images.map((data) => ({ type: "image" as const, source: { type: "base64" as const, media_type: "image/jpeg" as const, data } })),
+      { type: "text", text: images.length > 1 ? `These ${images.length} photos are pages of one recipe, in order. Save it.` : "Save the recipe in this photo." },
+    ],
+    signal,
+    tags,
+  );
+}
+
+/** Sends a web page's recipe data (or its text) and returns what the tool call held, like readRecipe. */
+export async function readRecipeFromPage(client: PhotoRecipeClient, page: { text: string; structured: boolean }, signal: AbortSignal, tags: readonly string[] = builtInTags) {
+  const intro = page.structured ? "The recipe data from the page:" : "The page's text:";
+  return askForRecipe(client, linkSystem, [{ type: "text", text: `${intro}\n${page.text}\n\nSave the recipe.` }], signal, tags);
+}
+
+async function askForRecipe(client: PhotoRecipeClient, systemPrompt: string, content: Anthropic.Beta.Messages.BetaContentBlockParam[], signal: AbortSignal, tags: readonly string[]) {
   const message = await client.beta.messages.create(
     {
       model,
@@ -238,18 +267,14 @@ export async function readRecipe(client: PhotoRecipeClient, images: string[], si
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
       output_config: { effort: "medium" },
-      system,
+      system: systemPrompt,
       tools: [tool],
       // Forced tool_choice is refused by this model, so the prompt asks for the tool and strict keeps its input to the schema.
       tool_choice: { type: "auto", disable_parallel_tool_use: true },
       messages: [
         {
           role: "user",
-          content: [
-            ...images.map((data) => ({ type: "image" as const, source: { type: "base64" as const, media_type: "image/jpeg" as const, data } })),
-            { type: "text", text: images.length > 1 ? `These ${images.length} photos are pages of one recipe, in order. Save it.` : "Save the recipe in this photo." },
-            { type: "text", text: `Tags you may use: ${tags.join(", ")}.` },
-          ],
+          content: [...content, { type: "text", text: `Tags you may use: ${tags.join(", ")}.` }],
         },
       ],
     },
@@ -291,9 +316,49 @@ function failure(c: Context, error: unknown, signal: AbortSignal) {
   return c.json({ error: busy }, 503);
 }
 
-export function createPhotoRecipeRoutes({ database, now, photoRecipeClient }: AppDependencies) {
+export function createPhotoRecipeRoutes({ database, now, photoRecipeClient, openUrl = fetchPublic }: AppDependencies) {
   const routes = new Hono<MemberEnv>();
   const member = kitchenMember({ database, now });
+
+  /** Built-in tags plus the ones this kitchen already uses, so the model reuses their spelling. */
+  async function kitchenTags(kitchenId: string) {
+    const used = await database.db
+      .selectDistinct({ tag: recipeTags.tag })
+      .from(recipeTags)
+      .innerJoin(recipes, eq(recipes.id, recipeTags.recipeId))
+      .where(eq(recipes.kitchenId, kitchenId));
+    return [...new Map([...builtInTags, ...used.map((row) => row.tag)].map((tag) => [tag.toLowerCase(), tag])).values()];
+  }
+
+  routes.post("/api/recipes/from-link", member, async (c) => {
+    if (!photoRecipeClient) return c.json({ error: "Recipe from a link isn't set up yet." }, 503);
+    const body = (await c.req.json().catch(() => ({}))) as { url?: unknown };
+    const link = parseLink(body.url);
+    if (!link) return c.json({ error: "Paste a whole web address, starting with https://" }, 400);
+    let page: LinkPage;
+    try {
+      page = await readLinkPage(link, AbortSignal.timeout(pageTimeoutMs), openUrl);
+    } catch (error) {
+      if (error instanceof LinkProblem) return c.json({ error: error.message }, 422);
+      console.error(`recipe from link: opening the page failed: ${(error as Error).name}`);
+      return c.json({ error: "Couldn't open that link. Check it and try again." }, 422);
+    }
+    const signal = AbortSignal.timeout(timeoutMs);
+    try {
+      const tags = await kitchenTags(c.get("member").kitchenId);
+      const [output, dishPhoto] = await Promise.all([readRecipeFromPage(photoRecipeClient, page, signal, tags), fetchDishPhoto(page.imageUrl, AbortSignal.timeout(pageTimeoutMs), openUrl)]);
+      const noRecipeHere = "We couldn't find a recipe on that page. If it needs a login, take a screenshot and use Photo to recipe instead.";
+      if (output === undefined) return c.json({ error: noRecipeHere }, 422);
+      const draft = toDraft(output, tags);
+      if (!draft.recipe.lines.length && !draft.recipe.steps.length) return c.json({ error: noRecipeHere }, 422);
+      const source = `From ${page.url.href}`;
+      draft.recipe.description = [draft.recipe.description?.slice(0, 1990 - source.length), source].filter(Boolean).join("\n\n");
+      if (!dishPhoto) draft.notes.push("We couldn't get a picture of the dish from that page. Add one when you've made it.");
+      return c.json({ ...draft, dishPhoto } satisfies PhotoRecipeDraft);
+    } catch (error) {
+      return failure(c, error, signal);
+    }
+  });
 
   routes.get("/api/photo-recipe", member, (c) => c.json({ ready: Boolean(photoRecipeClient) }));
 
@@ -308,12 +373,7 @@ export function createPhotoRecipeRoutes({ database, now, photoRecipeClient }: Ap
       // One at a time: the pod has little memory.
       const images: string[] = [];
       for (const photo of photos) images.push(await shrink(photo));
-      const used = await database.db
-        .selectDistinct({ tag: recipeTags.tag })
-        .from(recipeTags)
-        .innerJoin(recipes, eq(recipes.id, recipeTags.recipeId))
-        .where(eq(recipes.kitchenId, c.get("member").kitchenId));
-      const tags = [...new Map([...builtInTags, ...used.map((row) => row.tag)].map((tag) => [tag.toLowerCase(), tag])).values()];
+      const tags = await kitchenTags(c.get("member").kitchenId);
       const output = await readRecipe(photoRecipeClient, images, signal, tags);
       if (output === undefined) return c.json({ error: noRecipe }, 422);
       const draft = toDraft(output, tags);
