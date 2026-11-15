@@ -31,7 +31,7 @@ export type WeekView = {
 export type FreezerItem = { recipe: RecipeSummary; count: number };
 
 /** What Create week put in, so the phone can undo just that, and a short note on how the rules came out. */
-export type CreatedWeek = { fills: { date: string; childId: string | null; recipeId: string; sameAsDinner?: true }[]; note: string };
+export type CreatedWeek = { fills: { date: string; childId: string | null; recipeId: string; sameAsDinner?: true; fromFreezer?: true }[]; note: string };
 
 export const childRecipeTag = "for Runi";
 export const defaultPeople = 2;

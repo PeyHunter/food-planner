@@ -296,7 +296,7 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
       .innerJoin(recipes, eq(recipes.id, recipeLines.recipeId))
       .where(eq(recipes.kitchenId, kitchenId))
       .orderBy(asc(recipeLines.recipeId), asc(recipeLines.position));
-    const [{ kids, recipeRows, summaries, days, plan, ordered }, lineRows] = await Promise.all([loadPlan(kitchenId, monday), lineQuery]);
+    const [{ kids, recipeRows, summaries, days, plan, ordered, freezer }, lineRows] = await Promise.all([loadPlan(kitchenId, monday), lineQuery]);
     const ranges = new Map(recipeRows.map((row) => [row.id, row]));
     const linesOf = Map.groupBy(lineRows, (line) => line.recipeId);
     return {
@@ -314,6 +314,7 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
       })),
       children: kids.map((kid) => ({ id: kid.id, name: kid.name, ageMonths: kid.birthday ? monthsOld(kid.birthday, today) : null })),
       today,
+      freezer: Object.fromEntries(freezer.map((item) => [item.recipe.id, item.count])),
     };
   }
 
@@ -321,7 +322,7 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
   routes.post("/api/plan/weeks/:monday/create", member, async (c) => {
     const monday = c.req.param("monday");
     if (!isDate(monday) || mondayOf(monday) !== monday) return c.json(mondayError, 400);
-    const { kitchenId } = c.get("member");
+    const { kitchenId, userId } = c.get("member");
     const today = todayFrom((await readBody(c.req)).today);
     const result = createWeek(await plannerInput(kitchenId, monday, today));
     await db.transaction(async (tx) => {
@@ -334,10 +335,18 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
             .values({ childId: fill.childId, date: fill.date, ...row })
             .onConflictDoNothing();
         } else {
-          await tx
+          const fromFreezer = fill.fromFreezer === true;
+          const set = await tx
             .insert(planDays)
-            .values({ kitchenId, date: fill.date, people: defaultPeople, dinnerRecipeId: fill.recipeId })
-            .onConflictDoUpdate({ target: [planDays.kitchenId, planDays.date], set: { dinnerRecipeId: fill.recipeId }, setWhere: isNull(planDays.dinnerRecipeId) });
+            .values({ kitchenId, date: fill.date, people: defaultPeople, dinnerRecipeId: fill.recipeId, fromFreezer })
+            .onConflictDoUpdate({ target: [planDays.kitchenId, planDays.date], set: { dinnerRecipeId: fill.recipeId, fromFreezer }, setWhere: isNull(planDays.dinnerRecipeId) })
+            .returning({ date: planDays.date });
+          if (fromFreezer && !set.length) delete fill.fromFreezer;
+          // Someone took the last portion a moment ago: cook it fresh instead.
+          else if (fromFreezer && !(await takePortion(tx, kitchenId, fill.recipeId, userId))) {
+            await tx.update(planDays).set({ fromFreezer: false }).where(and(eq(planDays.kitchenId, kitchenId), eq(planDays.date, fill.date)));
+            delete fill.fromFreezer;
+          }
         }
       }
     });
@@ -371,10 +380,18 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
     if (!valid || fills.length > 7 * 8) return c.json({ error: "That is not what Create week did." }, 400);
     for (const fill of fills as CreatedWeek["fills"]) {
       if (fill.childId === null) {
-        await db
-          .update(planDays)
-          .set({ dinnerRecipeId: null })
-          .where(and(eq(planDays.kitchenId, kitchenId), eq(planDays.date, fill.date), eq(planDays.dinnerRecipeId, fill.recipeId), eq(planDays.fromFreezer, false)));
+        // A freezer night Create week made gives its portion back; one picked by hand stays.
+        const fromFreezer = fill.fromFreezer === true;
+        await db.transaction(async (tx) => {
+          const cleared = await tx
+            .update(planDays)
+            .set({ dinnerRecipeId: null, fromFreezer: false })
+            .where(
+              and(eq(planDays.kitchenId, kitchenId), eq(planDays.date, fill.date), eq(planDays.dinnerRecipeId, fill.recipeId), eq(planDays.fromFreezer, fromFreezer)),
+            )
+            .returning({ date: planDays.date });
+          if (fromFreezer && cleared.length) await addPortions(tx, kitchenId, fill.recipeId, 1, c.get("member").userId);
+        });
         continue;
       }
       const childId = await ownChildId(kitchenId, fill.childId);

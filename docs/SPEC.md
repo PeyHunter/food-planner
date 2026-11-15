@@ -72,7 +72,7 @@ From the user after seeing the designs. Full notes in `docs/design-feedback-2026
 1. **Create week**: fills only empty days, follows both rule sets, skips dishes made in the last 14 days, prefers dishes that use up leftover packs. Plain code, deterministic, no AI.
 2. **Reduce waste** button: looks at the planned week and gently suggests a swap ("Swap Thursday for X to use the 600 g carrots left from Monday"). Plain code.
 3. **Photo to recipe**: take a photo of a written recipe, the Anthropic API (key in `ANTHROPIC_API_KEY`) fills in title, description, ingredients, steps for review before saving. When a recipe book page has a printed picture of the dish, that picture is cut out and becomes the main photo; the pages go in the gallery.
-4. **Freezer**: log "6 portions in the freezer" after a freezable cook; plan a night as "from the freezer" (decrements, adds nothing to the shopping list).
+4. **Freezer**: after "I made this" on any dish, say how many portions go in the freezer (0 skips it); add portions of any dish on the Freezer screen too. Plan a night as "from the freezer" (decrements, adds nothing to the shopping list). Create week uses freezer portions for dinners first (after the rules), one night per portion and each dish once a week; Undo puts them back.
 
 ## Design
 

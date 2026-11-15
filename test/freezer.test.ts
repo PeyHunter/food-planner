@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import type { RecipeInput } from "../src/shared/recipes.ts";
 import type { ShoppingView } from "../src/shared/shopping.ts";
-import type { FreezerItem, WeekView } from "../src/shared/week.ts";
+import type { CreatedWeek, FreezerItem, WeekView } from "../src/shared/week.ts";
 import { createTestApp, startingUsers } from "./support/test-app.ts";
 
 // The test clock says 2026-03-01, a Sunday.
@@ -121,4 +121,18 @@ test("Create week leaves a freezer night alone", async () => {
   await call(`/api/plan/weeks/${monday}/undo-create`, "POST", created);
   expect((await weekView()).days.find((one) => one.date === tuesday)).toMatchObject({ fromFreezer: true, dinner: { id: pie } });
   expect(await countOf(pie)).toBe(1);
+});
+
+test("Create week plans a night from the freezer, takes the portion, and undo gives it back", async () => {
+  const { call, create, countOf, weekView, shopping } = await loggedIn();
+  const pie = await create(recipe("Fish pie", { tags: [] }));
+  await call(`/api/freezer/${pie}`, "POST", { add: 2 });
+  const created = (await (await call(`/api/plan/weeks/${monday}/create`, "POST", {})).json()) as CreatedWeek;
+  expect(created.fills.filter((fill) => fill.childId === null)).toEqual([{ date: monday, childId: null, recipeId: pie, fromFreezer: true }]);
+  expect((await weekView()).days[0]).toMatchObject({ fromFreezer: true, dinner: { id: pie } });
+  expect(await countOf(pie)).toBe(1);
+  expect((await shopping()).sections).toEqual([]);
+  await call(`/api/plan/weeks/${monday}/undo-create`, "POST", created);
+  expect((await weekView()).days[0]).toMatchObject({ fromFreezer: false, dinner: null });
+  expect(await countOf(pie)).toBe(2);
 });

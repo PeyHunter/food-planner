@@ -171,13 +171,13 @@ export function RecipePage({ id }: { id: string }) {
           recipeId={id}
           onDone={async () => {
             setLogging(false);
-            setOfferFreezer(recipe.tags.includes("freezable"));
+            setOfferFreezer(true);
             await load();
           }}
           onCancel={() => setLogging(false)}
         />
       ) : offerFreezer ? (
-        <FreezerOffer recipeId={id} feeds={recipe.feeds} onDone={() => setOfferFreezer(false)} />
+        <FreezerOffer recipeId={id} portions={recipe.tags.includes("freezable") ? recipe.feeds : 0} onDone={() => setOfferFreezer(false)} />
       ) : (
         <button type="button" className="ink-button big" onClick={() => setLogging(true)}>
           I made this
@@ -202,8 +202,8 @@ export function RecipePage({ id }: { id: string }) {
   );
 }
 
-/** After cooking a freezable dish: how many spare portions go in the freezer. */
-function FreezerOffer({ recipeId, feeds, onDone }: { recipeId: string; feeds: number; onDone: () => void }) {
+/** After any cook: how many spare portions go in the freezer. 0 skips it. */
+function FreezerOffer({ recipeId, portions: suggested, onDone }: { recipeId: string; portions: number; onDone: () => void }) {
   const [problem, setProblem] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState<number>();
@@ -211,6 +211,7 @@ function FreezerOffer({ recipeId, feeds, onDone }: { recipeId: string; feeds: nu
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const portions = Number(new FormData(event.currentTarget).get("portions"));
+    if (portions === 0) return onDone();
     setBusy(true);
     setProblem(undefined);
     try {
@@ -241,10 +242,10 @@ function FreezerOffer({ recipeId, feeds, onDone }: { recipeId: string; feeds: nu
 
   return (
     <form className="panel freezer-offer" aria-labelledby="freezer-offer-title" onSubmit={submit}>
-      <h2 id="freezer-offer-title">Put portions in the freezer?</h2>
+      <h2 id="freezer-offer-title">How many portions go in the freezer?</h2>
       <label>
         Portions
-        <input type="number" name="portions" min={1} max={50} step={1} defaultValue={feeds} required />
+        <input type="number" name="portions" min={0} max={50} step={1} defaultValue={suggested} required />
       </label>
       {problem && <p role="alert">{problem}</p>}
       <div className="bar">

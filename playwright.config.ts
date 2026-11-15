@@ -10,9 +10,11 @@ export default defineConfig({
   testDir: "e2e",
   use: { baseURL: `http://localhost:${port}`, trace: "retain-on-failure" },
   projects: [
-    { name: "iphone", use: iPhone, testIgnore: "browse.spec.ts" },
+    { name: "iphone", use: iPhone, testIgnore: ["browse.spec.ts", "freezer.spec.ts"] },
     // Browse plans next week's Wednesday in the same kitchen as week.spec.ts, so it runs after the rest.
     { name: "iphone-browse", use: iPhone, testMatch: "browse.spec.ts", dependencies: ["iphone"] },
+    // Create week takes freezer portions, which would change what week.spec.ts and browse.spec.ts see, so the freezer runs last.
+    { name: "iphone-freezer", use: iPhone, testMatch: "freezer.spec.ts", dependencies: ["iphone-browse"] },
   ],
   webServer: {
     command: "npm run build && node e2e/serve.ts",
