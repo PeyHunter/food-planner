@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { KidsScreen } from "./kids/KidsScreen.tsx";
 import { KidsContext } from "./kitchen.ts";
 import { RecipesScreen } from "./recipes/RecipesScreen.tsx";
@@ -118,6 +118,24 @@ function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
     window.addEventListener("hashchange", onChange);
     return () => window.removeEventListener("hashchange", onChange);
   }, []);
+  // The name menu closes on a tap elsewhere, Escape, or a tab change.
+  const menu = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const close = (event: Event) => {
+      const open = menu.current;
+      if (!open?.open) return;
+      if (event instanceof KeyboardEvent ? event.key === "Escape" : !open.contains(event.target as Node)) open.open = false;
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, []);
+  useEffect(() => {
+    if (menu.current) menu.current.open = false;
+  }, [current]);
   const logOut = async () => {
     await fetch("/api/logout", { method: "POST" });
     onLoggedOut();
@@ -128,10 +146,16 @@ function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
       <main className="app">
         <header className="top">
           <img className="logo" src="/icons/icon-192.png" alt="" width={48} height={48} />
-          <h1>Hi {capitalise(me.username)}</h1>
-          <button type="button" className="btn white small end" onClick={logOut}>
-            Log out
-          </button>
+          {/* Logging out is rare, so it hides behind your name. */}
+          <details className="me" ref={menu}>
+            <summary>
+              <h1>Hi {capitalise(me.username)}</h1>
+              <span className="caret" aria-hidden="true" />
+            </summary>
+            <button type="button" className="btn white small" onClick={logOut}>
+              Log out
+            </button>
+          </details>
         </header>
         {current.screen ? current.screen() : <ComingSoon tab={current} />}
       </main>

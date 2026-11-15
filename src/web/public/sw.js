@@ -2,7 +2,7 @@
 // pages come from the network first and fall back to the app shell; built assets, fonts and icons never change
 // once published (their names carry a hash or are fixed), so they come from the cache first.
 // Nothing under /api is cached: recipes, plans and logins always come from the server.
-const version = "food-planner-v1";
+const version = "food-planner-v2";
 const shell = "/";
 
 self.addEventListener("install", (event) => {
@@ -30,7 +30,8 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request)
+      // "no-cache" asks the server every time, so an update shows on the next open, not days later.
+      fetch(request, { cache: "no-cache" })
         .then((response) => {
           if (response.ok) {
             const copy = response.clone();

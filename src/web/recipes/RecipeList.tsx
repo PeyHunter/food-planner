@@ -33,6 +33,9 @@ export function RecipeList() {
           <a className="ink-button white small" href="#/recipes/ingredients">
             Ingredients
           </a>
+          <a className="ink-button white small" href="#/recipes/from-link">
+            From a link
+          </a>
           <a className="ink-button white small" href="#/recipes/from-photo">
             Photo to recipe
           </a>
