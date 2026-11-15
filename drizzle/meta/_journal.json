@@ -43,6 +43,13 @@
       "when": 1794714516627,
       "tag": "0005_freezer",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794748303468,
+      "tag": "0006_recipe_description",
+      "breakpoints": true
     }
   ]
 }

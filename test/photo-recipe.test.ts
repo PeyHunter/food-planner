@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import sharp from "sharp";
 import { expect, test } from "vitest";
-import { fakeClient, model, toDraft, type PhotoRecipeClient } from "../src/server/photo-recipe.ts";
+import { cutOutDish, fakeClient, model, toDishBox, toDraft, type PhotoRecipeClient } from "../src/server/photo-recipe.ts";
 import type { PhotoRecipeDraft } from "../src/shared/recipes.ts";
 import { createTestApp, startingUsers } from "./support/test-app.ts";
 
@@ -27,6 +27,7 @@ test("photos go to the API shrunk, as base64 JPEG, with the typed tool; the tool
   const client = fakeClient(
     {
       title: "Mormors frikadeller",
+      description: "  Sunday meatballs from Granny's book.  ",
       feeds: 6,
       mainTypes: ["Meat", "Pasta"],
       tags: ["freezable"],
@@ -48,6 +49,7 @@ test("photos go to the API shrunk, as base64 JPEG, with the typed tool; the tool
   expect(draft).toEqual({
     recipe: {
       title: "Mormors frikadeller",
+      description: "Sunday meatballs from Granny's book.",
       feeds: 6,
       types: ["Meat"],
       tags: ["freezable"],
@@ -61,6 +63,7 @@ test("photos go to the API shrunk, as base64 JPEG, with the typed tool; the tool
       steps: ["Mix everything.", "Fry in butter."],
     },
     notes: [],
+    dishPhoto: null,
   });
 
   expect(calls).toHaveLength(1);
@@ -202,4 +205,62 @@ test("API errors become friendly messages", async () => {
 
   const down = await setUp(failing(new Anthropic.InternalServerError(529, undefined, "overloaded", new Headers())));
   expect(await (await down.send(await photo())).json()).toEqual({ error: "The reading service is busy right now. Try again in a minute." });
+});
+
+/** A book page: cream paper with a red 1000 x 800 dish picture whose top-left corner is at (1000, 400). */
+const bookPage = async () =>
+  new File(
+    [
+      new Uint8Array(
+        await sharp({ create: { width: 3000, height: 2000, channels: 3, background: "#f4ecd8" } })
+          .composite([{ input: await sharp({ create: { width: 1000, height: 800, channels: 3, background: "#d02020" } }).png().toBuffer(), left: 1000, top: 400 }])
+          .jpeg()
+          .toBuffer(),
+      ),
+    ],
+    "page.jpg",
+    { type: "image/jpeg" },
+  );
+
+test("the dish picture printed in the book comes back cut out of the full-size photo", async () => {
+  const { send } = await setUp(
+    fakeClient({ title: "Tomato soup", description: "", feeds: 4, mainTypes: ["Vegetables"], tags: [], lines: [], steps: ["Cook."], dishPhoto: { photo: 2, left: 1 / 3, top: 0.2, right: 2 / 3, bottom: 0.6 } }),
+  );
+  const draft = (await (await send(await photo(), await bookPage())).json()) as PhotoRecipeDraft;
+  expect(draft.dishPhoto).toMatch(/^data:image\/jpeg;base64,/);
+  const bytes = Buffer.from(draft.dishPhoto!.split(",")[1]!, "base64");
+  const { width, height } = await sharp(bytes).metadata();
+  expect([width, height]).toEqual([1000, 800]);
+  // All red: the crop is the picture and nothing of the page around it.
+  const { channels } = await sharp(bytes).stats();
+  expect(channels[0]!.mean).toBeGreaterThan(190);
+  expect(channels[1]!.mean).toBeLessThan(60);
+});
+
+test("a dish box that is missing, too small or on a photo that wasn't sent is ignored", () => {
+  const box = { photo: 1, left: 0.1, top: 0.1, right: 0.6, bottom: 0.5 };
+  expect(toDishBox({ dishPhoto: box }, 1)).toEqual(box);
+  expect(toDishBox({ dishPhoto: { ...box, left: -0.2, right: 1.4 } }, 1)).toEqual({ ...box, left: 0, right: 1 });
+  expect(toDishBox({ dishPhoto: null }, 1)).toBeUndefined();
+  expect(toDishBox({}, 1)).toBeUndefined();
+  expect(toDishBox({ dishPhoto: { ...box, photo: 2 } }, 1)).toBeUndefined();
+  expect(toDishBox({ dishPhoto: { ...box, right: 0.15 } }, 1)).toBeUndefined();
+  expect(toDishBox({ dishPhoto: { ...box, top: "x" } }, 1)).toBeUndefined();
+});
+
+test("a photo that can't be cut gives no dish picture instead of failing", async () => {
+  expect(await cutOutDish(new TextEncoder().encode("not a photo"), { photo: 1, left: 0, top: 0, right: 1, bottom: 1 })).toBeNull();
+});
+
+test("a phone photo saved sideways (EXIF orientation) is turned upright before the dish is cut out", async () => {
+  const upright = Buffer.from(await (await bookPage()).arrayBuffer());
+  // Stored turned a quarter left, with a tag telling viewers to turn it back.
+  const sideways = await sharp(upright).rotate(270).withMetadata({ orientation: 6 }).jpeg().toBuffer();
+  const cut = await cutOutDish(new Uint8Array(sideways), { photo: 1, left: 1 / 3, top: 0.2, right: 2 / 3, bottom: 0.6 });
+  const bytes = Buffer.from(cut!.split(",")[1]!, "base64");
+  const { width, height } = await sharp(bytes).metadata();
+  expect([width, height]).toEqual([1000, 800]);
+  const { channels } = await sharp(bytes).stats();
+  expect(channels[0]!.mean).toBeGreaterThan(190);
+  expect(channels[1]!.mean).toBeLessThan(60);
 });

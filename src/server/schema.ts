@@ -70,6 +70,7 @@ export const recipes = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     kitchenId: kitchenId(),
     title: text("title").notNull(),
+    description: text("description").notNull().default(""),
     feeds: integer("feeds").notNull(),
     ageFromMonths: integer("age_from_months"),
     ageToMonths: integer("age_to_months"),

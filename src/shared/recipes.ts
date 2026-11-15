@@ -32,6 +32,8 @@ export type RecipeLine = {
 export type Cook = { id: string; madeOn: string; by: string; photos: Photo[] };
 
 export type Recipe = RecipeSummary & {
+  /** A few lines about the dish, e.g. the intro from a recipe book. Empty if none. */
+  description: string;
   ageFromMonths: number | null;
   ageToMonths: number | null;
   lines: RecipeLine[];
@@ -46,6 +48,8 @@ export type Recipe = RecipeSummary & {
 /** What the edit form sends. Ingredients go by name: a new name adds it to the kitchen's list. */
 export type RecipeInput = {
   title: string;
+  /** Left out means empty. */
+  description?: string;
   feeds: number;
   types: MainType[];
   tags: string[];
@@ -55,13 +59,14 @@ export type RecipeInput = {
   steps: string[];
 };
 
-/** What POST /api/recipes/from-photo returns: a recipe to review in the edit form, and notes on what was left out. */
-export type PhotoRecipeDraft = { recipe: RecipeInput; notes: string[] };
+/** What POST /api/recipes/from-photo returns: a recipe to review in the edit form, and notes on what was left out.
+ * dishPhoto: the picture of the finished dish cut out of the book page, as a JPEG data URL, or null when the pages have none. */
+export type PhotoRecipeDraft = { recipe: RecipeInput; notes: string[]; dishPhoto: string | null };
 
-export type IngredientSuggestion ={ id: string; name: string; shopSection: ShopSection };
+export type IngredientSuggestion = { id: string; name: string; shopSection: ShopSection };
 
 /** What a share link shows: the recipe without who made it or when it was cooked. Photo urls go through the link. */
-export type SharedRecipe = Pick<Recipe, "title" | "feeds" | "types" | "tags" | "photos" | "lines" | "steps"> & {
+export type SharedRecipe = Pick<Recipe, "title" | "description" | "feeds" | "types" | "tags" | "photos" | "lines" | "steps"> & {
   /** smallUrl: an 800 px wide copy for phones. */
   mainPhoto: (Photo & { smallUrl: string }) | null;
 };

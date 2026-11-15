@@ -51,6 +51,7 @@ function photoRecipeClient(env: NodeJS.ProcessEnv): PhotoRecipeClient | undefine
   if (env.PHOTO_RECIPE_FAKE === "1" && env.NODE_ENV !== "production") {
     return fakeClient({
       title: "Granny's pancakes",
+      description: "Thin pancakes like Granny made on Sundays.",
       feeds: 4,
       mainTypes: ["Vegetarian"],
       tags: ["quick"],
@@ -61,6 +62,7 @@ function photoRecipeClient(env: NodeJS.ProcessEnv): PhotoRecipeClient | undefine
         { amount: -1, unit: "g", ingredient: "Butter", note: "" },
       ],
       steps: ["Whisk everything together.", "Fry thin pancakes in butter."],
+      dishPhoto: { photo: 1, left: 0.1, top: 0.05, right: 0.9, bottom: 0.45 },
     });
   }
   if (!env.ANTHROPIC_API_KEY) return undefined;

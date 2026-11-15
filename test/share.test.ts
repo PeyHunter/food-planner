@@ -54,6 +54,7 @@ test("a share link turns on, shows the recipe without a login, and turns off for
   const shared = (await response.json()) as SharedRecipe;
   expect(shared).toEqual({
     title: "Fish pie",
+    description: "",
     feeds: 4,
     types: ["Fish"],
     tags: ["kid-friendly"],

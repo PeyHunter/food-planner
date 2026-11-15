@@ -127,6 +127,7 @@ export function RecipePage({ id }: { id: string }) {
         {ageRangeLabel(recipe) && <span className="sticker lilac tilt-r age-sticker">{ageRangeLabel(recipe)}</span>}
       </div>
       <h1>{recipe.title}</h1>
+      {recipe.description && <p className="description">{recipe.description}</p>}
       {recipe.lastMadeOn && (
         <p className="made">
           Made {recipe.cooks.length === 1 ? "once" : `${recipe.cooks.length} times`}, last on {showDate(recipe.lastMadeOn)}

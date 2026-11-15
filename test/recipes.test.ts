@@ -184,3 +184,15 @@ test("ronja sees the recipes peyton added", async () => {
   expect(recipe.title).toBe("Fish pie");
   expect(recipe.createdBy).toBe("peyton");
 });
+
+test("a description saves, changes and is empty when left out", async () => {
+  const { call, create } = await loggedIn();
+  const id = await create(fishPie);
+  expect(((await (await call(`/api/recipes/${id}`)).json()) as Recipe).description).toBe("");
+
+  await call(`/api/recipes/${id}`, "PUT", { ...fishPie, description: "  Creamy fish under mash.\nGood for Fridays.  " });
+  expect(((await (await call(`/api/recipes/${id}`)).json()) as Recipe).description).toBe("Creamy fish under mash.\nGood for Fridays.");
+
+  const tooLong = await call("/api/recipes", "POST", { ...fishPie, description: "x".repeat(2001) });
+  expect(tooLong.status).toBe(400);
+});

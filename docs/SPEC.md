@@ -11,7 +11,7 @@ A meal planner and recipe book for Peyton and Ronja (and their baby, Runi Lee). 
 
 ## Recipes
 
-- Title, **feeds N** (the amounts are written for N people, any N), one or more **main types** (Fish, Meat, Chicken, Vegetarian, Vegetables), free tags. Built-in tags: `freezable`, `kid-friendly`, `for Runi`.
+- Title, a short **description** (a few lines about the dish), **feeds N** (the amounts are written for N people, any N), one or more **main types** (Fish, Meat, Chicken, Vegetarian, Vegetables), free tags. Built-in tags: `freezable`, `kid-friendly`, `for Runi`.
 - Ingredient lines: amount + unit + ingredient (from the shared ingredient list) + optional note ("finely chopped").
 - Steps as an ordered list.
 - One main dish photo plus a gallery of extra photos (ingredients, process, someone's handwritten recipe). Photos are resized on upload and stored on a volume.
@@ -71,7 +71,7 @@ From the user after seeing the designs. Full notes in `docs/design-feedback-2026
 
 1. **Create week**: fills only empty days, follows both rule sets, skips dishes made in the last 14 days, prefers dishes that use up leftover packs. Plain code, deterministic, no AI.
 2. **Reduce waste** button: looks at the planned week and gently suggests a swap ("Swap Thursday for X to use the 600 g carrots left from Monday"). Plain code.
-3. **Photo to recipe**: take a photo of a written recipe, the Anthropic API (key in `ANTHROPIC_API_KEY`) fills in title, ingredients, steps for review before saving.
+3. **Photo to recipe**: take a photo of a written recipe, the Anthropic API (key in `ANTHROPIC_API_KEY`) fills in title, description, ingredients, steps for review before saving. When a recipe book page has a printed picture of the dish, that picture is cut out and becomes the main photo; the pages go in the gallery.
 4. **Freezer**: log "6 portions in the freezer" after a freezable cook; plan a night as "from the freezer" (decrements, adds nothing to the shopping list).
 
 ## Design

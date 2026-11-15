@@ -65,6 +65,7 @@ function SharedRecipeView({ recipe }: { recipe: SharedRecipe }) {
         <TypeStickers recipe={recipe} />
       </div>
       <h1>{recipe.title}</h1>
+      {recipe.description && <p className="description">{recipe.description}</p>}
       <IngredientsPanel recipe={recipe} />
       <StepsPanel steps={recipe.steps} />
       {gallery.length > 0 && (
