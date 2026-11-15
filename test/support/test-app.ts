@@ -26,7 +26,7 @@ export async function createTestApp({ publicUrl = "http://localhost" }: { public
   await migrate(database);
   await ensureHousehold(database, startingUsers);
   let now = new Date("2026-03-01T12:00:00Z");
-  const app = createApp({ database, now: () => now, publicUrl: new URL(publicUrl), photosDir: inject("scratchDir") });
+  const app = createApp({ database, now: () => now, publicUrl: new URL(publicUrl), photosDir: inject("scratchDir"), webDir: "src/web" });
   afterAll(() => database.close());
 
   return {

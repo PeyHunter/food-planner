@@ -1,4 +1,6 @@
 import { randomBytes } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -23,6 +25,7 @@ const unreadable = "That file isn't a photo we can read. Try a JPEG or PNG.";
 
 const photoUrl = (id: string) => `/api/photos/${id}.jpg`;
 const tokenPattern = /^[A-Za-z0-9_-]{43}$/;
+const escapeHtml = (text: string) => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 const toPhoto = (row: { id: string; role: string; cookId: string | null }): Photo => ({
   id: row.id,
   url: photoUrl(row.id),
@@ -43,7 +46,7 @@ export const kitchenMember = ({ database, now }: Pick<AppDependencies, "database
     await next();
   });
 
-export function createRecipeRoutes({ database, now, photosDir, publicUrl }: AppDependencies) {
+export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir }: AppDependencies) {
   const { db } = database;
   const store = photoStore(photosDir);
   const routes = new Hono<Env>();
@@ -239,13 +242,18 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl }: AppD
     return row?.id;
   }
 
-  routes.get("/api/share/:token", async (c) => {
-    const token = c.req.param("token");
+  /** What a share link shows, or undefined while the link is off. */
+  async function sharedView(token: string): Promise<SharedRecipe | undefined> {
     const id = await sharedRecipe(token);
-    if (!id) return c.json({ error: "This link doesn't work any more." }, 404, { "cache-control": "no-store" });
+    if (!id) return undefined;
     const { title, feeds, types, tags, mainPhoto, photos: all, lines, steps: stepTexts } = await loadRecipe(id);
     const viaLink = (photo: Photo): Photo => ({ ...photo, url: `/s/${token}/photos/${photo.id}.jpg` });
-    const shared: SharedRecipe = { title, feeds, types, tags, mainPhoto: mainPhoto && viaLink(mainPhoto), photos: all.map(viaLink), lines, steps: stepTexts };
+    return { title, feeds, types, tags, mainPhoto: mainPhoto && viaLink(mainPhoto), photos: all.map(viaLink), lines, steps: stepTexts };
+  }
+
+  routes.get("/api/share/:token", async (c) => {
+    const shared = await sharedView(c.req.param("token"));
+    if (!shared) return c.json({ error: "This link doesn't work any more." }, 404, { "cache-control": "no-store" });
     return c.json(shared, 200, { "cache-control": "no-store" });
   });
 
@@ -263,11 +271,19 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl }: AppD
     return c.body(new Uint8Array(file), 200, { "content-type": "image/jpeg", "cache-control": "private, max-age=600" });
   });
 
-  // The page itself is the web app's index.html, served after this; a dead link gets that same page with a 404.
-  routes.get("/s/:token", async (c, next) => {
-    const live = await sharedRecipe(c.req.param("token"));
-    await next();
-    if (!live) c.res = new Response(c.res.body, { status: 404, headers: c.res.headers });
+  let sharePage: Promise<string> | undefined;
+  // The recipe and its main photo go into the page itself, so they load alongside the script instead of after it.
+  // no-store: a link that was turned off must not come back from the browser's cache.
+  routes.get("/s/:token", async (c) => {
+    sharePage ??= readFile(join(webDir, "share.html"), "utf8");
+    const [html, shared] = await Promise.all([sharePage, sharedView(c.req.param("token"))]);
+    const head = shared
+      ? `<title>${escapeHtml(shared.title)} · Food planner</title>` +
+        (shared.mainPhoto ? `<link rel="preload" as="image" href="${escapeHtml(shared.mainPhoto.url)}" fetchpriority="high" />` : "")
+      : "<title>Food planner</title>";
+    const data = `<script id="share-data" type="application/json">${JSON.stringify(shared ?? null).replaceAll("<", "\\u003c")}</script>`;
+    const page = html.replace("<title>Food planner</title>", head).replace('<div id="root"></div>', `<div id="root"></div>${data}`);
+    return c.html(page, shared ? 200 : 404, { "cache-control": "no-store" });
   });
 
   routes.post("/api/recipes/:id/cooks", member, bodyLimit({ maxSize: 60 * megabyte, onError: tooBig }), async (c) => {

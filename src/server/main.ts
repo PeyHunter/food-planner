@@ -70,7 +70,7 @@ await ensureHousehold(database, [
   { username: "ronja", password: config.ronjaPassword },
 ]);
 
-const app = createApp({ database, now: () => new Date(), publicUrl: config.publicUrl, photosDir });
+const app = createApp({ database, now: () => new Date(), publicUrl: config.publicUrl, photosDir, webDir: "dist/web" });
 // The built phone UI; any path the API doesn't own falls back to the single page.
 app.use("*", serveStatic({ root: "dist/web" }));
 app.get("*", serveStatic({ path: "dist/web/index.html" }));

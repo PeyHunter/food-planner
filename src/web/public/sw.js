@@ -25,6 +25,8 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (request.method !== "GET" || url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/api/")) return;
+  // A share page holds one recipe's data, not the app shell, and must not outlive its link.
+  if (url.pathname.startsWith("/s/")) return;
 
   if (request.mode === "navigate") {
     event.respondWith(
