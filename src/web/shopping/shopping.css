@@ -1,0 +1,43 @@
+/* Shopping tab in Sticker pop. Mint is the shopping colour. Scoped to .shopping. */
+.shopping{display:grid;gap:1rem}
+.shopping .head{display:flex;align-items:center;gap:.75rem}
+.shopping .head h2{font-size:var(--step-2)}
+.shopping h3{margin:0 0 .5rem;inline-size:fit-content;padding:.2em .7em;border:var(--line) solid var(--ink);border-radius:999px;background:var(--mint);box-shadow:var(--pop-sm);
+  font-size:.8rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;rotate:-1.5deg}
+.shopping .chips{padding-block-end:.2rem}
+
+.shopping .day-chips{display:grid;grid-template-columns:repeat(7,1fr);gap:.35rem}
+.shopping .day-chip{min-block-size:2.9rem;padding:0;border:2px solid var(--ink);border-radius:.9rem;background:var(--paper);font-weight:800;font-size:.85rem}
+.shopping .day-chip[aria-pressed=true]{background:var(--mint);box-shadow:var(--pop-sm)}
+.shopping .day-chip:active{translate:1px 1px;box-shadow:none}
+
+.shopping .aisle ul{list-style:none;margin:0;padding:0;display:grid;gap:.55rem}
+.shopping .item{display:grid;gap:.35rem;padding:.35rem;border:var(--line) solid var(--ink);border-radius:1.2rem;background:var(--paper);box-shadow:3px 3px 0 var(--ink)}
+.shopping .tick{display:flex;align-items:center;gap:.75rem;inline-size:100%;min-block-size:3.5rem;padding:.4rem .5rem;border:0;border-radius:.9rem;background:none;text-align:start}
+.shopping .tick:active{background:var(--mint-soft)}
+.shopping .box{display:grid;place-items:center;flex:none;inline-size:2rem;block-size:2rem;border:var(--line) solid var(--ink);border-radius:.6rem;background:var(--paper);font-weight:800}
+.shopping .what{display:grid;gap:.1rem;flex:1}
+.shopping .what strong{font-size:1.1rem;letter-spacing:-.01em;line-height:1.15}
+.shopping .what small{color:var(--muted);font-size:.78rem;font-weight:600;line-height:1.25}
+.shopping .packs{font-weight:800;font-size:.9rem}
+.shopping .left{inline-size:fit-content;padding:0 .45em;border:2px solid var(--ink);border-radius:999px;background:var(--sun-soft);font-size:.75rem;font-weight:800}
+.shopping .amount{flex:none;padding:.25em .6em;border:2px solid var(--ink);border-radius:.7rem;background:var(--mint-soft);font-weight:800;white-space:nowrap}
+.shopping .done{background:color-mix(in oklch,var(--mint) 12%,white);box-shadow:none;translate:2px 2px}
+.shopping .done .box{background:var(--mint)}
+.shopping .done .what strong{text-decoration:line-through 3px;color:var(--muted)}
+
+.shopping .link{inline-size:fit-content;padding:.35rem .5rem;border:0;background:none;font-weight:800;font-size:.85rem;text-decoration:underline 2px;text-underline-offset:3px}
+.shopping .pack-link{margin-inline-start:2.9rem}
+.shopping .pack{display:flex;flex-wrap:wrap;align-items:end;gap:.5rem;padding:.6rem;border:2px dashed var(--ink);border-radius:.9rem;background:var(--mint-soft)}
+.shopping .pack label{flex:1 1 5rem;font-size:.85rem}
+.shopping .pack input,.shopping .pack select{min-block-size:2.75rem;padding:.4rem .6rem}
+.shopping select{inline-size:100%;border:var(--line) solid var(--ink);border-radius:1rem;background:var(--paper);color:var(--ink);font:inherit;font-size:max(16px,1rem)}
+.shopping .pack [role=alert]{flex-basis:100%}
+
+.shopping .extras .item{grid-template-columns:1fr auto;align-items:center}
+.shopping .remove{inline-size:2.75rem;block-size:2.75rem;margin-inline-end:.3rem;border:2px solid var(--ink);border-radius:50%;background:var(--paper);font-weight:800;font-size:1.2rem}
+.shopping .add{display:flex;gap:.5rem;margin-block-start:.6rem}
+.shopping .add input{flex:1}
+
+.shopping .foot{display:grid;gap:.5rem;justify-items:start}
+.shopping .foot .note{color:var(--muted)}

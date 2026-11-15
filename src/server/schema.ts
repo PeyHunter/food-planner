@@ -191,3 +191,31 @@ export const rules = pgTable(
   },
   (table) => [index("rules_kitchen").on(table.kitchenId)],
 );
+
+/** A ticked item on a week's shopping list. item_key is a list line's key or "extra:<id>". Cleared ticks are hidden. */
+export const shoppingTicks = pgTable(
+  "shopping_ticks",
+  {
+    kitchenId: kitchenId(),
+    monday: date("monday", { mode: "string" }).notNull(),
+    itemKey: text("item_key").notNull(),
+    cleared: boolean("cleared").notNull().default(false),
+    tickedBy: uuid("ticked_by").references(() => users.id, { onDelete: "set null" }),
+    tickedAt: at("ticked_at").notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.kitchenId, table.monday, table.itemKey] })],
+);
+
+/** Things to buy that no planned dinner needs, like milk. */
+export const shoppingExtras = pgTable(
+  "shopping_extras",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kitchenId: kitchenId(),
+    monday: date("monday", { mode: "string" }).notNull(),
+    name: text("name").notNull(),
+    createdBy: createdBy(),
+    createdAt: at("created_at").notNull().defaultNow(),
+  },
+  (table) => [index("shopping_extras_week").on(table.kitchenId, table.monday)],
+);

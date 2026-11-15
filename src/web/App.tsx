@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { KidsScreen } from "./kids/KidsScreen.tsx";
 import { RecipesScreen } from "./recipes/RecipesScreen.tsx";
+import { ShoppingScreen } from "./shopping/ShoppingScreen.tsx";
 import { WeekScreen } from "./week/WeekScreen.tsx";
 
 type Me = { username: string; kitchen: { id: string; name: string } | null };
@@ -101,7 +102,7 @@ type Tab = { id: string; label: string; icon: string; colour: string; screen?: (
 const tabs: Tab[] = [
   { id: "recipes", label: "Recipes", icon: "📖", colour: "var(--tomato-soft)", screen: () => <RecipesScreen />, soon: "Flip through your recipe book and add new dishes." },
   { id: "week", label: "Week", icon: "📅", colour: "var(--sun-soft)", screen: () => <WeekScreen />, soon: "Plan dinners for the week and check the rules." },
-  { id: "shopping", label: "Shopping", icon: "🛒", colour: "var(--mint-soft)", soon: "One list with everything the week needs." },
+  { id: "shopping", label: "Shopping", icon: "🛒", colour: "var(--mint-soft)", screen: () => <ShoppingScreen />, soon: "One list with everything the week needs." },
   { id: "kids", label: "Runi & kids", icon: "🧒", colour: "var(--lilac-soft)", screen: () => <KidsScreen />, soon: "Runi Lee's own recipes and rules, by age." },
 ];
 
