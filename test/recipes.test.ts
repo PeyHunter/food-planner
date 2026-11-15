@@ -59,6 +59,7 @@ test("a new recipe saves with its lines, steps, types and tags", async () => {
     photos: [],
     cooks: [],
     lastMadeOn: null,
+    timesMade: 0,
   });
   expect(recipe.lines.map((line) => [line.amount, line.unit, line.ingredient.name, line.note])).toEqual([
     [3, "pcs", "Onion", "finely chopped"],

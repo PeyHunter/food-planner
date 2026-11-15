@@ -19,6 +19,7 @@ export type RecipeSummary = {
   tags: string[];
   mainPhoto: Photo | null;
   lastMadeOn: string | null;
+  timesMade: number;
 };
 
 export type RecipeLine = {

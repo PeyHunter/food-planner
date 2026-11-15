@@ -1,0 +1,73 @@
+/* "Flip through the book": design 3's stacked pages drawn in Sticker pop. Scoped to .book inside .recipes. */
+.recipes .bar h2 { margin-inline-end: auto; }
+
+.book { display: grid; gap: 1rem; }
+.book .sr { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.book-head { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: .2rem .5rem; }
+.book-head h2 { grid-column: 1 / -1; }
+.book-head .kicker { font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: color-mix(in oklch, var(--tomato) 70%, var(--ink)); }
+.book-head h2 { font-size: var(--step-2); }
+.book-head h2 em { font-style: normal; background: var(--sun); padding-inline: .15em; border: var(--line) solid var(--ink); border-radius: .4em; box-shadow: var(--pop-sm); display: inline-block; rotate: -2deg; }
+.book-actions { display: flex; gap: .4rem; }
+.book-actions .btn.small { min-block-size: 2.5rem; padding-inline: .75rem; }
+
+/* recipes.css wraps chips for the form; here they scroll sideways, edge to edge */
+.recipes .book .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: calc(var(--gutter) * -1); padding: .2rem var(--gutter) .5rem; }
+.recipes .book .chips::-webkit-scrollbar { display: none; }
+.recipes .book .chip { flex: none; }
+
+/* the stack: two pages peek out behind the open one */
+.deck { position: relative; isolation: isolate; margin-block: .4rem .2rem; }
+.deck .ghost { position: absolute; inset: .9rem .5rem 1.2rem .3rem; z-index: -1; border: var(--line) solid var(--ink); border-radius: 1.5rem; background: var(--paper); box-shadow: var(--pop-sm); }
+.deck .ghost.one { rotate: 4deg; translate: .3rem .2rem; background: var(--mint-soft); }
+.deck .ghost.two { rotate: -5deg; translate: -.2rem .4rem; background: var(--sun-soft); }
+
+.crate { list-style: none; margin: 0; padding: 0; display: flex; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.crate::-webkit-scrollbar { display: none; }
+.crate > li { flex: 0 0 100%; scroll-snap-align: center; scroll-snap-stop: always; padding: .3rem .5rem .6rem .3rem; }
+
+.page { display: grid; overflow: hidden; border: var(--line) solid var(--ink); border-radius: 1.5rem; background: var(--paper); box-shadow: var(--pop); }
+.page .photo { position: relative; display: grid; place-items: center; block-size: clamp(9rem, 32svh, 18rem); border-block-end: var(--line) solid var(--ink); overflow: hidden;
+  --stripe: var(--sun); background: repeating-linear-gradient(90deg, color-mix(in oklch, var(--stripe) 55%, white) 0 1.4rem, color-mix(in oklch, var(--stripe) 80%, white) 1.4rem 2.8rem); }
+.page .photo.sky { --stripe: var(--sky); }
+.page .photo.tomato { --stripe: var(--tomato); }
+.page .photo.mint { --stripe: var(--mint); }
+.page .stamp, .page .page-no { z-index: 1; }
+.page .photo img { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; object-fit: cover; }
+.page .plate-art { block-size: 85%; inline-size: auto; color: var(--ink); }
+.page .stamp { position: absolute; inset-block-start: .8rem; inset-inline-end: .8rem; display: grid; place-items: center; inline-size: 5rem; block-size: 5rem; border: var(--line) solid var(--ink); border-radius: 50%;
+  background: var(--tomato); box-shadow: var(--pop-sm); outline: 2px dashed var(--paper); outline-offset: -.6rem; font-weight: 800; font-size: .85rem; line-height: 1.05; text-align: center; rotate: 12deg; }
+.page .page-no { position: absolute; inset-block-end: .8rem; inset-inline-start: .8rem; padding: .25em .75em; border: var(--line) solid var(--ink); border-radius: 999px; background: var(--paper); box-shadow: var(--pop-sm); font-weight: 800; font-variant-numeric: tabular-nums; }
+.page-body { display: grid; gap: .45rem; padding: .8rem 1rem 1rem; }
+.page-body h3 { font-size: var(--step-1); }
+.page-body h3 a { text-decoration: none; }
+.page-body h3 a::after { content: " →"; color: var(--muted); }
+.page-body .meta { display: flex; flex-wrap: wrap; gap: .3rem 1rem; color: var(--muted); font-weight: 700; }
+.page-body .stickers { display: flex; flex-wrap: wrap; gap: .4rem; }
+
+.turn { display: flex; align-items: center; gap: .6rem; }
+.turn .add-week { flex: 1; }
+.turn .round { display: grid; place-items: center; inline-size: 3rem; block-size: 3rem; border: var(--line) solid var(--ink); border-radius: 50%; background: var(--paper); box-shadow: var(--pop-sm); font-weight: 800; font-size: 1.3rem; }
+.turn .round:disabled { opacity: .35; }
+.turn .round:active:not(:disabled) { translate: 2px 2px; box-shadow: none; }
+
+.book .add-week { min-block-size: 3.5rem; font-size: 1.15rem; }
+.book .added { justify-self: center; padding: .5rem 1rem; border: var(--line) solid var(--ink); border-radius: 999px; background: var(--mint); box-shadow: var(--pop-sm); font-weight: 800; }
+
+/* the "Which day?" sheet */
+.book .sheet { inline-size: min(100%, 36rem); max-inline-size: 100%; max-block-size: 85svh; margin: auto auto 0; padding: 1rem var(--gutter) calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  border: var(--line) solid var(--ink); border-block-end: 0; border-radius: 1.5rem 1.5rem 0 0; background: var(--paper); color: var(--ink); }
+.book .sheet[open] { display: grid; gap: .8rem; align-content: start; }
+.book .sheet::backdrop { background: color-mix(in oklch, var(--ink) 45%, transparent); }
+.book .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
+.book .sheet section { display: grid; gap: .5rem; }
+.book .sheet h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; }
+.book .day-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .45rem; }
+.book .day-list button { display: grid; grid-template-columns: 6.5rem 3.5rem 1fr; align-items: center; gap: .5rem; inline-size: 100%; min-block-size: 3rem; padding: .45rem .8rem;
+  border: 2px solid var(--ink); border-radius: 1rem; background: var(--paper); text-align: start; }
+.book .day-list button:active { background: var(--sun-soft); }
+.book .day-list .date { color: var(--muted); font-size: .9rem; }
+.book .day-list .free { color: var(--muted); }
+.book .day-list .planned { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.book .day-list .planned::before { content: "Now: "; color: var(--muted); }

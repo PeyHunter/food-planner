@@ -424,7 +424,7 @@ export async function recipeSummaries({ db }: Database, rows: { id: string; titl
       .from(photos)
       .where(and(inArray(photos.recipeId, ids), eq(photos.role, "main"))),
     db
-      .select({ recipeId: cooks.recipeId, last: sql<string>`max(${cooks.madeOn})::text` })
+      .select({ recipeId: cooks.recipeId, last: sql<string>`max(${cooks.madeOn})::text`, count: sql<number>`count(*)::int` })
       .from(cooks)
       .where(inArray(cooks.recipeId, ids))
       .groupBy(cooks.recipeId),
@@ -437,7 +437,10 @@ export async function recipeSummaries({ db }: Database, rows: { id: string; titl
       const main = mains.find((photo) => photo.recipeId === row.id);
       return main ? toPhoto(main) : null;
     })(),
-    lastMadeOn: lastCooks.find((cook) => cook.recipeId === row.id)?.last ?? null,
+    ...(() => {
+      const cooked = lastCooks.find((cook) => cook.recipeId === row.id);
+      return { lastMadeOn: cooked?.last ?? null, timesMade: cooked?.count ?? 0 };
+    })(),
   }));
 }
 

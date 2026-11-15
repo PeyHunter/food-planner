@@ -14,7 +14,7 @@ async function logIn(page: Page) {
   await page.getByLabel("Password").fill(e2ePasswords.peyton);
   await page.getByRole("button", { name: "Log in" }).click();
   await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Recipes" }).click();
-  await expect(page.getByRole("heading", { name: "Recipes", level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Flip through the book", level: 2 })).toBeVisible();
 }
 
 const shownImage = (page: Page, name: string) =>
@@ -73,6 +73,7 @@ test("add a recipe with a photo, step 4 to 6 people, then log that I made it", a
   await expect(page.getByText(/^Made once/)).toBeVisible();
 
   await page.getByRole("link", { name: "Back to recipes" }).click();
+  await page.getByRole("link", { name: "List and search" }).click();
   await page.getByLabel("Search recipes").fill("butter");
   await expect(page.getByRole("link", { name: new RegExp(title) })).toBeVisible();
   await page.getByLabel("Search recipes").fill("no such dish");

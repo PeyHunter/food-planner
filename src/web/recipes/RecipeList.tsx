@@ -27,6 +27,9 @@ export function RecipeList() {
       <div className="bar">
         <h2>Recipes</h2>
         <span className="bar-buttons">
+          <a className="ink-button white small" href="#/recipes">
+            Book
+          </a>
           <a className="ink-button white small" href="#/recipes/ingredients">
             Ingredients
           </a>

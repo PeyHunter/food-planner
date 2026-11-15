@@ -9,7 +9,11 @@ const iPhone = { ...devices["iPhone 15"], defaultBrowserType: "chromium" as cons
 export default defineConfig({
   testDir: "e2e",
   use: { baseURL: `http://localhost:${port}`, trace: "retain-on-failure" },
-  projects: [{ name: "iphone", use: iPhone }],
+  projects: [
+    { name: "iphone", use: iPhone, testIgnore: "browse.spec.ts" },
+    // Browse plans next week's Wednesday in the same kitchen as week.spec.ts, so it runs after the rest.
+    { name: "iphone-browse", use: iPhone, testMatch: "browse.spec.ts", dependencies: ["iphone"] },
+  ],
   webServer: {
     command: "npm run build && node e2e/serve.ts",
     url: `http://localhost:${port}/api/health`,

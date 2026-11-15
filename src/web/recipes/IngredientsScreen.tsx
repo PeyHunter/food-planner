@@ -41,7 +41,7 @@ export function IngredientsScreen() {
   return (
     <section className="ingredients">
       <nav className="bar">
-        <a className="back" href="#/recipes" aria-label="Back to recipes">
+        <a className="back" href="#/recipes/list" aria-label="Back to recipes">
           ←
         </a>
         <h2>Ingredients</h2>

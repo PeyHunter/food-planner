@@ -142,6 +142,7 @@ test('"I made this" logs the date and adds the photos from that cook to the gall
 
   const now = await recipe();
   expect(now.lastMadeOn).toBe("2026-03-08");
+  expect(now.timesMade).toBe(now.cooks.length);
   expect(now.cooks.map((cook) => [cook.madeOn, cook.by, cook.photos.length])).toEqual([
     ["2026-03-08", "peyton", 0],
     ["2026-03-01", "peyton", 2],
