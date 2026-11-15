@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { mainTypes, type RecipeSummary } from "../../shared/recipes.ts";
 import type { RuleOp } from "../../shared/rules.ts";
-import { addDays, mondayOf, weekdayName, type Child, type WeekDay, type WeekRule, type WeekView } from "../../shared/week.ts";
+import { addDays, maxPeople, mondayOf, weekdayName, type Child, type WeekDay, type WeekRule, type WeekView } from "../../shared/week.ts";
 import { listRecipes, today } from "../recipes/api.ts";
 import { acceptSuggestion, addRule, deleteRule, getWeek, setChildDay, setDinner, setPeople, updateRule, type RuleInput } from "./api.ts";
 import "./week.css";
@@ -31,16 +31,20 @@ export function WeekScreen() {
   const [problem, setProblem] = useState<string>();
   const [picking, setPicking] = useState<Picking>();
   const [editingRules, setEditingRules] = useState(false);
+  const loads = useRef(0);
 
   const load = useCallback(async () => {
+    const mine = ++loads.current;
     try {
       const week = await getWeek(monday);
+      if (mine !== loads.current) return;
       setView((current) => (week.monday === monday || !current ? week : current));
       setProblem(undefined);
     } catch (error) {
-      setProblem((error as Error).message);
+      if (mine === loads.current) setProblem((error as Error).message);
     }
   }, [monday]);
+  const people = usePeople(load, setProblem);
 
   useEffect(() => {
     void load();
@@ -97,9 +101,10 @@ export function WeekScreen() {
                 key={day.date}
                 day={day}
                 index={index}
+                people={people.count(day)}
                 kids={shown.children}
                 onPick={(childId) => setPicking({ date: day.date, childId })}
-                onPeople={(people) => act(() => setPeople(day.date, people))}
+                onPeople={(step) => people.change(day, step)}
               />
             ))}
           </ol>
@@ -120,6 +125,50 @@ export function WeekScreen() {
       )}
     </section>
   );
+}
+
+const peopleSaveDelay = 250;
+
+/**
+ * People counts change on screen at once. Quick taps are gathered, and only the newest count is sent, one save at a time.
+ * The local count stays until a week loaded after the last save has it.
+ */
+function usePeople(load: () => Promise<void>, setProblem: (problem: string) => void) {
+  const [drafts, setDrafts] = useState<Record<string, number>>({});
+  const latest = useRef<Record<string, number>>({});
+  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const saving = useRef(Promise.resolve());
+  // A save may finish after the user moved to another week; reload the week on screen then.
+  const loadNow = useRef(load);
+  loadNow.current = load;
+
+  const count = (day: WeekDay) => drafts[day.date] ?? day.people;
+  const change = (day: WeekDay, step: number) => {
+    const { date } = day;
+    const people = Math.min(maxPeople, Math.max(1, (latest.current[date] ?? day.people) + step));
+    latest.current = { ...latest.current, [date]: people };
+    setDrafts(latest.current);
+    clearTimeout(timers.current.get(date));
+    timers.current.set(
+      date,
+      setTimeout(() => {
+        timers.current.delete(date);
+        saving.current = saving.current.then(async () => {
+          try {
+            await setPeople(date, people);
+          } catch (error) {
+            setProblem((error as Error).message);
+          }
+          await loadNow.current();
+          if (latest.current[date] !== people) return;
+          const { [date]: _saved, ...rest } = latest.current;
+          latest.current = rest;
+          setDrafts(rest);
+        });
+      }, peopleSaveDelay),
+    );
+  };
+  return { count, change };
 }
 
 function RulesCard({ view, onEdit }: { view: WeekView; onEdit: () => void }) {
@@ -188,9 +237,9 @@ function Plate({ recipe }: { recipe: RecipeSummary }) {
   return recipe.mainPhoto ? <img className="plate" src={recipe.mainPhoto.url} alt="" loading="lazy" /> : <span className="plate none" aria-hidden="true" />;
 }
 
-type DayCardProps = { day: WeekDay; index: number; kids: Child[]; onPick: (childId: string | null) => void; onPeople: (people: number) => void };
+type DayCardProps = { day: WeekDay; index: number; people: number; kids: Child[]; onPick: (childId: string | null) => void; onPeople: (step: number) => void };
 
-function DayCard({ day, index, kids, onPick, onPeople }: DayCardProps) {
+function DayCard({ day, index, people, kids, onPick, onPeople }: DayCardProps) {
   const weekday = weekdayName(day.date);
   const isToday = day.date === today();
   return (
@@ -216,15 +265,15 @@ function DayCard({ day, index, kids, onPick, onPeople }: DayCardProps) {
             )}
           </button>
           <div className="ppl" role="group" aria-label={`People on ${weekday}`}>
-            <button type="button" aria-label={`One less person on ${weekday}`} disabled={day.people <= 1} onClick={() => onPeople(day.people - 1)}>
+            <button type="button" aria-label={`One less person on ${weekday}`} disabled={people <= 1} onClick={() => onPeople(-1)}>
               −
             </button>
             <span className="n">
-              <span aria-hidden="true">👥</span> {day.people}
+              <span aria-hidden="true">👥</span> {people}
               <span className="sr"> people</span>
               {day.extraPortions > 0 && <small> +{day.extraPortions === 0.5 ? "½" : day.extraPortions}</small>}
             </span>
-            <button type="button" aria-label={`One more person on ${weekday}`} disabled={day.people >= 50} onClick={() => onPeople(day.people + 1)}>
+            <button type="button" aria-label={`One more person on ${weekday}`} disabled={people >= maxPeople} onClick={() => onPeople(1)}>
               +
             </button>
           </div>
@@ -292,12 +341,23 @@ function Picker({ picking, view, who, onClose, onChoose }: PickerProps) {
       <div className="sheet-actions">
         {childId !== null && (
           <>
-            <button type="button" className="btn small lilac" onClick={() => onChoose(() => setChildDay(date, childId, "same-as-dinner"))}>
+            <button
+              type="button"
+              className="btn small lilac"
+              disabled={!day.dinner}
+              aria-describedby={day.dinner ? undefined : "no-dinner-hint"}
+              onClick={() => onChoose(() => setChildDay(date, childId, "same-as-dinner"))}
+            >
               Same as dinner, mashed
             </button>
             <button type="button" className="btn small white" onClick={() => onChoose(() => setChildDay(date, childId, "empty"))}>
               Nothing yet
             </button>
+            {!day.dinner && (
+              <p id="no-dinner-hint" className="hint no-dinner">
+                Pick a dinner first
+              </p>
+            )}
           </>
         )}
         {childId === null && day.dinner && (

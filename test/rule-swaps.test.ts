@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { suggestSwaps, type SwapRecipe } from "../src/shared/rule-swaps.ts";
+import { isBabyOnly, suggestSwaps, type SwapRecipe } from "../src/shared/rule-swaps.ts";
 import type { ChildMeal, Dish, PlanDay, Rule } from "../src/shared/rules.ts";
 import { weekDates } from "../src/shared/week.ts";
 
@@ -10,6 +10,7 @@ const recipe = (title: string, types: string[], extra: Partial<SwapRecipe> = {})
   tags: [],
   lastMadeOn: null,
   forChildren: false,
+  babyOnly: false,
   ...extra,
 });
 
@@ -90,4 +91,34 @@ test("one suggestion per missed rule, the same every time", () => {
   const first = suggest(rules, days, recipes);
   expect(first.map((s) => s.ruleId)).toEqual(["fish", "veg"]);
   expect(suggest(rules, days, recipes)).toEqual(first);
+});
+
+test("adults get a child recipe when it is the only one that meets the rule", () => {
+  const [swap] = suggest([rule("fish", null, "at-least", 1, "Fish")], week(full(pasta)), [salmonMash, curry]);
+  expect(swap?.recipeId).toBe("Salmon mash");
+});
+
+test("adults get a grown-up recipe before a child recipe", () => {
+  // Salmon mash was never made, so it sorts before Salmon; Salmon still wins.
+  const [swap] = suggest([rule("fish", null, "at-least", 1, "Fish")], week(full(pasta)), [salmonMash, salmon]);
+  expect(swap?.recipeId).toBe("Salmon");
+});
+
+test("adults get a grown-up recipe on a later day before a child recipe on an earlier one", () => {
+  const rules = [rule("fish", null, "at-least", 1, "Fish"), rule("veg", null, "at-least", 1, "Vegetarian")];
+  // Monday holds the only vegetarian dinner, so plain Salmon can only go on Tuesday; the vegetarian fish mash could take Monday.
+  const vegFishMash = recipe("Veg fish mash", ["Fish", "Vegetarian"], { forChildren: true });
+  const [swap] = suggest(rules, week([pasta, steak, steak, steak, steak, steak, steak]), [vegFishMash, salmon]);
+  expect(swap).toMatchObject({ recipeId: "Salmon", date: "2026-11-10" });
+});
+
+test("adults never get a recipe for babies only (age range ends before 18 months)", () => {
+  const babyFish = recipe("Baby fish puree", ["Fish"], { forChildren: true, babyOnly: true });
+  expect(suggest([rule("fish", null, "at-least", 1, "Fish")], week(full(pasta)), [babyFish])).toEqual([]);
+  const [swap] = suggest([rule("fish", "runi", "at-least", 1, "Fish")], week(full(pasta)), [babyFish]);
+  expect(swap?.recipeId).toBe("Baby fish puree");
+});
+
+test("isBabyOnly: only an age range that ends below 18 months", () => {
+  expect([isBabyOnly(null), isBabyOnly(12), isBabyOnly(17), isBabyOnly(18), isBabyOnly(36)]).toEqual([false, true, true, false, false]);
 });

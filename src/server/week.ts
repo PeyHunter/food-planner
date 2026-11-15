@@ -1,15 +1,14 @@
 import { and, asc, between, eq, inArray } from "drizzle-orm";
 import { Hono } from "hono";
-import { suggestSwaps } from "../shared/rule-swaps.ts";
+import { isBabyOnly, suggestSwaps } from "../shared/rule-swaps.ts";
 import { checkRules, ruleOps, ruleSentence, type ChildMeal, type PlanDay, type Rule, type RuleOp } from "../shared/rules.ts";
-import { childRecipeTag, defaultPeople, isDate, mondayOf, sameAsDinnerPortion, weekDates, type Child, type ChildDayKind, type WeekView } from "../shared/week.ts";
+import { childRecipeTag, defaultPeople, isDate, maxPeople, mondayOf, sameAsDinnerPortion, weekDates, type Child, type ChildDayKind, type WeekView } from "../shared/week.ts";
 import type { AppDependencies } from "./app.ts";
 import { kitchenMember, recipeSummaries, type MemberEnv } from "./recipes.ts";
 import { childDays, children, planDays, recipes, rules } from "./schema.ts";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const childKinds: ChildDayKind[] = ["empty", "same-as-dinner", "recipe"];
-const maxPeople = 50;
 
 type Body = Record<string, unknown>;
 const readBody = async (request: { json(): Promise<unknown> }): Promise<Body> => {
@@ -85,6 +84,7 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
     const byId = new Map(summaries.map((summary) => [summary.id, summary]));
     const forChildren = new Set(recipeRows.filter((row) => row.ageFrom !== null || row.ageTo !== null).map((row) => row.id));
     for (const summary of summaries) if (summary.tags.includes(childRecipeTag)) forChildren.add(summary.id);
+    const babyOnly = new Set(recipeRows.filter((row) => isBabyOnly(row.ageTo)).map((row) => row.id));
 
     const days = dates.map((date) => {
       const row = dayRows.find((day) => day.date === date);
@@ -126,7 +126,7 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
       suggestions: suggestSwaps({
         rules: ordered,
         days: plan,
-        recipes: summaries.map((summary) => ({ ...summary, forChildren: forChildren.has(summary.id) })),
+        recipes: summaries.map((summary) => ({ ...summary, forChildren: forChildren.has(summary.id), babyOnly: babyOnly.has(summary.id) })),
         childNames,
         today,
       }),

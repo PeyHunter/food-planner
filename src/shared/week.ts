@@ -26,6 +26,7 @@ export type WeekView = {
 
 export const childRecipeTag = "for Runi";
 export const defaultPeople = 2;
+export const maxPeople = 50;
 export const sameAsDinnerPortion = 0.5;
 
 const isoDate = /^\d{4}-\d{2}-\d{2}$/;

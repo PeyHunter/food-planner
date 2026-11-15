@@ -41,14 +41,15 @@
 .week .day-body{display:grid;gap:.6rem;align-content:center}
 .week .dinner{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
 .week .next{flex-basis:100%;inline-size:fit-content}
-.week .dish{display:flex;align-items:center;gap:.65rem;flex:1 1 8rem;padding:0;border:0;background:none;text-align:start}
+.week .dish{display:flex;align-items:center;gap:.65rem;flex:1 1 13rem;padding:0;border:0;background:none;text-align:start}
 .week .dish strong{display:block;font-size:1.05rem;letter-spacing:-.01em;line-height:1.15}
 .week .dish-text{display:grid;gap:.35rem}
 .week .dish.empty{white-space:nowrap;min-block-size:2.9rem;padding:.55rem .8rem;border:var(--line) dashed var(--ink);border-radius:.9rem;color:var(--muted);font-weight:800}
 .week .plate{flex:none;inline-size:3.4rem;block-size:3.4rem;border:var(--line) solid var(--ink);border-radius:50%;object-fit:cover;background:var(--sun-soft)}
 .week .plate.none{background:radial-gradient(circle,var(--paper) 45%,var(--sun-soft) 46%)}
 .week .stickers{display:flex;flex-wrap:wrap;gap:.3rem}
-.week .stickers .sticker{font-size:.66rem;padding:.15em .55em;border-width:2px}
+/* Day-card stickers keep their own width; a pill only wraps its text when it is wider than the whole column. */
+.week .stickers .sticker{flex:none;max-inline-size:100%;font-size:.62rem;letter-spacing:.02em;padding:.15em .5em;border-width:2px;white-space:normal;text-align:center}
 .week .ppl{display:inline-flex;align-items:center;margin-inline-start:auto;border:2px solid var(--ink);border-radius:99px;background:var(--sky);font-weight:800;font-size:.9rem}
 .week .ppl button{inline-size:2.4rem;block-size:2.4rem;border:0;background:none;font-weight:800;font-size:1.15rem}
 .week .ppl button:disabled{opacity:.35}
@@ -66,6 +67,7 @@
 .week .sheet-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem}
 .week .sheet-actions{display:flex;flex-wrap:wrap;gap:.5rem}
 .week .sheet-actions:empty{display:none}
+.week .sheet-actions .no-dinner{flex-basis:100%;margin:0;font-weight:700;font-size:.9rem}
 .week .search,.week select{inline-size:100%;min-block-size:2.75rem;padding:.5rem .75rem;border:var(--line) solid var(--ink);border-radius:.9rem;background:var(--paper);color:var(--ink);font:inherit;font-size:max(16px,1rem)}
 .week .pick-list{list-style:none;margin:0;padding:0;display:grid;gap:.5rem}
 .week .pick-list button{display:flex;align-items:center;gap:.7rem;inline-size:100%;padding:.45rem;border:2px solid var(--ink);border-radius:1rem;background:var(--paper);text-align:start}

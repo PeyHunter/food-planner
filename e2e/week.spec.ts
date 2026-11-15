@@ -72,3 +72,63 @@ test("plan a fish dinner, set Wednesday to 5, mash it for Runi and take a swap",
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: process.env.WEEK_SHOT ?? "test-results/week.png", fullPage: true });
 });
+
+test("quick taps on people all count, stickers fit, and mashing needs a dinner", async ({ page }) => {
+  const veg = `Big vegetable tray bake ${Date.now()}`;
+  await page.goto("/");
+  await page.getByLabel("Name").fill("ronja");
+  await page.getByLabel("Password").fill(e2ePasswords.ronja);
+  await page.getByRole("button", { name: "Log in" }).click();
+  await expect(page.getByRole("heading", { name: "Hi Ronja" })).toBeVisible();
+  const made = await page.request.post("/api/recipes", { data: recipe(veg, ["Vegetables", "Vegetarian", "Chicken"], ["freezable", "kid-friendly"]) });
+  expect(made.ok()).toBe(true);
+
+  // Two weeks ahead, so this test never shares a day with the one above.
+  await page.getByRole("button", { name: "Next week" }).click();
+  await page.getByRole("button", { name: "Next week" }).click();
+  const thursday = page.getByRole("listitem", { name: "Thursday" });
+  const people = thursday.getByRole("group", { name: "People on Thursday" });
+  await expect(people).toContainText("2");
+
+  // Three taps in the same moment, before any answer comes back.
+  const saved = page.waitForResponse((response) => response.request().method() === "PUT" && response.url().includes("/api/plan/days/"));
+  await thursday.getByRole("button", { name: "One more person on Thursday" }).evaluate((button: HTMLButtonElement) => {
+    button.click();
+    button.click();
+    button.click();
+  });
+  await expect(people).toContainText("5");
+  expect((await saved).request().postDataJSON()).toEqual({ people: 5 });
+  await page.reload();
+  await page.getByRole("button", { name: "Next week" }).click();
+  await page.getByRole("button", { name: "Next week" }).click();
+  await expect(people).toContainText("5");
+
+  await thursday.getByRole("button", { name: /Runi Lee/ }).click();
+  const sheet = page.getByRole("dialog", { name: "Runi Lee on Thursday" });
+  await expect(sheet.getByRole("button", { name: "Same as dinner, mashed" })).toBeDisabled();
+  await expect(sheet.getByText("Pick a dinner first")).toBeVisible();
+  await sheet.getByRole("button", { name: "Close" }).click();
+
+  await thursday.getByRole("button", { name: "+ Pick a dinner" }).click();
+  const dinner = page.getByRole("dialog", { name: "Dinner for Thursday" });
+  await dinner.getByLabel("Search recipes").fill(veg);
+  await dinner.getByRole("button", { name: new RegExp(veg) }).click();
+  await expect(thursday.getByText(veg)).toBeVisible();
+
+  for (const width of [375, 393]) {
+    await page.setViewportSize({ width, height: 800 });
+    const overflow = await thursday.evaluate((card) => {
+      const box = card.getBoundingClientRect();
+      return [...card.querySelectorAll<HTMLElement>(".sticker")]
+        .filter((sticker) => {
+          const own = sticker.getBoundingClientRect();
+          return sticker.scrollWidth > sticker.clientWidth + 1 || own.right > box.right || own.left < box.left;
+        })
+        .map((sticker) => sticker.textContent);
+    });
+    expect(overflow, `stickers that spill at ${width}px`).toEqual([]);
+  }
+  await page.setViewportSize({ width: 375, height: 800 });
+  await thursday.screenshot({ path: process.env.STICKER_SHOT ?? "test-results/week-stickers.png" });
+});
