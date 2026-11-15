@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";
 import { expect, inject, test } from "vitest";
+import { ensureHousehold } from "../src/server/household.ts";
 import { sharePhotoFile } from "../src/server/photos.ts";
 import type { Photo, Recipe, ShareLink, SharedRecipe } from "../src/shared/recipes.ts";
 import { createTestApp, startingUsers } from "./support/test-app.ts";
@@ -193,4 +194,46 @@ test("only the recipe's own kitchen can turn its link on or off", async () => {
   for (const method of ["GET", "POST", "DELETE"]) {
     expect((await app.request(`/api/recipes/${recipeId}/share`, { method, headers })).status).toBe(404);
   }
+});
+
+test("someone in another kitchen saves a shared recipe, with its photos, as their own copy", async () => {
+  const { app, headers, addRecipe, upload, share, pathOf } = await setUp();
+  const recipeId = await addRecipe("Fish pie");
+  await upload(recipeId, "main");
+  await upload(recipeId, "gallery");
+  const token = pathOf((await share(recipeId, "POST"))!).split("/")[2]!;
+  await ensureHousehold(app.database, [{ username: "isabel", password: "peapear" }, { username: "christopher", password: "limekale" }], { name: "Isabel's", kids: false });
+  const isabel = { cookie: (await app.logIn("isabel", "peapear")).cookie! };
+
+  expect((await app.request(`/api/share/${token}/save`, { method: "POST" })).status).toBe(401);
+  const saved = await app.request(`/api/share/${token}/save`, { method: "POST", headers: isabel });
+  expect(saved.status).toBe(201);
+  const { id } = (await saved.json()) as { id: string };
+  expect(id).not.toBe(recipeId);
+
+  const copy = (await (await app.request(`/api/recipes/${id}`, { headers: isabel })).json()) as Recipe;
+  expect(copy.title).toBe("Fish pie");
+  expect(copy.createdBy).toBe("isabel");
+  expect(copy.tags).toEqual([]);
+  expect(copy.lines.map((line) => [line.amount, line.unit, line.ingredient.name, line.note])).toEqual([[400, "g", "Cod", "skin off"]]);
+  expect(copy.steps).toEqual(["Bake it."]);
+  expect(copy.photos.map((photo) => photo.role).sort()).toEqual(["gallery", "main"]);
+  const original = (await (await app.request(`/api/recipes/${recipeId}`, { headers })).json()) as Recipe;
+  expect(copy.photos.map((photo) => photo.id)).not.toContain(original.photos[0]!.id);
+  for (const photo of copy.photos) expect((await app.request(photo.url, { headers: isabel })).status).toBe(200);
+
+  // Her copy is hers: deleting the original keeps it and its photos.
+  expect((await app.request(`/api/recipes/${recipeId}`, { method: "DELETE", headers })).status).toBe(204);
+  const after = (await (await app.request(`/api/recipes/${id}`, { headers: isabel })).json()) as Recipe;
+  for (const photo of after.photos) expect((await app.request(photo.url, { headers: isabel })).status).toBe(200);
+  expect((await app.request(`/api/share/${token}/save`, { method: "POST", headers: isabel })).status).toBe(404);
+});
+
+test("saving your own kitchen's shared recipe doesn't make a second copy", async () => {
+  const { app, headers, addRecipe, share, pathOf } = await setUp();
+  const recipeId = await addRecipe("Fish pie");
+  const token = pathOf((await share(recipeId, "POST"))!).split("/")[2]!;
+  const response = await app.request(`/api/share/${token}/save`, { method: "POST", headers });
+  expect(await response.json()).toEqual({ id: recipeId, alreadyYours: true });
+  expect(await app.query("select id from recipes")).toHaveLength(1);
 });

@@ -43,6 +43,15 @@ export function SharePage({ token }: { token: string }) {
         )}
         {state.kind === "offline" && <p role="alert">Can't reach the server right now. Try again in a moment.</p>}
         {state.kind === "ready" && <SharedRecipeView recipe={state.recipe} />}
+        {state.kind === "ready" && (
+          <section className="panel save-shared">
+            <h2>Use our food planner too?</h2>
+            <p>Copy this recipe into your own recipes, so you can plan it and shop for it.</p>
+            <a className="ink-button" href={`/#/recipes/save/${encodeURIComponent(token)}`}>
+              Save to my recipes
+            </a>
+          </section>
+        )}
       </div>
     </main>
   );
