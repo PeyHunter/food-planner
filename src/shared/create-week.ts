@@ -20,8 +20,8 @@ export type CreateWeekInput = {
   /** Days before this are past and never filled. Dishes cooked in the 14 days before it are skipped. */
   today: string;
 };
-/** Put `recipeId` on `date`, as the dinner (childId null) or as that child's meal. */
-export type Fill = { date: string; childId: string | null; recipeId: string };
+/** Put `recipeId` on `date`, as the dinner (childId null) or as that child's meal. With sameAsDinner, the child eats that day's dinner (recipeId) mashed. */
+export type Fill = { date: string; childId: string | null; recipeId: string; sameAsDinner?: true };
 export type CreateWeekResult = { fills: Fill[]; rules: RuleStatus[]; note: string };
 
 export const recentDays = 14;
@@ -35,7 +35,8 @@ function fitsChild(recipe: PlannerRecipe, child: PlannerChild) {
 }
 
 /**
- * Fills only empty dinners, then each child's empty days, one at a time. Each pick:
+ * Fills only empty dinners, then each child's empty days, one at a time. A child first gets "Same as dinner, mashed" on days
+ * whose dinner helps one of the child's at-least rules still short, then child recipes on the days left. Each recipe pick:
  * never pushes an at-most rule over, helps the most at-least rules still short, gives the adults a child recipe only
  * when it meets a rule a grown-up recipe can't, uses up the most leftover packs, then takes the dish not made for the longest time (then by title).
  * Skips dishes made in the last 14 days and dishes already in the week.
@@ -54,17 +55,35 @@ export function createWeek({ rules, days, recipes, children, today }: CreateWeek
     .sort((a, b) => (a.lastMadeOn ?? "").localeCompare(b.lastMadeOn ?? "") || a.title.localeCompare(b.title) || a.id.localeCompare(b.id));
 
   const open = plan.filter((day) => day.date >= today);
-  const slots: { day: PlannerDay; child: PlannerChild | null }[] = [
-    ...open.filter((day) => day.dinner === null).map((day) => ({ day, child: null })),
-    ...children.flatMap((child) => open.filter((day) => (day.children[child.id] ?? { kind: "empty" }).kind === "empty").map((day) => ({ day, child }))),
+  const isEmpty = (day: PlannerDay, child: PlannerChild) => (day.children[child.id] ?? { kind: "empty" }).kind === "empty";
+  const slots: { day: PlannerDay; child: PlannerChild | null; mash: boolean }[] = [
+    ...open.filter((day) => day.dinner === null).map((day) => ({ day, child: null, mash: false })),
+    ...children.flatMap((child) => {
+      const empty = open.filter((day) => isEmpty(day, child));
+      return [...empty.map((day) => ({ day, child, mash: true })), ...empty.map((day) => ({ day, child, mash: false }))];
+    }),
   ];
+  const toFill = slots.filter((slot) => !slot.mash).length;
 
   const fills: Fill[] = [];
-  for (const { day, child } of slots) {
+  for (const { day, child, mash } of slots) {
+    if (child && !isEmpty(day, child)) continue;
     const counts = new Map(checkRules(rules, plan).map((status) => [status.id, status.count]));
     // A dinner also counts for each child eating "same as dinner" that day.
     const eaters = child ? [child.id] : [null, ...children.filter((kid) => day.children[kid.id]?.kind === "same-as-dinner").map((kid) => kid.id)];
     const touched = rules.filter((rule) => eaters.includes(rule.childId));
+
+    if (mash) {
+      const dinner = day.dinner;
+      if (!dinner) continue;
+      const hits = touched.filter((rule) => matches(dinner, rule.what));
+      if (hits.some((rule) => rule.op === "at-most" && counts.get(rule.id)! + 1 > rule.n)) continue;
+      if (!hits.some((rule) => rule.op === "at-least" && counts.get(rule.id)! < rule.n)) continue;
+      day.children[child!.id] = { kind: "same-as-dinner" };
+      fills.push({ date: day.date, childId: child!.id, recipeId: dinner.id, sameAsDinner: true });
+      continue;
+    }
+
     const spare = leftoverIngredients(plan, children, byId);
 
     let best: { recipe: PlannerRecipe; score: number[] } | undefined;
@@ -90,7 +109,8 @@ export function createWeek({ rules, days, recipes, children, today }: CreateWeek
   }
 
   const statuses = checkRules(rules, plan);
-  return { fills, rules: statuses, note: noteFor(fills, slots.length, statuses, children) };
+  const stillEmpty = open.filter((day) => day.dinner === null || children.some((child) => isEmpty(day, child))).length;
+  return { fills, rules: statuses, note: noteFor(fills, toFill, stillEmpty, statuses, children) };
 }
 
 const beats = (score: number[], other: number[]) => {
@@ -126,8 +146,8 @@ function leftoverIngredients(plan: PlannerDay[], children: PlannerChild[], byId:
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-/** "Filled 4 dinners and 2 meals for Runi Lee. Fish 2/2 for Runi Lee ✓" */
-function noteFor(fills: Fill[], open: number, statuses: RuleStatus[], children: PlannerChild[]) {
+/** "Filled 4 dinners and 2 meals for Runi Lee. 3 days still empty: add more recipes to fill them. Fish 2/2 for Runi Lee ✓" */
+function noteFor(fills: Fill[], open: number, stillEmpty: number, statuses: RuleStatus[], children: PlannerChild[]) {
   if (!open) return "Nothing to fill. Every day is already planned.";
   if (!fills.length) return "No recipe fits the empty days. Add more recipes or loosen the rules.";
   const parts = [
@@ -143,5 +163,6 @@ function noteFor(fills: Fill[], open: number, statuses: RuleStatus[], children: 
       const who = status.childId ? ` for ${children.find((child) => child.id === status.childId)?.name ?? "the child"}` : "";
       return `${status.what} ${status.count}/${status.n}${who} ${status.met ? "✓" : "not met yet"}`;
     });
-  return [`Filled ${parts.join(" and ")}.`, goals.join(" · ")].filter(Boolean).join(" ");
+  const empty = stillEmpty ? `${plural(stillEmpty, "day")} still empty: add more recipes to fill them.` : "";
+  return [`Filled ${parts.join(" and ")}.`, empty, goals.join(" · ")].filter(Boolean).join(" ");
 }

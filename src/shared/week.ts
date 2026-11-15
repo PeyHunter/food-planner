@@ -9,6 +9,8 @@ export type WeekDay = {
   date: string;
   people: number;
   dinner: RecipeSummary | null;
+  /** The dinner is a portion from the freezer, so it adds nothing to the shopping list. */
+  fromFreezer: boolean;
   /** Each child eating "Same as dinner, mashed" adds half a portion. */
   extraPortions: number;
   children: ChildDay[];
@@ -22,10 +24,14 @@ export type WeekView = {
   suggestions: Suggestion[];
   /** Recipes meant for a child: tag "for Runi" or an age range. */
   childRecipes: RecipeSummary[];
+  /** Dishes with portions in the freezer, for planning a night "from the freezer". */
+  freezer: FreezerItem[];
 };
 
+export type FreezerItem = { recipe: RecipeSummary; count: number };
+
 /** What Create week put in, so the phone can undo just that, and a short note on how the rules came out. */
-export type CreatedWeek = { fills: { date: string; childId: string | null; recipeId: string }[]; note: string };
+export type CreatedWeek = { fills: { date: string; childId: string | null; recipeId: string; sameAsDinner?: true }[]; note: string };
 
 export const childRecipeTag = "for Runi";
 export const defaultPeople = 2;

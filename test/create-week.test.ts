@@ -139,8 +139,36 @@ test("the same week always gives the same plan, and the note says what happened"
   const rules = [rule(null, "at-least", 1, "Fish"), rule("runi", "at-least", 2, "Fish")];
   const first = createWeek(input({ days, recipes, rules }));
   expect(createWeek(input({ days, recipes: [...recipes].reverse(), rules }))).toEqual(first);
-  expect(first.note).toBe("Filled 2 dinners and 2 meals for Runi Lee. Fish 1/1 ✓ · Fish 1/2 for Runi Lee not met yet");
+  // Monday's cod also goes to Runi Lee mashed, so she needs only one more fish meal.
+  expect(first.note).toBe("Filled 2 dinners and 3 meals for Runi Lee. 4 days still empty: add more recipes to fill them. Fish 1/1 ✓ · Fish 2/2 for Runi Lee ✓");
   expect(days[0]!.dinner).toBeNull();
+});
+
+test("a child eats a dinner mashed when it helps a rule still short, before child recipes", () => {
+  const days = emptyWeek();
+  const recipes = [dish("A cod", ["Fish"]), dish("B dal", ["Vegetarian"]), dish("C salmon", ["Fish"]), forRuni("Pea mash", ["Vegetables"]), forRuni("Cod mash", ["Fish"])];
+  const rules = [rule("runi", "at-least", 2, "Fish"), rule("runi", "at-most", 0, "Meat")];
+  const result = createWeek(input({ days, recipes, rules }));
+  const runi = result.fills.filter((fill) => fill.childId === "runi");
+  // Monday's cod and Wednesday's salmon meet the fish rule, so no fish recipe for Runi Lee is needed.
+  expect(runi.filter((fill) => fill.sameAsDinner)).toEqual([
+    { date: "2026-03-02", childId: "runi", recipeId: recipes[0]!.id, sameAsDinner: true },
+    { date: "2026-03-04", childId: "runi", recipeId: recipes[2]!.id, sameAsDinner: true },
+  ]);
+  expect(runi.filter((fill) => !fill.sameAsDinner).map((fill) => fill.date)).toEqual(["2026-03-03", "2026-03-05"]);
+  expect(result.rules[0]).toMatchObject({ count: 3, met: true });
+});
+
+test("a dinner that would break a child's at-most rule is not given mashed", () => {
+  const days = emptyWeek();
+  const recipes = [dish("A cod and bacon", ["Fish", "Meat"])];
+  const result = createWeek(input({ days, recipes, rules: [rule("runi", "at-least", 1, "Fish"), rule("runi", "at-most", 0, "Meat")] }));
+  expect(result.fills.filter((fill) => fill.childId === "runi")).toEqual([]);
+});
+
+test("the note says how many days are still empty", () => {
+  const recipes = [dish("Cod"), dish("Dal"), dish("Pie")];
+  expect(createWeek(input({ recipes, children: [] })).note).toBe("Filled 3 dinners. 4 days still empty: add more recipes to fill them.");
 });
 
 test("says so when there is nothing to fill", () => {

@@ -6,7 +6,8 @@ import { call, json, today } from "../recipes/api.ts";
 export type RuleInput = { childId: string | null; op: RuleOp; n: number; what: string };
 
 export const getWeek = (monday: string) => call<WeekView>(`/api/plan/weeks/${monday}?today=${today()}`);
-export const setDinner = (date: string, dinnerRecipeId: string | null) => call<void>(`/api/plan/days/${date}`, json("PUT", { dinnerRecipeId }));
+export const setDinner = (date: string, dinnerRecipeId: string | null, fromFreezer = false) =>
+  call<void>(`/api/plan/days/${date}`, json("PUT", { dinnerRecipeId, fromFreezer }));
 export const setPeople = (date: string, people: number) => call<void>(`/api/plan/days/${date}`, json("PUT", { people }));
 export const setChildDay = (date: string, childId: string, kind: ChildDayKind, recipeId?: string) =>
   call<void>(`/api/plan/days/${date}/children/${childId}`, json("PUT", { kind, recipeId }));

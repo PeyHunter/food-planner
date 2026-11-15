@@ -1,4 +1,5 @@
 import type { Ingredient, IngredientRow, IngredientSettings, IngredientSuggestion, PhotoRecipeDraft, Recipe, RecipeInput, RecipeSummary, ShareLink } from "../../shared/recipes.ts";
+import type { FreezerItem } from "../../shared/week.ts";
 
 export async function call<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
@@ -24,6 +25,9 @@ export const deleteRecipe = (id: string) => call<void>(`/api/recipes/${id}`, { m
 export const listIngredients = (q: string) => call<IngredientRow[]>(`/api/ingredients?all=1&q=${encodeURIComponent(q)}`);
 export const saveIngredient = (id: string, settings: IngredientSettings) => call<Ingredient>(`/api/ingredients/${id}`, json("PUT", settings));
 export const deleteIngredient = (id: string) => call<void>(`/api/ingredients/${id}`, { method: "DELETE" });
+export const getFreezer = () => call<FreezerItem[]>("/api/freezer");
+/** A negative `add` takes portions out. */
+export const addToFreezer = (recipeId: string, add: number) => call<{ count: number }>(`/api/freezer/${recipeId}`, json("POST", { add }));
 export const suggestIngredients = (q: string) => call<IngredientSuggestion[]>(`/api/ingredients?q=${encodeURIComponent(q)}`);
 
 export const turnShareOn = (id: string) => call<ShareLink>(`/api/recipes/${id}/share`, { method: "POST" });

@@ -70,6 +70,9 @@ export function BrowseScreen() {
           <a className="btn small white" href="#/recipes/list" aria-label="List and search">
             ☰ List
           </a>
+          <a className="btn small white" href="#/recipes/freezer">
+            ❄ Freezer
+          </a>
           <a className="btn small sun" href="#/recipes/new" aria-label="+ Add recipe">
             + Add
           </a>

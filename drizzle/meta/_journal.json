@@ -36,6 +36,13 @@
       "when": 1794701596706,
       "tag": "0004_shopping",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794714516627,
+      "tag": "0005_freezer",
+      "breakpoints": true
     }
   ]
 }
