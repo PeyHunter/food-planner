@@ -19,7 +19,7 @@ CHRISTOPHER_PASSWORD="$(word)-$(word)-$(openssl rand -hex 2)"
 kubectl create secret generic food-planner-secrets -n food-planner --dry-run=client -o json \
   --from-literal=ISABEL_PASSWORD="$ISABEL_PASSWORD" \
   --from-literal=CHRISTOPHER_PASSWORD="$CHRISTOPHER_PASSWORD" \
-  | kubeseal --controller-name sealed-secrets-controller --controller-namespace kube-system \
+  | kubeseal --controller-name sealed-secrets-controller --controller-namespace kube-system -o yaml \
     --merge-into secrets/food-planner-secrets.yaml
 
 git add secrets/food-planner-secrets.yaml
