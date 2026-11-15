@@ -32,6 +32,7 @@ export async function createTestApp({ publicUrl = "http://localhost", photoRecip
 
   return {
     database,
+    databaseUrl: `${serverUrl}/${name}`,
     request: (path: string, init?: RequestInit) => app.request(path, init),
     async query<Row extends Record<string, unknown>>(text: string, values: unknown[] = []) {
       return (await database.db.$client.query<Row>(text, values)).rows;

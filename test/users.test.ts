@@ -1,3 +1,5 @@
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { randomUUID } from "node:crypto";
 import { expect, test } from "vitest";
 import { ensureHousehold } from "../src/server/household.ts";
@@ -82,4 +84,14 @@ test("isabel and christopher get their own kitchen with no children and only adu
   expect(added.status).toBe(403);
   const week = await (await app.request("/api/plan/weeks/2026-03-02", { headers: { cookie } })).json();
   expect(week.children).toEqual([]);
+});
+
+test("set-password gives an existing login a new password", async () => {
+  const app = await createTestApp();
+  const run = promisify(execFile);
+  await run("node", ["src/server/set-password.ts", "ronja"], { env: { ...process.env, DATABASE_URL: app.databaseUrl, NEW_PASSWORD: "carrotmango" } });
+
+  expect((await app.logIn("ronja", "carrotmango")).response.status).toBe(204);
+  expect((await app.logIn("ronja", startingUsers[1]!.password)).response.status).toBe(401);
+  await expect(run("node", ["src/server/set-password.ts", "nobody"], { env: { ...process.env, DATABASE_URL: app.databaseUrl, NEW_PASSWORD: "peapear" } })).rejects.toThrow(/No login called nobody/);
 });
