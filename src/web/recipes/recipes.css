@@ -686,3 +686,6 @@
 .recipes .freezer-offer input {
   inline-size: 5rem;
 }
+
+.save-shared { display: grid; gap: 0.8rem; justify-items: start; }
+.save-shared .save-photo { inline-size: 100%; max-block-size: 16rem; object-fit: cover; border: var(--line) solid var(--ink); border-radius: 1.2rem; }

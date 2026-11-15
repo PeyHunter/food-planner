@@ -1,11 +1,11 @@
 import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { createMiddleware } from "hono/factory";
-import { mainTypes, shopSections, type Cook, type Ingredient, type IngredientRow, type IngredientSettings, type MainType, type Photo, type Recipe, type RecipeInput, type RecipeSummary, type ShareLink, type SharedRecipe, type ShopSection, sharePhotoMedia } from "../shared/recipes.ts";
+import { kidTags, mainTypes, shopSections, type Cook, type Ingredient, type IngredientRow, type IngredientSettings, type MainType, type Photo, type Recipe, type RecipeInput, type RecipeSummary, type ShareLink, type SharedRecipe, type ShopSection, sharePhotoMedia } from "../shared/recipes.ts";
 import { isUnit } from "../shared/units.ts";
 import { sessionUser } from "./access.ts";
 import type { AppDependencies } from "./app.ts";
@@ -275,6 +275,48 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
     const shared = await sharedView(c.req.param("token"));
     if (!shared) return c.json({ error: "This link doesn't work any more." }, 404, { "cache-control": "no-store" });
     return c.json(shared, 200, { "cache-control": "no-store" });
+  });
+
+  /** Copies a shared recipe, with its photos, into the caller's own kitchen. Their own recipe isn't copied again. */
+  routes.post("/api/share/:token/save", member, async (c) => {
+    const id = await sharedRecipe(c.req.param("token"));
+    if (!id) return c.json({ error: "This link doesn't work any more." }, 404);
+    const { kitchenId, userId, kids } = c.get("member");
+    const [source] = await db.select({ kitchenId: recipes.kitchenId }).from(recipes).where(eq(recipes.id, id));
+    if (source!.kitchenId === kitchenId) return c.json({ id, alreadyYours: true });
+    const recipe = await loadRecipe(id);
+    const input: RecipeInput = {
+      title: recipe.title,
+      description: recipe.description,
+      feeds: recipe.feeds,
+      minutes: recipe.minutes,
+      types: recipe.types,
+      tags: kids ? recipe.tags : recipe.tags.filter((tag) => !kidTags.includes(tag)),
+      ageFromMonths: kids ? recipe.ageFromMonths : null,
+      ageToMonths: kids ? recipe.ageToMonths : null,
+      lines: recipe.lines.map((line) => ({ amount: line.amount, unit: line.unit, ingredient: line.ingredient.name, note: line.note })),
+      steps: recipe.steps,
+    };
+    const pictures = await db
+      .select({ id: photos.id, role: photos.role, width: photos.width, height: photos.height, bytes: photos.bytes })
+      .from(photos)
+      .where(and(eq(photos.recipeId, id), isNull(photos.cookId)));
+    const copies = await Promise.all(pictures.map(async (photo) => ({ ...photo, id: await store.copy(photo.id) })));
+    const copyId = await db
+      .transaction(async (tx) => {
+        const [row] = await tx
+          .insert(recipes)
+          .values({ kitchenId, createdBy: userId, ...recipeColumns(input) })
+          .returning({ id: recipes.id });
+        await writeParts(tx, row!.id, kitchenId, userId, input);
+        if (copies.length) await tx.insert(photos).values(copies.map((photo) => ({ ...photo, recipeId: row!.id, createdBy: userId })));
+        return row!.id;
+      })
+      .catch(async (error: unknown) => {
+        await Promise.all(copies.map((photo) => store.remove(photo.id)));
+        throw error;
+      });
+    return c.json({ id: copyId, alreadyYours: false }, 201);
   });
 
   routes.get("/s/:token/photos/:file", async (c) => {

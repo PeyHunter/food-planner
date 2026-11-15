@@ -1,4 +1,4 @@
-import type { Ingredient, IngredientRow, IngredientSettings, IngredientSuggestion, PhotoRecipeDraft, Recipe, RecipeInput, RecipeSummary, ShareLink } from "../../shared/recipes.ts";
+import type { Ingredient, IngredientRow, IngredientSettings, IngredientSuggestion, PhotoRecipeDraft, Recipe, RecipeInput, RecipeSummary, ShareLink, SharedRecipe } from "../../shared/recipes.ts";
 import type { FreezerItem } from "../../shared/week.ts";
 
 export async function call<T>(path: string, init?: RequestInit): Promise<T> {
@@ -32,6 +32,8 @@ export const suggestIngredients = (q: string) => call<IngredientSuggestion[]>(`/
 
 export const turnShareOn = (id: string) => call<ShareLink>(`/api/recipes/${id}/share`, { method: "POST" });
 export const turnShareOff = (id: string) => call<ShareLink>(`/api/recipes/${id}/share`, { method: "DELETE" });
+export const getShared = (token: string) => call<SharedRecipe>(`/api/share/${encodeURIComponent(token)}`);
+export const saveShared = (token: string) => call<{ id: string; alreadyYours: boolean }>(`/api/share/${encodeURIComponent(token)}/save`, { method: "POST" });
 
 /** XMLHttpRequest rather than fetch, because only it reports how much of the photo has been sent. `onProgress` gets 0 to 1. */
 export function uploadPhoto(recipeId: string, photo: File, role: "main" | "gallery", onProgress?: (sent: number) => void) {

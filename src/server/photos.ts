@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { readFile, rename, rm, writeFile } from "node:fs/promises";
+import { copyFile, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import sharp from "sharp";
 
@@ -83,6 +83,12 @@ export function photoStore(dir: string) {
         making.set(id, job);
       }
       return job;
+    },
+    /** A new photo with the same picture, for a recipe copied into another kitchen. */
+    async copy(id: string): Promise<string> {
+      const copyId = randomUUID();
+      await copyFile(pathOf(id), pathOf(copyId));
+      return copyId;
     },
     remove: async (id: string) => {
       await Promise.all([rm(pathOf(id), { force: true }), rm(smallPathOf(id), { force: true })]);
