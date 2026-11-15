@@ -6,6 +6,7 @@ import { addDays, maxPeople, mondayOf, weekdayName, type Child, type CreatedWeek
 import { useKids } from "../kitchen.ts";
 import { listRecipes, today } from "../recipes/api.ts";
 import { acceptSuggestion, addRule, createWeek, deleteRule, getWeek, reduceWaste, setChildDay, setDinner, setPeople, undoCreateWeek, updateRule, type RuleInput } from "./api.ts";
+import { WarnBadge } from "../kids/KidWarnings.tsx";
 import "./week.css";
 
 type Picking = { date: string; childId: string | null };
@@ -90,6 +91,7 @@ export function WeekScreen() {
                 index={index}
                 people={people.count(day)}
                 kids={shown.children}
+                warnings={shown.kidWarnings}
                 onPick={(childId) => setPicking({ date: day.date, childId })}
                 onPeople={(step) => people.change(day, step)}
               />
@@ -394,9 +396,17 @@ function Plate({ recipe, big = false }: { recipe: RecipeSummary; big?: boolean }
   return recipe.mainPhoto ? <img className={kind} src={recipe.mainPhoto.url} alt="" loading="lazy" /> : <span className={`${kind} none`} aria-hidden="true" />;
 }
 
-type DayCardProps = { day: WeekDay; index: number; people: number; kids: Child[]; onPick: (childId: string | null) => void; onPeople: (step: number) => void };
+type DayCardProps = {
+  day: WeekDay;
+  index: number;
+  people: number;
+  kids: Child[];
+  warnings: WeekView["kidWarnings"];
+  onPick: (childId: string | null) => void;
+  onPeople: (step: number) => void;
+};
 
-function DayCard({ day, index, people, kids, onPick, onPeople }: DayCardProps) {
+function DayCard({ day, index, people, kids, warnings, onPick, onPeople }: DayCardProps) {
   const weekday = weekdayName(day.date);
   const isToday = day.date === today();
   return (
@@ -439,12 +449,16 @@ function DayCard({ day, index, people, kids, onPick, onPeople }: DayCardProps) {
         {kids.map((kid) => {
           const meal = day.children.find((entry) => entry.childId === kid.id);
           const text = meal?.kind === "same-as-dinner" ? "Same as dinner, mashed" : meal?.kind === "recipe" && meal.recipe ? meal.recipe.title : "Nothing yet";
+          // "Same as dinner" means the child eats the dinner, so its warnings count.
+          const eats = meal?.kind === "recipe" ? meal.recipe : meal?.kind === "same-as-dinner" ? day.dinner : null;
+          const found = eats ? (warnings[kid.id]?.[eats.id] ?? []) : [];
           return (
             <button key={kid.id} type="button" className={`kid${meal?.kind === "empty" || !meal ? " nothing" : ""}`} onClick={() => onPick(kid.id)}>
               <span aria-hidden="true">🧒</span>
               <b>{kid.name}</b>
               <span className="meal">{text}</span>
               {meal?.kind === "same-as-dinner" && <span className="plus">+½</span>}
+              <WarnBadge warnings={found} />
             </button>
           );
         })}
@@ -563,6 +577,7 @@ function Picker({ picking, view, who, onClose, onChoose }: PickerProps) {
               <span className="dish-text">
                 <strong>{recipe.title}</strong>
                 <Stickers recipe={recipe} />
+                {childId !== null && <WarnBadge warnings={view.kidWarnings[childId]?.[recipe.id] ?? []} />}
               </span>
             </button>
           </li>

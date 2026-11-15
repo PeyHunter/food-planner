@@ -7,6 +7,7 @@ import { childRecipeTag, mondayOf, type WeekRule } from "../../shared/week.ts";
 import { today } from "../recipes/api.ts";
 import { addRule, deleteRule, getWeek, updateRule, type RuleInput } from "../week/api.ts";
 import { addChild, getChildRecipes, getChildren, updateChild } from "./api.ts";
+import { WarnBadge } from "./KidWarnings.tsx";
 import "./kids.css";
 
 const ruleWhats = [...mainTypes, "Freezable", "kid-friendly"];
@@ -316,6 +317,7 @@ function RecipeCards({ recipes, label }: { recipes: ChildRecipe[]; label: string
             {recipe.mainPhoto ? <img src={recipe.mainPhoto.url} alt="" loading="lazy" /> : <span className="plate" aria-hidden="true" />}
             <strong>{recipe.title}</strong>
             {ageRangeLabel(recipe) && <span className="sticker lilac tilt-r">{ageRangeLabel(recipe)}</span>}
+            <WarnBadge warnings={recipe.warnings} />
           </a>
         </li>
       ))}

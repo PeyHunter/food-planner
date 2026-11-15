@@ -209,3 +209,22 @@ test("plans a week from 200 recipes within 100 ms", () => {
   console.log(`createWeek: median ${median.toFixed(1)} ms over 7 runs`);
   expect(median).toBeLessThanOrEqual(100);
 });
+
+const line = (name: string): PlannerRecipe["lines"][number] => ({
+  amount: 1,
+  unit: "pcs",
+  ingredient: { id: name, name, shopSection: "Other", packAmount: null, packUnit: null, alwaysAtHome: false },
+});
+
+test("a child never gets a dish with something they shouldn't have yet, not even as 'same as dinner'", () => {
+  const honeyPorridge = forRuni("Honey porridge", ["Vegetarian"], { lines: [line("Honning")] });
+  const plainPorridge = forRuni("Plain porridge", ["Vegetarian"], { lines: [line("Havregryn")] });
+  const tunaPasta = dish("Tuna pasta", ["Fish"], { lines: [line("Tun")] });
+  const days = emptyWeek();
+  days[0]!.dinner = tunaPasta;
+  const { fills } = createWeek(input({ days, recipes: [honeyPorridge, plainPorridge, tunaPasta], rules: [rule("runi", "at-least", 2, "Fish"), rule("runi", "at-least", 2, "Vegetarian")] }));
+  const forRuniFills = fills.filter((fill) => fill.childId === "runi");
+  expect(forRuniFills.map((fill) => fill.recipeId)).not.toContain(honeyPorridge.id);
+  expect(forRuniFills.filter((fill) => fill.sameAsDinner)).toEqual([]);
+  expect(forRuniFills.map((fill) => fill.recipeId)).toContain(plainPorridge.id);
+});

@@ -1,4 +1,5 @@
 import { fitsAge } from "./child-age.ts";
+import { kidFoodWarnings } from "./kid-food.ts";
 import { isBabyOnly } from "./rule-swaps.ts";
 import { checkRules, matches, mealOf, type Dish, type PlanDay, type Rule, type RuleStatus } from "./rules.ts";
 import { buildShoppingList, type ShoppingDay, type ShoppingRecipe } from "./shopping.ts";
@@ -29,6 +30,25 @@ export const recentDays = 14;
 export const forChildren = (recipe: PlannerRecipe) => recipe.ageFromMonths !== null || recipe.ageToMonths !== null || recipe.tags.includes(childRecipeTag);
 
 /** A recipe with an age range fits a child of known age inside it; one tagged "for Runi" without a range fits any child. */
+/** Per child, the dishes with something they shouldn't have yet (honey under 1, tuna under 3, …): never planned for them. */
+function notYetDishes(recipes: PlannerRecipe[], children: PlannerChild[]) {
+  return new Map(
+    children.map((child) => [
+      child.id,
+      new Set(
+        recipes
+          .filter((recipe) =>
+            kidFoodWarnings(
+              recipe.lines.map((line) => ({ ingredient: line.ingredient.name })),
+              child.ageMonths,
+            ).some((warning) => warning.level === "not-yet"),
+          )
+          .map((recipe) => recipe.id),
+      ),
+    ]),
+  );
+}
+
 function fitsChild(recipe: PlannerRecipe, child: PlannerChild) {
   if (recipe.ageFromMonths === null && recipe.ageToMonths === null) return recipe.tags.includes(childRecipeTag);
   return child.ageMonths !== null && fitsAge(recipe, child.ageMonths);
@@ -44,6 +64,7 @@ function fitsChild(recipe: PlannerRecipe, child: PlannerChild) {
 export function createWeek({ rules, days, recipes, children, today }: CreateWeekInput): CreateWeekResult {
   const plan: PlannerDay[] = days.map((day) => ({ ...day, children: { ...day.children } }));
   const byId = new Map(recipes.map((recipe) => [recipe.id, recipe]));
+  const notYet = notYetDishes(recipes, children);
   const used = new Set<string>();
   for (const day of plan) for (const who of [null, ...children.map((child) => child.id)]) {
     const dish = mealOf(day, who);
@@ -76,6 +97,7 @@ export function createWeek({ rules, days, recipes, children, today }: CreateWeek
     if (mash) {
       const dinner = day.dinner;
       if (!dinner) continue;
+      if (notYet.get(child!.id)!.has(dinner.id)) continue;
       const hits = touched.filter((rule) => matches(dinner, rule.what));
       if (hits.some((rule) => rule.op === "at-most" && counts.get(rule.id)! + 1 > rule.n)) continue;
       if (!hits.some((rule) => rule.op === "at-least" && counts.get(rule.id)! < rule.n)) continue;
@@ -89,7 +111,7 @@ export function createWeek({ rules, days, recipes, children, today }: CreateWeek
     let best: { recipe: PlannerRecipe; score: number[] } | undefined;
     for (const recipe of ordered) {
       if (used.has(recipe.id)) continue;
-      if (child ? !fitsChild(recipe, child) : isBabyOnly(recipe.ageToMonths)) continue;
+      if (child ? notYet.get(child.id)!.has(recipe.id) || !fitsChild(recipe, child) : isBabyOnly(recipe.ageToMonths)) continue;
       const hits = touched.filter((rule) => matches(recipe, rule.what));
       if (hits.some((rule) => rule.op === "at-most" && counts.get(rule.id)! + 1 > rule.n)) continue;
       const helps = hits.filter((rule) => rule.op === "at-least" && counts.get(rule.id)! < rule.n).length;

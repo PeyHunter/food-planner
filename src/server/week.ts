@@ -11,6 +11,8 @@ import type { Unit } from "../shared/units.ts";
 import type { AppDependencies } from "./app.ts";
 import { addPortions, freezerCounts, takePortion, type Queries } from "./freezer.ts";
 import { kitchenMember, recipeSummaries, type MemberEnv } from "./recipes.ts";
+import { kidFoodWarnings } from "../shared/kid-food.ts";
+import { kitchenLines } from "./kid-food-lines.ts";
 import { childDays, children, ingredients, planDays, recipeLines, recipes, rules } from "./schema.ts";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -52,7 +54,7 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
   async function loadPlan(kitchenId: string, monday: string) {
     const dates = weekDates(monday);
     const sunday = dates[6]!;
-    const [kids, recipeRows, dayRows, ruleRows, freezerRows] = await Promise.all([
+    const [kids, recipeRows, dayRows, ruleRows, freezerRows, lines] = await Promise.all([
       db
         .select({ id: children.id, name: children.name, birthday: children.birthday })
         .from(children)
@@ -71,6 +73,7 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
         .from(rules)
         .where(eq(rules.kitchenId, kitchenId)),
       freezerCounts(db, kitchenId),
+      kitchenLines(database, kitchenId),
     ]);
     const childRows = kids.length
       ? await db
@@ -136,11 +139,23 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
         return recipe ? [{ recipe, count: row.count }] : [];
       })
       .sort((a, b) => a.recipe.title.localeCompare(b.recipe.title));
-    return { kids, recipeRows, summaries, forChildren, babyOnly, days, plan, ordered, childNames, freezer };
+    // Ages on the week's Monday: close enough for "not before 1 year".
+    const kidWarnings: WeekView["kidWarnings"] = {};
+    for (const kid of kids) {
+      const age = kid.birthday ? monthsOld(kid.birthday, monday) : null;
+      const found = Object.fromEntries(
+        summaries.flatMap((summary) => {
+          const warnings = kidFoodWarnings(lines.get(summary.id) ?? [], age);
+          return warnings.length ? [[summary.id, warnings]] : [];
+        }),
+      );
+      if (Object.keys(found).length) kidWarnings[kid.id] = found;
+    }
+    return { kids, recipeRows, summaries, forChildren, babyOnly, days, plan, ordered, childNames, freezer, kidWarnings };
   }
 
   async function loadWeek(kitchenId: string, monday: string, today: string): Promise<WeekView> {
-    const { kids, summaries, forChildren, babyOnly, days, plan, ordered, childNames, freezer } = await loadPlan(kitchenId, monday);
+    const { kids, summaries, forChildren, babyOnly, days, plan, ordered, childNames, freezer, kidWarnings } = await loadPlan(kitchenId, monday);
     const statuses = checkRules(ordered, plan);
 
     return {
@@ -157,6 +172,7 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
       }),
       childRecipes: summaries.filter((summary) => forChildren.has(summary.id)).sort((a, b) => a.title.localeCompare(b.title)),
       freezer,
+      kidWarnings,
     };
   }
 

@@ -4,6 +4,7 @@ import { ageRangeLabel } from "../../shared/child-age.ts";
 import { formatAmount, scale } from "../../shared/units.ts";
 import { addToFreezer, getRecipe, logCook, showDate, today, uploadPhoto } from "./api.ts";
 import { SharePanel } from "./SharePanel.tsx";
+import { RecipeKidWarnings } from "../kids/KidWarnings.tsx";
 import { MakeVegetarian } from "./VegetarianSheet.tsx";
 
 export const typeColour: Record<string, string> = { Fish: "sky", Meat: "tomato", Chicken: "sun", Vegetarian: "mint", Vegetables: "mint" };
@@ -131,6 +132,7 @@ export function RecipePage({ id }: { id: string }) {
       <h1>{recipe.title}</h1>
       {recipe.minutes !== null && <p className="time">Takes {formatMinutes(recipe.minutes)}</p>}
       {recipe.description && <p className="description">{recipe.description}</p>}
+      <RecipeKidWarnings lines={recipe.lines.map((line) => ({ ingredient: line.ingredient.name, note: line.note }))} />
       {recipe.lastMadeOn && (
         <p className="made">
           Made {recipe.cooks.length === 1 ? "once" : `${recipe.cooks.length} times`}, last on {showDate(recipe.lastMadeOn)}

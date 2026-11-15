@@ -245,3 +245,21 @@ test("Reduce waste suggests one dish that uses the leftover carrots, within 200 
   console.log(`POST reduce-waste: median ${median.toFixed(1)} ms over 7 calls`);
   expect(median).toBeLessThanOrEqual(200);
 });
+
+test("the week says what in each recipe a child shouldn't have yet, by the child's age", async () => {
+  const { app, call, create, week } = await loggedIn();
+  const [runi] = await app.query<{ id: string }>("select id from children");
+  await app.query("update children set birthday = '2025-05-01' where id = $1", [runi!.id]);
+  const honeyCake = await create(recipe("Honey cake", ["Vegetarian"], { lines: [{ amount: 30, unit: "ml", ingredient: "Honning", note: "" }] }));
+  const salmon = await create(recipe("Salmon", ["Fish"], { lines: [{ amount: 400, unit: "g", ingredient: "Laks", note: "" }] }));
+
+  const view = await week();
+  expect(view.kidWarnings[runi!.id]![honeyCake]!.map((warning) => [warning.ruleId, warning.level])).toEqual([["honey", "not-yet"]]);
+  expect(view.kidWarnings[runi!.id]![salmon]).toBeUndefined();
+
+  // A year later Runi is over 1, so honey is fine.
+  expect((await week("2027-03-01")).kidWarnings[runi!.id]?.[honeyCake]).toBeUndefined();
+
+  const kids = await (await call(`/api/children/${runi!.id}/recipes?today=2026-03-01`)).json();
+  expect(kids.all).toEqual([]);
+});

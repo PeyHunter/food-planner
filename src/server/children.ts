@@ -5,6 +5,8 @@ import type { ChildInput, ChildRecipe, ChildRecipes, ChildView } from "../shared
 import { childRecipeTag, isDate } from "../shared/week.ts";
 import type { AppDependencies } from "./app.ts";
 import { kitchenMember, recipeSummaries, type MemberEnv } from "./recipes.ts";
+import { kidFoodWarnings } from "../shared/kid-food.ts";
+import { kitchenLines } from "./kid-food-lines.ts";
 import { children, recipes } from "./schema.ts";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -93,10 +95,12 @@ export function createChildRoutes({ database, now }: AppDependencies) {
       rows.map(({ id, title, feeds }) => ({ id, title, feeds })),
     );
     const all = summaries
-      .map((summary): ChildRecipe => ({ ...summary, ageFromMonths: ranges.get(summary.id)!.ageFromMonths, ageToMonths: ranges.get(summary.id)!.ageToMonths }))
+      .map((summary): ChildRecipe => ({ ...summary, ageFromMonths: ranges.get(summary.id)!.ageFromMonths, ageToMonths: ranges.get(summary.id)!.ageToMonths, warnings: [] }))
       .filter((recipe) => recipe.ageFromMonths !== null || recipe.ageToMonths !== null || recipe.tags.includes(childRecipeTag))
       .sort((a, b) => a.title.localeCompare(b.title));
     const age = kid.birthday ? monthsOld(kid.birthday, todayFrom(c.req.query("today"))) : null;
+    const lines = await kitchenLines(database, kitchenId);
+    for (const recipe of all) recipe.warnings = kidFoodWarnings(lines.get(recipe.id) ?? [], age);
     const result: ChildRecipes = { fitsNow: age === null ? [] : all.filter((recipe) => fitsAge(recipe, age)), all };
     return c.json(result);
   });
