@@ -7,6 +7,7 @@ import { bodyLimit } from "hono/body-limit";
 import { createMiddleware } from "hono/factory";
 import { kidTags, mainTypes, shopSections, type Cook, type Ingredient, type IngredientRow, type IngredientSettings, type MainType, type Photo, type Recipe, type RecipeInput, type RecipeSummary, type ShareLink, type SharedRecipe, type ShopSection, sharePhotoMedia } from "../shared/recipes.ts";
 import { isUnit } from "../shared/units.ts";
+import { childRecipeTag } from "../shared/week.ts";
 import { sessionUser } from "./access.ts";
 import type { AppDependencies } from "./app.ts";
 import type { Database } from "./db.ts";
@@ -283,7 +284,8 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
     if (!id) return c.json({ error: "This link doesn't work any more." }, 404);
     const { kitchenId, userId, kids } = c.get("member");
     const [source] = await db.select({ kitchenId: recipes.kitchenId }).from(recipes).where(eq(recipes.id, id));
-    if (source!.kitchenId === kitchenId) return c.json({ id, alreadyYours: true });
+    if (!source) return c.json({ error: "This link doesn't work any more." }, 404);
+    if (source.kitchenId === kitchenId) return c.json({ id, alreadyYours: true });
     const recipe = await loadRecipe(id);
     const input: RecipeInput = {
       title: recipe.title,
@@ -291,7 +293,8 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
       feeds: recipe.feeds,
       minutes: recipe.minutes,
       types: recipe.types,
-      tags: kids ? recipe.tags : recipe.tags.filter((tag) => !kidTags.includes(tag)),
+      // "for Runi" names the sender's child, so it never travels; other kid tags only go to kitchens with kids.
+      tags: recipe.tags.filter((tag) => tag !== childRecipeTag && (kids || !kidTags.includes(tag))),
       ageFromMonths: kids ? recipe.ageFromMonths : null,
       ageToMonths: kids ? recipe.ageToMonths : null,
       lines: recipe.lines.map((line) => ({ amount: line.amount, unit: line.unit, ingredient: line.ingredient.name, note: line.note })),
@@ -301,7 +304,13 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
       .select({ id: photos.id, role: photos.role, width: photos.width, height: photos.height, bytes: photos.bytes })
       .from(photos)
       .where(and(eq(photos.recipeId, id), isNull(photos.cookId)));
-    const copies = await Promise.all(pictures.map(async (photo) => ({ ...photo, id: await store.copy(photo.id) })));
+    const copies: typeof pictures = [];
+    try {
+      for (const photo of pictures) copies.push({ ...photo, id: await store.copy(photo.id) });
+    } catch (error) {
+      await Promise.all(copies.map((photo) => store.remove(photo.id)));
+      throw error;
+    }
     const copyId = await db
       .transaction(async (tx) => {
         const [row] = await tx
