@@ -55,7 +55,10 @@ export type RecipeInput = {
   steps: string[];
 };
 
-export type IngredientSuggestion = { id: string; name: string; shopSection: ShopSection };
+/** What POST /api/recipes/from-photo returns: a recipe to review in the edit form, and notes on what was left out. */
+export type PhotoRecipeDraft = { recipe: RecipeInput; notes: string[] };
+
+export type IngredientSuggestion ={ id: string; name: string; shopSection: ShopSection };
 
 /** What a share link shows: the recipe without who made it or when it was cooked. Photo urls go through the link. */
 export type SharedRecipe = Pick<Recipe, "title" | "feeds" | "types" | "tags" | "mainPhoto" | "photos" | "lines" | "steps">;

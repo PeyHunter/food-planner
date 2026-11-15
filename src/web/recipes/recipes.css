@@ -463,6 +463,16 @@
   object-fit: cover;
 }
 
+/* photo to recipe: the pages side by side, as many as fit */
+.recipes .photo-pages {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 /* sharing */
 .recipes .switch {
   display: flex;
@@ -556,13 +566,15 @@
   gap: 0.5rem;
 }
 
-.recipes .ingredient-form .check {
+.recipes .ingredient-form .check,
+.recipes .recipe-form .check {
   display: flex;
   align-items: center;
   gap: 0.6rem;
 }
 
-.recipes .ingredient-form .check input {
+.recipes .ingredient-form .check input,
+.recipes .recipe-form .check input {
   inline-size: 1.5rem;
   min-block-size: 1.5rem;
   block-size: 1.5rem;

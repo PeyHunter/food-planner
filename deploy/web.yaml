@@ -59,6 +59,13 @@ spec:
                 secretKeyRef:
                   name: food-planner-secrets
                   key: RONJA_PASSWORD
+            # Photo to recipe. Optional: without it the app runs and says the feature isn't set up yet.
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: food-planner-secrets
+                  key: ANTHROPIC_API_KEY
+                  optional: true
           readinessProbe:
             httpGet:
               path: /api/health
