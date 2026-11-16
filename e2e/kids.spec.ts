@@ -60,6 +60,11 @@ test("set Runi's birthday, add a 6-12 month recipe and see it fit her age", asyn
 
   await fits.getByRole("link", { name: new RegExp(title) }).click();
   await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
+
+  // Her recipes stay on her tab: the grown-ups' recipe list doesn't show them.
+  await page.goto("/#/recipes/list");
+  await page.getByLabel("Search recipes").fill(title);
+  await expect(page.getByText('No recipe matches')).toBeVisible();
 });
 
 test("add a child with a birthday", async ({ page }) => {

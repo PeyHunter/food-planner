@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { t } from "../i18n.ts";
 import { formatMinutes, type RecipeSummary } from "../../shared/recipes.ts";
-import { listRecipes } from "./api.ts";
+import { listBookRecipes } from "./api.ts";
 import { TypeStickers } from "./RecipePage.tsx";
 
 export function RecipeList() {
@@ -12,7 +12,7 @@ export function RecipeList() {
   useEffect(() => {
     let current = true;
     const timer = setTimeout(() => {
-      listRecipes(q).then(
+      listBookRecipes(q).then(
         (found) => current && (setRecipes(found), setProblem(undefined)),
         (error: Error) => current && setProblem(error.message),
       );
