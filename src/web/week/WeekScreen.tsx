@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { locale, t } from "../i18n.ts";
+import { useSheet } from "../sheet.ts";
 import { kidTags, mainTypes, type MainType, type RecipeSummary } from "../../shared/recipes.ts";
 import type { ReduceWaste as WasteIdea } from "../../shared/reduce-waste.ts";
 import type { RuleOp } from "../../shared/rules.ts";
@@ -499,11 +500,9 @@ function DayCard({ day, index, people, kids, onPick, onPeople, onAddSide, onRemo
 
 function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    if (ref.current && !ref.current.open) ref.current.showModal();
-  }, []);
+  useSheet(ref);
   return (
-    <dialog ref={ref} className="sheet" aria-label={title} onClose={onClose}>
+    <dialog ref={ref} className="sheet bottom-sheet" aria-label={title} onClose={onClose}>
       <div className="sheet-head">
         <h2>{title}</h2>
         <button type="button" className="btn small white" onClick={onClose}>

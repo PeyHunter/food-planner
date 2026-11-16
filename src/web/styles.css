@@ -51,11 +51,12 @@ input{font:inherit;font-size:max(16px,1rem)}
 .top .me{position:relative}
 .top .me summary{list-style:none;cursor:pointer;border-radius:.8rem}
 .top .me summary::-webkit-details-marker{display:none}
-.top .me summary{display:flex;align-items:center;gap:.35rem}
-.top .me .caret::after{content:"▾";font-size:.8rem;opacity:.6}
+.top .me summary{display:flex;align-items:center;gap:.6rem;min-block-size:2.75rem}
+.top .me .caret{display:grid;place-items:center;flex:none;inline-size:2.75rem;block-size:2.75rem;border:var(--line) solid var(--ink);border-radius:50%;background:var(--sun);box-shadow:var(--pop-sm)}
+.top .me .caret::after{content:"▾";font-size:1.4rem;line-height:1}
 .top .me[open] .caret::after{content:"▴"}
 .top .me .menu{position:absolute;inset-block-start:calc(100% + .4rem);inset-inline-start:0;z-index:5;display:grid;gap:.4rem;justify-items:start}
-.top .me .btn{white-space:nowrap}
+.top .me .btn{white-space:nowrap;min-inline-size:9rem;justify-content:flex-start}
 .logo{flex:none;inline-size:3rem;block-size:3rem;border:var(--line) solid var(--ink);border-radius:50%;background:var(--sun);box-shadow:var(--pop-sm);object-fit:cover}
 
 /* sticker */
@@ -121,3 +122,10 @@ input{inline-size:100%;padding:.75rem .9rem;border:var(--line) solid var(--ink);
 .toggle{display:flex;align-items:center;gap:.6rem;font-weight:800}
 .toggle input{appearance:none;flex:none;inline-size:3.4rem;block-size:2rem;margin:0;padding:0;border:var(--line) solid var(--ink);border-radius:999px;background:radial-gradient(circle at .85rem 50%,var(--paper) 0 .6rem,transparent .65rem),color-mix(in srgb,var(--ink) 25%,white);box-shadow:2px 2px 0 var(--ink);cursor:pointer}
 .toggle input:checked{background:radial-gradient(circle at calc(100% - .85rem) 50%,var(--paper) 0 .6rem,transparent .65rem),var(--mint)}
+
+/* Bottom sheets. Only the sheet scrolls, never the page behind it. Its title and Close stay at the top.
+   It sits above the phone keyboard (--room and --keyboard come from useSheet). */
+html:has(dialog[open]){overflow:hidden}
+.bottom-sheet{max-block-size:min(85svh,calc(var(--room,100svh) - 1rem));margin:auto auto var(--keyboard,0px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.bottom-sheet .sheet-head{position:sticky;inset-block-start:-1rem;z-index:2;margin-block:-1rem 0;padding-block:1rem .5rem;background:var(--paper)}
+.bottom-sheet .chips{flex-wrap:wrap;overflow-x:visible;margin-inline:0;padding-inline:0}

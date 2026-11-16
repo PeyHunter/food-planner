@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { t } from "../i18n.ts";
+import { useSheet } from "../sheet.ts";
 import type { PhotoRecipeDraft, Recipe } from "../../shared/recipes.ts";
 import { call, go, json } from "./api.ts";
 import { RecipeForm } from "./RecipeForm.tsx";
@@ -35,9 +36,7 @@ function VegetarianSheet({ recipe, onClose }: { recipe: Pick<Recipe, "id" | "tit
   const [making, setMaking] = useState(false);
   const [problem, setProblem] = useState<string>();
 
-  useEffect(() => {
-    if (ref.current && !ref.current.open) ref.current.showModal();
-  }, []);
+  useSheet(ref);
 
   const make = async (event: FormEvent) => {
     event.preventDefault();
@@ -62,7 +61,7 @@ function VegetarianSheet({ recipe, onClose }: { recipe: Pick<Recipe, "id" | "tit
   );
 
   return (
-    <dialog ref={ref} className="veggie-sheet" aria-label="Make vegetarian" onClose={onClose}>
+    <dialog ref={ref} className="veggie-sheet bottom-sheet" aria-label="Make vegetarian" onClose={onClose}>
       <form onSubmit={make}>
         <div className="sheet-head">
           <h2>{t("Make vegetarian")}</h2>
