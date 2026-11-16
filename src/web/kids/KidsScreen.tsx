@@ -123,22 +123,22 @@ function ChildPage({ kid, onChanged }: { kid: ChildView; onChanged: () => Promis
       </a>
       {recipes && (
         <>
-          <section className="kid-recipes" aria-labelledby="fits-title">
-            <h2 id="fits-title">{t("Fits {name}'s age now", { name: kid.name })}</h2>
-            {kid.ageMonths === null ? (
-              <p className="hint">{t("Set the birthday above to see which recipes fit.")}</p>
-            ) : recipes.fitsNow.length ? (
-              <RecipeCards recipes={recipes.fitsNow} label={`Fits ${kid.name}'s age now`} />
+          <section className="kid-recipes" aria-labelledby="hers-title">
+            <h2 id="hers-title">{t("{name}'s recipes", { name: kid.name })}</h2>
+            {recipes.hers.length ? (
+              <RecipeCards recipes={recipes.hers} label={`${kid.name}'s recipes`} />
             ) : (
-              <p className="hint">{t("No recipe for {age} yet. Give a recipe an age range and it shows here.", { age: ageInWords(kid.ageMonths, currentLanguage()) })}</p>
+              <p className="hint">{t('None for her age yet. Tag a recipe "{tag}" and it shows here.', { tag: childRecipeTag })}</p>
             )}
           </section>
-          <section className="kid-recipes" aria-labelledby="all-title">
-            <h2 id="all-title">{t("All {name}'s recipes", { name: kid.name })}</h2>
-            {recipes.all.length ? (
-              <RecipeCards recipes={recipes.all} label={`All ${kid.name}'s recipes`} />
+          <section className="kid-recipes" aria-labelledby="fits-title">
+            <h2 id="fits-title">{t("Also fits {name}'s age", { name: kid.name })}</h2>
+            {kid.ageMonths === null ? (
+              <p className="hint">{t("Set the birthday above to see which recipes fit.")}</p>
+            ) : recipes.fitsAge.length ? (
+              <RecipeCards recipes={recipes.fitsAge} label={`Also fits ${kid.name}'s age`} />
             ) : (
-              <p className="hint">{t('None yet. Tag a recipe "{tag}" or give it an age range.', { tag: childRecipeTag })}</p>
+              <p className="hint">{t("No other recipe for {age} yet. Give a recipe an age range and it shows here.", { age: ageInWords(kid.ageMonths, currentLanguage()) })}</p>
             )}
           </section>
         </>

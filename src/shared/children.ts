@@ -5,10 +5,10 @@ import type { Child } from "./week.ts";
 export type ChildView = Child & { ageMonths: number | null };
 export type ChildRecipe = RecipeSummary & { ageFromMonths: number | null; ageToMonths: number | null };
 export type ChildRecipes = {
-  /** Recipes whose age range holds the child's age today. Empty while the birthday isn't set. */
-  fitsNow: ChildRecipe[];
-  /** Recipes tagged "for Runi" or with any age range. */
-  all: ChildRecipe[];
+  /** Her own recipes: tagged "for Runi", minus any whose age range doesn't hold her age today. */
+  hers: ChildRecipe[];
+  /** The other recipes whose age range holds her age today. Empty while the birthday isn't set. */
+  fitsAge: ChildRecipe[];
 };
 /** sameAsDinnerByDefault is left as it is when not sent. */
 export type ChildInput = { name: string; birthday: string | null; sameAsDinnerByDefault?: boolean };

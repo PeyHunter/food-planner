@@ -96,10 +96,13 @@ export function createChildRoutes({ database, now }: AppDependencies) {
     );
     const all = summaries
       .map((summary): ChildRecipe => ({ ...summary, ageFromMonths: ranges.get(summary.id)!.ageFromMonths, ageToMonths: ranges.get(summary.id)!.ageToMonths }))
-      .filter((recipe) => recipe.ageFromMonths !== null || recipe.ageToMonths !== null || recipe.tags.includes(childRecipeTag))
       .sort((a, b) => a.title.localeCompare(b.title));
     const age = kid.birthday ? monthsOld(kid.birthday, todayFrom(c.req.query("today"))) : null;
-    const result: ChildRecipes = { fitsNow: age === null ? [] : all.filter((recipe) => fitsAge(recipe, age)), all };
+    const hasRange = (recipe: ChildRecipe) => recipe.ageFromMonths !== null || recipe.ageToMonths !== null;
+    // Her recipes come first. One with an age range only shows while it fits her; without a birthday we can't tell, so it shows.
+    const hers = all.filter((recipe) => recipe.tags.includes(childRecipeTag) && (age === null || !hasRange(recipe) || fitsAge(recipe, age)));
+    const others = age === null ? [] : all.filter((recipe) => !recipe.tags.includes(childRecipeTag) && fitsAge(recipe, age));
+    const result: ChildRecipes = { hers, fitsAge: others };
     return c.json(result);
   });
 

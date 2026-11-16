@@ -56,6 +56,17 @@ test("plan a fish dinner, set Wednesday to 5, mash it for Runi and take a swap",
   await expect(wednesday.getByText(salmon)).toBeVisible();
   await expect(page.getByLabel(/^Adults: Fish at least 1 a week: \d so far, met$/)).toBeVisible();
 
+  // Tapping the planned dinner opens its recipe, with "I made this"; the back arrow returns to the same week.
+  const weekTitle = await page.locator(".wk-title h2").textContent();
+  await wednesday.getByRole("link", { name: new RegExp(salmon) }).click();
+  await expect(page.getByRole("heading", { name: salmon, level: 1 })).toBeVisible();
+  await expect(page.getByRole("button", { name: "I made this" })).toBeVisible();
+  await page.getByRole("link", { name: "Back to the week" }).click();
+  await expect(page.locator(".wk-title h2")).toHaveText(weekTitle!);
+  await wednesday.getByRole("button", { name: "Change dinner on Wednesday" }).click();
+  await expect(page.getByRole("dialog", { name: "Dinner for Wednesday" })).toBeVisible();
+  await page.getByRole("dialog").getByRole("button", { name: "Close" }).click();
+
   for (let step = 0; step < 3; step++) await wednesday.getByRole("button", { name: "One more person on Wednesday" }).click();
   await expect(wednesday.getByRole("group", { name: "People on Wednesday" })).toContainText("5");
 
