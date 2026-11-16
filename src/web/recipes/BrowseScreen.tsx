@@ -95,7 +95,7 @@ export function BrowseScreen() {
               aria-pressed={chosen.some((each) => sameChip(each, chip))}
               onClick={() => toggle(chip)}
             >
-              {chip.value === "freezable" ? t("❄ freezable") : chip.value}
+              {chip.value === "freezable" ? t("❄ freezable") : t(chip.value)}
             </button>
           ))}
         </div>

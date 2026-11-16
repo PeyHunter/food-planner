@@ -13,7 +13,8 @@
 .book-actions .btn.small { min-block-size: 2.5rem; padding-inline: .75rem; }
 
 /* recipes.css wraps chips for the form; here they scroll sideways, edge to edge */
-.recipes .book .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: calc(var(--gutter) * -1); padding: .2rem var(--gutter) .5rem; }
+/* scroll-padding: chips snap to the page edge, not the screen edge, so the first one isn't cut off. */
+.recipes .book .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: calc(var(--gutter) * -1); padding: .2rem var(--gutter) .5rem; scroll-padding-inline: var(--gutter); }
 .recipes .book .chips::-webkit-scrollbar { display: none; }
 .recipes .book .chip { flex: none; }
 

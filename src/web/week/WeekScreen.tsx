@@ -5,7 +5,7 @@ import type { ReduceWaste as WasteIdea } from "../../shared/reduce-waste.ts";
 import type { RuleOp } from "../../shared/rules.ts";
 import { addDays, awayKinds, maxAwayNote, maxPeople, maxSides, mondayOf, weekdayName, type AwayKind, type Child, type CreatedWeek, type WeekDay, type WeekRule, type WeekView } from "../../shared/week.ts";
 import { useKids } from "../kitchen.ts";
-import { listRecipes, today } from "../recipes/api.ts";
+import { listBookRecipes, today } from "../recipes/api.ts";
 import { acceptSuggestion, addRule, addSide, createWeek, deleteRule, getWeek, reduceWaste, removeSide, setAway, setChildDay, setDinner, setPeople, undoCreateWeek, updateRule, type RuleInput } from "./api.ts";
 import "./week.css";
 
@@ -543,7 +543,7 @@ function Picker({ picking, view, who, onClose, onChoose }: PickerProps) {
   useEffect(() => {
     if (childId !== null) return;
     let current = true;
-    const timer = setTimeout(() => listRecipes(q).then((recipes) => current && setFound(recipes), () => current && setFound([])), 150);
+    const timer = setTimeout(() => listBookRecipes(q).then((recipes) => current && setFound(recipes), () => current && setFound([])), 150);
     return () => {
       current = false;
       clearTimeout(timer);

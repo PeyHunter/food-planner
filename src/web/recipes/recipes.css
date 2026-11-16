@@ -38,9 +38,16 @@
 
 .recipes .bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+/* A heading never gets squeezed into broken words: when the buttons don't fit next to it, they move to the next row. */
+.recipes .bar > h2 {
+  flex: 0 0 auto;
+  max-inline-size: 100%;
 }
 
 .recipes .hint {
@@ -86,6 +93,7 @@
 }
 
 .recipes .ink-button.small {
+  white-space: nowrap;
   min-block-size: 2.5rem;
   padding: 0 0.85rem;
   font-size: 0.9rem;
@@ -570,6 +578,7 @@
 /* ingredients screen */
 .recipes .bar-buttons {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
 }
@@ -689,7 +698,3 @@
 
 .save-shared { display: grid; gap: 0.8rem; justify-items: start; }
 .save-shared .save-photo { inline-size: 100%; max-block-size: 16rem; object-fit: cover; border: var(--line) solid var(--ink); border-radius: 1.2rem; }
-
-/* Two share buttons don't fit next to the heading on a phone: heading on its own row, buttons below. */
-.recipes .share .bar { flex-wrap: wrap; justify-content: flex-start; }
-.recipes .share .bar h2 { flex-basis: 100%; }

@@ -96,8 +96,9 @@ input{inline-size:100%;padding:.75rem .9rem;border:var(--line) solid var(--ink);
 /* tab bar */
 .tabbar{position:fixed;inset-inline:0;inset-block-end:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:.4rem;
   padding:.6rem var(--gutter) calc(.6rem + env(safe-area-inset-bottom,0px));background:var(--paper);border-block-start:var(--line) solid var(--ink)}
-.tab{display:grid;justify-items:center;gap:.15rem;min-block-size:3.25rem;padding:.4rem .2rem;border:var(--line) solid transparent;border-radius:1rem;background:none;
-  font-weight:800;font-size:.78rem;line-height:1.1;text-align:center}
+/* Labels shrink a little on the smallest phones so "Opskrifter" fits its pill. */
+.tab{display:grid;justify-items:center;gap:.15rem;min-inline-size:0;min-block-size:3.25rem;padding:.4rem .1rem;border:var(--line) solid transparent;border-radius:1rem;background:none;
+  font-weight:800;font-size:clamp(.66rem,3.3vw,.78rem);line-height:1.1;text-align:center}
 .tab .ic{font-size:1.3rem;line-height:1}
 .tab[aria-current=page]{background:var(--sun);border-color:var(--ink);box-shadow:var(--pop-sm)}
 .tab:active{scale:.96}

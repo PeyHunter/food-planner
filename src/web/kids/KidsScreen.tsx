@@ -115,8 +115,6 @@ function ChildPage({ kid, onChanged }: { kid: ChildView; onChanged: () => Promis
 
   return (
     <>
-      <AboutCard kid={kid} onChanged={onChanged} />
-      <RulesCard kid={kid} />
       {problem && <p role="alert">{problem}</p>}
       <a className="btn lilac new-recipe" href={newRecipe}>
         {t("+ New recipe for {name}", { name: kid.name })}
@@ -143,6 +141,9 @@ function ChildPage({ kid, onChanged }: { kid: ChildView; onChanged: () => Promis
           </section>
         </>
       )}
+      {/* Her recipes come first; her details and rules sit below them. */}
+      <AboutCard kid={kid} onChanged={onChanged} />
+      <RulesCard kid={kid} />
     </>
   );
 }
