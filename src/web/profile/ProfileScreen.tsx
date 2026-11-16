@@ -20,6 +20,8 @@ export function ProfileScreen() {
 
   const save = async (change: ProfileChange) => {
     setProblem(undefined);
+    // The switch moves at once; the server's answer follows.
+    setProfile((shown) => shown && { ...shown, ...change, nemlig: { ...shown.nemlig, ...change.nemlig } } as Profile);
     try {
       const saved = await saveProfile(change);
       setProfile(saved);

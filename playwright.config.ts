@@ -10,9 +10,11 @@ export default defineConfig({
   testDir: "e2e",
   use: { baseURL: `http://localhost:${port}`, trace: "retain-on-failure" },
   projects: [
-    { name: "iphone", use: iPhone, testIgnore: "browse.spec.ts" },
+    { name: "iphone", use: iPhone, testIgnore: ["browse.spec.ts", "danish.spec.ts"] },
     // Browse plans next week's Wednesday in the same kitchen as week.spec.ts, so it runs after the rest.
     { name: "iphone-browse", use: iPhone, testMatch: "browse.spec.ts", dependencies: ["iphone"] },
+    // Switches peyton to Danish and turns on nemlig.com for the kitchen, so it runs last, alone.
+    { name: "iphone-danish", use: iPhone, testMatch: "danish.spec.ts", dependencies: ["iphone-browse"] },
   ],
   webServer: {
     command: "npm run build && node e2e/serve.ts",

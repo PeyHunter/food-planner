@@ -413,7 +413,7 @@ type DayCardProps = {
 };
 
 function DayCard({ day, index, people, kids, onPick, onPeople, onAddSide, onRemoveSide }: DayCardProps) {
-  const weekday = weekdayName(day.date);
+  const weekday = weekdayName(day.date, locale());
   const isToday = day.date === today();
   return (
     <li className={`day${isToday ? " today" : ""}`} style={{ "--c": `var(--day-${index + 1})` } as CSSProperties} aria-label={weekday}>
@@ -524,7 +524,7 @@ function Picker({ picking, view, who, onClose, onChoose }: PickerProps) {
   const [found, setFound] = useState<RecipeSummary[]>();
   const [type, setType] = useState<MainType>();
   const day = view.days.find((entry) => entry.date === date)!;
-  const weekday = weekdayName(date);
+  const weekday = weekdayName(date, locale());
 
   useEffect(() => {
     if (childId !== null) return;
