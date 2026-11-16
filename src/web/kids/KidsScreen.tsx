@@ -197,6 +197,24 @@ function AboutCard({ kid, onChanged }: { kid: ChildView; onChanged: () => Promis
           </button>
         </p>
       )}
+      <label className="toggle">
+        <input
+          type="checkbox"
+          role="switch"
+          checked={kid.sameAsDinnerByDefault}
+          onChange={async (event) => {
+            try {
+              await updateChild(kid.id, { name: kid.name, birthday: kid.birthday, sameAsDinnerByDefault: event.target.checked });
+              await onChanged();
+            } catch (error) {
+              setProblem((error as Error).message);
+            }
+          }}
+        />
+        <span>Eats the same as the grown-ups by default</span>
+      </label>
+      <p className="hint">Every day with a dinner gives {kid.name} the same dinner, unless you pick something else for that day.</p>
+      {!editing && problem && <p role="alert">{problem}</p>}
     </section>
   );
 }
