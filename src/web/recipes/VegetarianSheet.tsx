@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { t } from "../i18n.ts";
 import type { PhotoRecipeDraft, Recipe } from "../../shared/recipes.ts";
 import { call, go, json } from "./api.ts";
 import { RecipeForm } from "./RecipeForm.tsx";
@@ -13,14 +14,14 @@ export const canMakeVegetarian = (recipe: Pick<Recipe, "types" | "ageFromMonths"
 // The draft waits here while the hash changes to the form, so back goes to the recipe page.
 let waiting: { recipeId: string; draft: PhotoRecipeDraft } | undefined;
 
-/** "Make vegetarian" on the recipe page: asks what goes in place of the meat, then opens the new version in the edit form. */
+/** t("Make vegetarian") on the recipe page: asks what goes in place of the meat, then opens the new version in the edit form. */
 export function MakeVegetarian({ recipe }: { recipe: Pick<Recipe, "id" | "title" | "types" | "ageFromMonths" | "ageToMonths"> }) {
   const [open, setOpen] = useState(false);
   if (!canMakeVegetarian(recipe)) return null;
   return (
     <>
       <button type="button" className="ink-button white small" onClick={() => setOpen(true)}>
-        Make vegetarian
+        {t("Make vegetarian")}
       </button>
       {open && <VegetarianSheet recipe={recipe} onClose={() => setOpen(false)} />}
     </>
@@ -64,24 +65,24 @@ function VegetarianSheet({ recipe, onClose }: { recipe: Pick<Recipe, "id" | "tit
     <dialog ref={ref} className="veggie-sheet" aria-label="Make vegetarian" onClose={onClose}>
       <form onSubmit={make}>
         <div className="sheet-head">
-          <h2>Make vegetarian</h2>
+          <h2>{t("Make vegetarian")}</h2>
           <button type="button" className="ink-button white small" onClick={onClose}>
-            Close
+            {t("Close")}
           </button>
         </div>
-        <p className="hint">A new vegetarian version of {recipe.title}. The original stays as it is.</p>
+        <p className="hint">{t("A new vegetarian version of {title}. The original stays as it is.", { title: recipe.title })}</p>
         <fieldset disabled={making}>
-          <legend>Replace the meat with…</legend>
-          {option("tofu", "Tofu")}
-          {option("vegetables", "Vegetables")}
-          {option("custom", "Something else")}
+          <legend>{t("Replace the meat with…")}</legend>
+          {option("tofu", t("Tofu"))}
+          {option("vegetables", t("Vegetables"))}
+          {option("custom", t("Something else"))}
           {choice === "custom" && (
-            <input aria-label="What to use instead" placeholder="e.g. chickpeas" value={custom} onChange={(event) => setCustom(event.target.value)} maxLength={100} required autoFocus />
+            <input aria-label="What to use instead" placeholder={t("e.g. chickpeas")} value={custom} onChange={(event) => setCustom(event.target.value)} maxLength={100} required autoFocus />
           )}
         </fieldset>
         {problem && <p role="alert">{problem}</p>}
         <button type="submit" className="ink-button big" disabled={making}>
-          {making ? "Making it… this can take a minute" : "Make it"}
+          {making ? t("Making it… this can take a minute") : t("Make it")}
         </button>
       </form>
     </dialog>
@@ -95,5 +96,5 @@ export function VegetarianDraftForm({ id }: { id: string }) {
     if (!draft) go(`/recipes/${id}`);
   }, [draft, id]);
   if (!draft) return null;
-  return <RecipeForm fromPhoto={{ ...draft, photos: [], intro: "The vegetarian version. Check it, fix anything that's wrong, then save it as a new recipe." }} />;
+  return <RecipeForm fromPhoto={{ ...draft, photos: [], intro: t("The vegetarian version. Check it, fix anything that's wrong, then save it as a new recipe.") }} />;
 }

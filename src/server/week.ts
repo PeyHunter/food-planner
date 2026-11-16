@@ -1,6 +1,8 @@
 import { and, asc, between, eq, inArray, isNull, TransactionRollbackError } from "drizzle-orm";
 import { Hono } from "hono";
 import { monthsOld } from "../shared/child-age.ts";
+import { translate } from "../shared/i18n.ts";
+import type { Language } from "../shared/profile.ts";
 import { createWeek, type CreateWeekInput } from "../shared/create-week.ts";
 import { reduceWaste, type ReduceWaste } from "../shared/reduce-waste.ts";
 import type { ShopSection } from "../shared/recipes.ts";
@@ -168,7 +170,7 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
     return { kids, recipeRows, summaries, forChildren, babyOnly, days, plan, ordered, childNames, freezer };
   }
 
-  async function loadWeek(kitchenId: string, monday: string, today: string): Promise<WeekView> {
+  async function loadWeek(kitchenId: string, monday: string, today: string, language: Language = "en"): Promise<WeekView> {
     const { kids, summaries, forChildren, babyOnly, days, plan, ordered, childNames, freezer } = await loadPlan(kitchenId, monday);
     const statuses = checkRules(ordered, plan);
 
@@ -176,13 +178,14 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
       monday,
       days,
       children: kids as Child[],
-      rules: statuses.map((status) => ({ ...status, sentence: ruleSentence(status, status.childId ? childNames[status.childId]! : "Adults") })),
+      rules: statuses.map((status) => ({ ...status, sentence: ruleSentence(status, status.childId ? childNames[status.childId]! : translate(language, "Adults"), language) })),
       suggestions: suggestSwaps({
         rules: ordered,
         days: plan,
         recipes: summaries.map((summary) => ({ ...summary, forChildren: forChildren.has(summary.id), babyOnly: babyOnly.has(summary.id) })),
         childNames,
         today,
+        language,
       }),
       childRecipes: summaries.filter((summary) => forChildren.has(summary.id)).sort((a, b) => a.title.localeCompare(b.title)),
       freezer,
@@ -254,7 +257,8 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
   routes.get("/api/plan/weeks/:monday", member, async (c) => {
     const monday = c.req.param("monday");
     if (!isDate(monday) || mondayOf(monday) !== monday) return c.json({ error: "A week starts on a Monday (YYYY-MM-DD)." }, 400);
-    return c.json(await loadWeek(c.get("member").kitchenId, monday, todayFrom(c.req.query("today"))));
+    const { kitchenId, language } = c.get("member");
+    return c.json(await loadWeek(kitchenId, monday, todayFrom(c.req.query("today")), language));
   });
 
   routes.put("/api/plan/days/:date", member, async (c) => {
@@ -352,7 +356,7 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
   const mondayError = { error: "A week starts on a Monday (YYYY-MM-DD)." };
 
   /** Everything Create week and Reduce waste need: the plan, the rules, and each recipe with its lines. */
-  async function plannerInput(kitchenId: string, monday: string, today: string): Promise<CreateWeekInput> {
+  async function plannerInput(kitchenId: string, monday: string, today: string, language: Language = "en"): Promise<CreateWeekInput> {
     const lineQuery = db
       .select({
         recipeId: recipeLines.recipeId,
@@ -390,6 +394,7 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
       })),
       children: kids.map((kid) => ({ id: kid.id, name: kid.name, ageMonths: kid.birthday ? monthsOld(kid.birthday, today) : null })),
       today,
+      language,
     };
   }
 
@@ -399,7 +404,7 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
     if (!isDate(monday) || mondayOf(monday) !== monday) return c.json(mondayError, 400);
     const { kitchenId } = c.get("member");
     const today = todayFrom((await readBody(c.req)).today);
-    const result = createWeek(await plannerInput(kitchenId, monday, today));
+    const result = createWeek(await plannerInput(kitchenId, monday, today, c.get("member").language));
     await db.transaction(async (tx) => {
       for (const fill of result.fills) {
         // Only an empty day is filled, even if someone planned it a moment ago.
@@ -426,7 +431,7 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
     const monday = c.req.param("monday");
     if (!isDate(monday) || mondayOf(monday) !== monday) return c.json(mondayError, 400);
     const today = todayFrom((await readBody(c.req)).today);
-    const result: ReduceWaste = reduceWaste(await plannerInput(c.get("member").kitchenId, monday, today));
+    const result: ReduceWaste = reduceWaste(await plannerInput(c.get("member").kitchenId, monday, today, c.get("member").language));
     return c.json(result);
   });
 

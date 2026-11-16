@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { t } from "../i18n.ts";
 import { builtInTags, kidTags, mainTypes, type IngredientSuggestion, type MainType, type PhotoRecipeDraft, type RecipeInput } from "../../shared/recipes.ts";
 import { isUnit, units } from "../../shared/units.ts";
 import { useKids } from "../kitchen.ts";
@@ -44,7 +45,7 @@ function toInput(draft: Draft): RecipeInput {
       .filter((line) => line.ingredient.trim() || line.amount.trim())
       .map((line) => {
         const amount = numberOrNull(line.amount);
-        if (Number.isNaN(amount)) throw new Error(`The amount for ${line.ingredient || "an ingredient"} must be a number, like 2 or 0.5.`);
+        if (Number.isNaN(amount)) throw new Error(t("The amount for {name} must be a number, like 2 or 0.5.", { name: line.ingredient || t("an ingredient") }));
         return { amount, unit: amount === null || !isUnit(line.unit) ? null : line.unit, ingredient: line.ingredient, note: line.note };
       }),
     steps: draft.steps,
@@ -137,18 +138,18 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
-    setBusy("Saving…");
+    setBusy(t("Saving…"));
     setProblem(undefined);
     try {
       const input = toInput(draft);
       const saved = id ? await updateRecipe(id, input) : await createRecipe(input);
       if (photo) {
-        setBusy("Uploading photo… 0%");
+        setBusy(t("Uploading photo… 0%"));
         // Once all of it is sent, the server still has to shrink it.
-        await uploadPhoto(saved.id, photo, "main", (sent) => setBusy(sent < 1 ? `Uploading photo… ${Math.round(sent * 100)}%` : "Saving…"));
+        await uploadPhoto(saved.id, photo, "main", (sent) => setBusy(sent < 1 ? t("Uploading photo… {n}%", { n: Math.round(sent * 100) }) : t("Saving…")));
       }
       if (fromPhoto && keepPhotos) {
-        setBusy("Saving the recipe photo…");
+        setBusy(t("Saving the recipe photo…"));
         for (const page of fromPhoto.photos) await uploadPhoto(saved.id, page, "gallery");
       }
       go(`/recipes/${saved.id}`);
@@ -159,7 +160,7 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
   };
 
   const remove = async () => {
-    if (!id || !window.confirm(`Delete "${draft.title}"? This can't be undone.`)) return;
+    if (!id || !window.confirm(t('Delete "{title}"? This can\'t be undone.', { title: draft.title }))) return;
     try {
       await deleteRecipe(id);
       go("/recipes");
@@ -174,21 +175,21 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
         <a className="back" href={id ? `#/recipes/${id}` : "#/recipes"} aria-label="Back">
           ←
         </a>
-        <h2>{id ? "Edit recipe" : fromPhoto ? "Check the recipe" : "New recipe"}</h2>
+        <h2>{id ? t("Edit recipe") : fromPhoto ? t("Check the recipe") : t("New recipe")}</h2>
       </nav>
       {!id && !fromPhoto && (
         <div className="row">
           <a className="ink-button white small" href="#/recipes/from-link">
-            From a link
+            {t("From a link")}
           </a>
           <a className="ink-button white small" href="#/recipes/from-photo">
-            Photo to recipe
+            {t("Photo to recipe")}
           </a>
         </div>
       )}
       {fromPhoto && (
         <div className="hint">
-          <p>{fromPhoto.intro ?? "Read from your photo. Check it, fix anything that's wrong, then save."}</p>
+          <p>{fromPhoto.intro ?? t("Read from your photo. Check it, fix anything that's wrong, then save.")}</p>
           {fromPhoto.notes.length > 0 && (
             <ul aria-label="Notes from reading">
               {fromPhoto.notes.map((note) => (
@@ -200,60 +201,60 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
       )}
 
       <label>
-        Name
+        {t("Name")}
         <input value={draft.title} onChange={(event) => set({ title: event.target.value })} required maxLength={200} />
       </label>
       <label>
-        Description
-        <textarea rows={3} value={draft.description} onChange={(event) => set({ description: event.target.value })} maxLength={2000} placeholder="A few words about the dish" />
+        {t("Description")}
+        <textarea rows={3} value={draft.description} onChange={(event) => set({ description: event.target.value })} maxLength={2000} placeholder={t("A few words about the dish")} />
       </label>
       <div className="narrow-row">
         <label className="narrow">
-          Feeds (people)
+          {t("Feeds (people)")}
           <input type="number" inputMode="numeric" min={1} max={100} value={draft.feeds} onChange={(event) => set({ feeds: event.target.value })} required />
         </label>
         <label className="narrow">
-          Time (minutes)
+          {t("Time (minutes)")}
           <input type="number" inputMode="numeric" min={1} max={10080} placeholder="45" value={draft.minutes} onChange={(event) => set({ minutes: event.target.value })} />
         </label>
       </div>
 
       <fieldset>
-        <legend>Main type</legend>
+        <legend>{t("Main type")}</legend>
         <div className="chips">
           {mainTypes.map((type) => (
             <button key={type} type="button" className="chip" aria-pressed={draft.types.includes(type)} onClick={() => set({ types: toggle(draft.types, type) })}>
-              {type}
+              {t(type)}
             </button>
           ))}
         </div>
       </fieldset>
 
       <fieldset>
-        <legend>Tags</legend>
+        <legend>{t("Tags")}</legend>
         <div className="chips">
           {builtInTags.filter((tag) => kids || !kidTags.includes(tag)).map((tag) => (
             <button key={tag} type="button" className="chip" aria-pressed={draft.tags.includes(tag)} onClick={() => set({ tags: toggle(draft.tags, tag) })}>
-              {tag}
+              {t(tag)}
             </button>
           ))}
         </div>
         <label>
-          Other tags (put a comma between them)
-          <input value={draft.otherTags} onChange={(event) => set({ otherTags: event.target.value })} placeholder="quick, summer" />
+          {t("Other tags (put a comma between them)")}
+          <input value={draft.otherTags} onChange={(event) => set({ otherTags: event.target.value })} placeholder={t("quick, summer")} />
         </label>
       </fieldset>
 
       {kids && (
         <fieldset>
-          <legend>For babies and kids (leave empty if not)</legend>
+          <legend>{t("For babies and kids (leave empty if not)")}</legend>
           <div className="row">
             <label>
-              Suits babies from (months)
+              {t("Suits babies from (months)")}
               <input type="number" inputMode="numeric" min={0} max={240} value={draft.ageFrom} onChange={(event) => set({ ageFrom: event.target.value })} />
             </label>
             <label>
-              to (months)
+              {t("to (months)")}
               <input type="number" inputMode="numeric" min={0} max={240} value={draft.ageTo} onChange={(event) => set({ ageTo: event.target.value })} />
             </label>
           </div>
@@ -261,19 +262,19 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
       )}
 
       <fieldset>
-        <legend>Ingredients</legend>
+        <legend>{t("Ingredients")}</legend>
         <ol className="line-rows">
           {draft.lines.map((line, index) => (
             <IngredientRow key={index} index={index} line={line} onChange={(change) => setLine(index, change)} onRemove={() => set({ lines: draft.lines.filter((_, at) => at !== index) })} />
           ))}
         </ol>
         <button type="button" className="ink-button white small" onClick={() => set({ lines: [...draft.lines, emptyLine()] })}>
-          + Add ingredient
+          {t("+ Add ingredient")}
         </button>
       </fieldset>
 
       <fieldset>
-        <legend>Steps</legend>
+        <legend>{t("Steps")}</legend>
         <ol className="step-rows">
           {draft.steps.map((step, index) => (
             <li key={index}>
@@ -282,17 +283,17 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
           ))}
         </ol>
         <button type="button" className="ink-button white small" onClick={() => set({ steps: [...draft.steps, ""] })}>
-          + Add step
+          {t("+ Add step")}
         </button>
       </fieldset>
 
       <fieldset>
-        <legend>Main photo</legend>
+        <legend>{t("Main photo")}</legend>
         {preview && <img className="preview" src={preview} alt="New main photo" />}
-        {started && photo === started && <p className="hint">The dish picture from the book. Pick another photo if it isn't right.</p>}
-        {fromPhoto && !started && <p className="hint">No dish picture on the page. Add one when you've made it.</p>}
+        {started && photo === started && <p className="hint">{t("The dish picture from the book. Pick another photo if it isn't right.")}</p>}
+        {fromPhoto && !started && <p className="hint">{t("No dish picture on the page. Add one when you've made it.")}</p>}
         <label className="ink-button white small file-button">
-          {photo ? "Pick another photo" : id ? "Change main photo" : "Pick a photo"}
+          {photo ? t("Pick another photo") : id ? t("Change main photo") : t("Pick a photo")}
           <input type="file" accept="image/*" aria-label="Main photo" onChange={(event) => setPhoto(event.target.files?.[0])} />
         </label>
       </fieldset>
@@ -300,17 +301,17 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
       {fromPhoto && fromPhoto.photos.length > 0 && (
         <label className="check">
           <input type="checkbox" checked={keepPhotos} onChange={(event) => setKeepPhotos(event.target.checked)} />
-          Keep the recipe pages as gallery photos
+          {t("Keep the recipe pages as gallery photos")}
         </label>
       )}
 
       {problem && <p role="alert">{problem}</p>}
       <button type="submit" className="ink-button big" disabled={busy !== undefined}>
-        {busy ?? "Save recipe"}
+        {busy ?? t("Save recipe")}
       </button>
       {id && (
         <button type="button" className="quiet danger" onClick={remove}>
-          Delete recipe
+          {t("Delete recipe")}
         </button>
       )}
     </form>
@@ -343,7 +344,7 @@ function IngredientRow({ index, line, onChange, onRemove }: { index: number; lin
       <div className="suggest-wrap">
         <input
           aria-label={`Ingredient ${n}`}
-          placeholder="carrot"
+          placeholder={t("carrot")}
           autoComplete="off"
           value={line.ingredient}
           onFocus={() => setFocused(true)}
@@ -367,10 +368,12 @@ function IngredientRow({ index, line, onChange, onRemove }: { index: number; lin
       <select aria-label={`Unit ${n}`} value={line.unit} onChange={(event) => onChange({ unit: event.target.value })}>
         <option value="">—</option>
         {units.map((unit) => (
-          <option key={unit}>{unit}</option>
+          <option key={unit} value={unit}>
+            {t(unit)}
+          </option>
         ))}
       </select>
-      <input className="note" aria-label={`Note ${n}`} placeholder="note, e.g. chopped" value={line.note} onChange={(event) => onChange({ note: event.target.value })} />
+      <input className="note" aria-label={`Note ${n}`} placeholder={t("note, e.g. chopped")} value={line.note} onChange={(event) => onChange({ note: event.target.value })} />
       <button type="button" className="quiet remove" aria-label={`Remove line ${n}`} onClick={onRemove}>
         ×
       </button>

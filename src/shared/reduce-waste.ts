@@ -3,6 +3,7 @@ import { isBabyOnly } from "./rule-swaps.ts";
 import { checkRules } from "./rules.ts";
 import { buildShoppingList, type ShoppingLine } from "./shopping.ts";
 import { convert } from "./units.ts";
+import { localeOf, translate } from "./i18n.ts";
 import { weekdayName } from "./week.ts";
 
 /** Put `recipeId` as the dinner on `date`. `replaces` is the dinner it takes the place of, so undo can put it back. */
@@ -40,7 +41,7 @@ export function reduceWaste(input: CreateWeekInput): ReduceWaste {
   const { rules, days, recipes, children, today } = input;
   const byId = new Map(recipes.map((recipe) => [recipe.id, recipe]));
   const before = spareOf(days, input, byId);
-  if (!before.size) return { swap: null, text: nothingToSwap };
+  if (!before.size) return { swap: null, text: translate(input.language ?? "en", nothingToSwap) };
   const metBefore = checkRules(rules, days).filter((status) => status.met);
   const spareIngredients = new Set([...before.values()].map((line) => line.ingredientId));
 
@@ -107,13 +108,15 @@ export function reduceWaste(input: CreateWeekInput): ReduceWaste {
       best = { drop, index, recipe, used };
     }
   }
-  if (!best) return { swap: null, text: nothingToSwap };
+  if (!best) return { swap: null, text: translate(input.language ?? "en", nothingToSwap) };
 
+  const language = input.language ?? "en";
+  const tr = (text: string, values: Record<string, string | number>) => translate(language, text, values);
   const day = days[best.index]!;
   const fromDay = days.find((other) => [other.dinner, ...Object.values(other.children).map((meal) => (meal.kind === "recipe" ? meal.dish : null))].some((dish) => dish && uses(byId.get(dish.id), best.used.ingredientId)));
-  const weekday = weekdayName(day.date);
-  const change = day.dinner ? `Swap ${weekday} for ${best.recipe.title}` : `Add ${best.recipe.title} on ${weekday}`;
-  const from = fromDay ? ` from ${weekdayName(fromDay.date)}` : "";
-  const text = `${change} to use the ${best.used.leftover}${from}.`;
+  const weekday = weekdayName(day.date, localeOf(language));
+  const change = day.dinner ? tr("Swap {slot} for {title}", { slot: weekday, title: best.recipe.title }) : tr("Add {title} on {slot}", { title: best.recipe.title, slot: weekday });
+  const from = fromDay ? ` ${tr("from {day}", { day: weekdayName(fromDay.date, localeOf(language)) })}` : "";
+  const text = `${change} ${tr("to use the {leftover}", { leftover: best.used.leftover })}${from}.`;
   return { swap: { date: day.date, recipeId: best.recipe.id, replaces: day.dinner?.id ?? null, text }, text };
 }

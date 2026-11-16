@@ -1,3 +1,4 @@
+import { isLanguage, type Language } from "../shared/profile.ts";
 import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -16,7 +17,7 @@ import { guessShopSection } from "../shared/shop-section-guess.ts";
 import { nameForms, sameIngredient } from "../shared/ingredient-names.ts";
 import { cooks, ingredients, kitchenMembers, kitchens, photos, recipeLines, recipes, recipeTags, recipeTypes, steps, users } from "./schema.ts";
 
-type Member = { userId: string; kitchenId: string; kids: boolean };
+type Member = { userId: string; kitchenId: string; kids: boolean; language: Language };
 export type MemberEnv = { Variables: { member: Member } };
 type Env = MemberEnv;
 
@@ -50,7 +51,7 @@ export const kitchenMember = ({ database, now }: Pick<AppDependencies, "database
       .where(eq(kitchenMembers.userId, user.id))
       .limit(1);
     if (!row) return c.json({ error: "You are not in a kitchen yet." }, 403);
-    c.set("member", { userId: user.id, kitchenId: row.kitchenId, kids: row.kids });
+    c.set("member", { userId: user.id, kitchenId: row.kitchenId, kids: row.kids, language: isLanguage(user.language) ? user.language : "en" });
     await next();
   });
 

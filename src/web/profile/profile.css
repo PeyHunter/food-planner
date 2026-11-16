@@ -1,0 +1,4 @@
+.profile{display:grid;gap:1rem}
+.profile .card{display:grid;gap:.75rem}
+.profile h3{margin:0}
+.profile label:not(.toggle){display:grid;gap:.3rem;font-weight:700}

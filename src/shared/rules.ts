@@ -1,3 +1,6 @@
+import { translate } from "./i18n.ts";
+import type { Language } from "./profile.ts";
+
 /** "at least / at most N per week with main type or tag X", for the adults (childId null) or one child. */
 export type RuleOp = "at-least" | "at-most";
 export type Rule = { id: string; childId: string | null; op: RuleOp; n: number; what: string };
@@ -40,5 +43,9 @@ export function checkRules(rules: Rule[], days: PlanDay[]): RuleStatus[] {
 }
 
 /** "Runi Lee: Fish at least 2 a week" */
-export const ruleSentence = (rule: Pick<Rule, "op" | "n" | "what">, who: string) =>
-  `${who}: ${rule.what} ${rule.op === "at-least" ? "at least" : "at most"} ${rule.n} a week`;
+export const ruleSentence = (rule: Pick<Rule, "op" | "n" | "what">, who: string, language: Language = "en") =>
+  translate(language, rule.op === "at-least" ? "{who}: {what} at least {n} a week" : "{who}: {what} at most {n} a week", {
+    who,
+    what: translate(language, rule.what),
+    n: rule.n,
+  });

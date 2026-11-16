@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
+import type { Language } from "../shared/profile.ts";
+import { switchLanguage, t } from "./i18n.ts";
 import { KidsScreen } from "./kids/KidsScreen.tsx";
+import { ProfileScreen } from "./profile/ProfileScreen.tsx";
 import { KidsContext } from "./kitchen.ts";
 import { RecipesScreen } from "./recipes/RecipesScreen.tsx";
 import { ShoppingScreen } from "./shopping/ShoppingScreen.tsx";
 import { WeekScreen } from "./week/WeekScreen.tsx";
 
-type Me = { username: string; kitchen: { id: string; name: string; kids: boolean } | null };
+type Me = { username: string; language: Language; kitchen: { id: string; name: string; kids: boolean; nemligOn: boolean } | null };
 type State = { kind: "loading" } | { kind: "logged-out" } | { kind: "logged-in"; me: Me } | { kind: "offline" };
 
 const capitalise = (name: string) => name.charAt(0).toUpperCase() + name.slice(1);
@@ -18,7 +21,10 @@ export function App() {
       const response = await fetch("/api/me");
       if (response.status === 401) return setState({ kind: "logged-out" });
       if (!response.ok) return setState({ kind: "offline" });
-      setState({ kind: "logged-in", me: (await response.json()) as Me });
+      const me = (await response.json()) as Me;
+      // Text made when the app starts is in the old language, so start over in the new one.
+      if (switchLanguage(me.language)) return window.location.reload();
+      setState({ kind: "logged-in", me });
     } catch {
       setState({ kind: "offline" });
     }
@@ -34,7 +40,7 @@ export function App() {
     case "offline":
       return (
         <main className="app">
-          <p className="card">Can't reach the server right now. Try again in a moment.</p>
+          <p className="card">{t("Can't reach the server right now. Try again in a moment.")}</p>
         </main>
       );
     case "logged-out":
@@ -66,9 +72,9 @@ function LoginScreen({ onLoggedIn }: { onLoggedIn: () => Promise<void> }) {
       });
       if (response.ok) return await onLoggedIn();
       const body = (await response.json().catch(() => ({}))) as { error?: string };
-      setProblem(body.error ?? "That didn't work. Try again.");
+      setProblem(t(body.error ?? "That didn't work. Try again."));
     } catch {
-      setProblem("Can't reach the server right now. Try again in a moment.");
+      setProblem(t("Can't reach the server right now. Try again in a moment."));
     } finally {
       setBusy(false);
     }
@@ -77,20 +83,20 @@ function LoginScreen({ onLoggedIn }: { onLoggedIn: () => Promise<void> }) {
   return (
     <main className="app login">
       <img className="logo" src="/icons/icon-192.png" alt="" width={96} height={96} />
-      <h1>Food planner</h1>
-      <span className="sticker mint tilt-l">Dinner, sorted</span>
+      <h1>{t("Food planner")}</h1>
+      <span className="sticker mint tilt-l">{t("Dinner, sorted")}</span>
       <form className="card" onSubmit={submit}>
         <label>
-          Name
+          {t("Name")}
           <input name="username" autoComplete="username" autoCapitalize="none" required />
         </label>
         <label>
-          Password
+          {t("Password")}
           <input name="password" type="password" autoComplete="current-password" required />
         </label>
         {problem && <p role="alert">{problem}</p>}
         <button type="submit" className="btn" disabled={busy}>
-          Log in
+          {t("Log in")}
         </button>
       </form>
     </main>
@@ -110,8 +116,9 @@ const allTabs: Tab[] = [
 function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
   const kids = me.kitchen?.kids ?? true;
   const tabs = kids ? allTabs : allTabs.filter((tab) => tab.id !== "kids");
+  const profileTab: Tab = { id: "profile", label: "Profile", icon: "⚙", colour: "var(--paper)", screen: () => <ProfileScreen />, soon: "" };
   // The hash picks the tab, so a reload or a link to #/recipes/... opens that tab.
-  const tabOfHash = () => tabs.find((tab) => window.location.hash.startsWith(`#/${tab.id}`));
+  const tabOfHash = () => [...tabs, profileTab].find((tab) => window.location.hash.startsWith(`#/${tab.id}`));
   const [current, setCurrent] = useState(() => tabOfHash() ?? tabs[1]!);
   useEffect(() => {
     const onChange = () => setCurrent((shown) => tabOfHash() ?? shown);
@@ -149,12 +156,17 @@ function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
           {/* Logging out is rare, so it hides behind your name. */}
           <details className="me" ref={menu}>
             <summary>
-              <h1>Hi {capitalise(me.username)}</h1>
+              <h1>{t("Hi {name}", { name: capitalise(me.username) })}</h1>
               <span className="caret" aria-hidden="true" />
             </summary>
-            <button type="button" className="btn white small" onClick={logOut}>
-              Log out
-            </button>
+            <div className="menu">
+              <a className="btn white small" href="#/profile">
+                {t("Profile")}
+              </a>
+              <button type="button" className="btn white small" onClick={logOut}>
+                {t("Log out")}
+              </button>
+            </div>
           </details>
         </header>
         {current.screen ? current.screen() : <ComingSoon tab={current} />}
@@ -174,7 +186,7 @@ function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
             <span className="ic" aria-hidden="true">
               {tab.icon}
             </span>
-            {tab.label}
+            {t(tab.label)}
           </button>
         ))}
       </nav>
@@ -185,8 +197,8 @@ function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
 function ComingSoon({ tab }: { tab: Tab }) {
   return (
     <section className="card" style={{ "--c": tab.colour } as CSSProperties}>
-      <span className="sticker white tilt-l">Coming soon</span>
-      <h2>{tab.label}</h2>
+      <span className="sticker white tilt-l">{t("Coming soon")}</span>
+      <h2>{t(tab.label)}</h2>
       <p className="note">{tab.soon}</p>
       <p className="note">We're still building this part. Check back soon!</p>
     </section>

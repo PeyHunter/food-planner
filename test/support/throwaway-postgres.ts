@@ -23,7 +23,8 @@ export async function startThrowawayPostgres(name: string) {
     port,
     persistent: false,
     // Clients connect over TCP. Without this PostgreSQL writes its socket lock file to /tmp whatever TMPDIR says.
-    postgresFlags: ["-c", "unix_socket_directories="],
+    // Each test opens its own app and pool, and test files run side by side: 100 connections (the default) runs out.
+    postgresFlags: ["-c", "unix_socket_directories=", "-c", "max_connections=400"],
     onLog: () => {},
   });
   await pg.initialise();

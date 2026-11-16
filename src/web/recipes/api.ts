@@ -1,16 +1,18 @@
 import type { Ingredient, IngredientRow, IngredientSettings, IngredientSuggestion, PhotoRecipeDraft, Recipe, RecipeInput, RecipeSummary, ShareLink, SharedRecipe } from "../../shared/recipes.ts";
 import type { FreezerItem } from "../../shared/week.ts";
+import { locale, t } from "../i18n.ts";
 
 export async function call<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
     response = await fetch(path, init);
   } catch {
-    throw new Error("Can't reach the server right now. Try again in a moment.");
+    throw new Error(t("Can't reach the server right now. Try again in a moment."));
   }
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? "That didn't work. Try again.");
+    // The server answers in English; known messages show in the app's language.
+    throw new Error(t(body.error ?? "That didn't work. Try again."));
   }
   return (response.status === 204 ? undefined : await response.json()) as T;
 }
@@ -70,7 +72,7 @@ export function today() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
-export const showDate = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+export const showDate = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" });
 
 export const photoRecipeReady = () => call<{ ready: boolean }>("/api/photo-recipe");
 

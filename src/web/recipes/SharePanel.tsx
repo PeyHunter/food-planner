@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { t } from "../i18n.ts";
 import type { Recipe } from "../../shared/recipes.ts";
 import { turnShareOff, turnShareOn } from "./api.ts";
 import { recipeImage } from "./recipe-image.ts";
@@ -38,16 +39,16 @@ export function SharePanel({ recipe }: { recipe: Recipe }) {
       }
       try {
         await navigator.clipboard.writeText(url);
-        setNote("Link copied");
+        setNote(t("Link copied"));
       } catch {
-        setNote("Copy the link above to share it.");
+        setNote(t("Copy the link above to share it."));
       }
     });
 
   // A JPEG of the whole recipe, for chats where a picture works better than a link. Needs no share link.
   const sharePicture = () =>
     run(async () => {
-      const blob = await recipeImage(recipe, { ingredients: "Ingredients", steps: "Steps", feeds: `Feeds ${recipe.feeds}` });
+      const blob = await recipeImage(recipe, { ingredients: t("Ingredients"), steps: t("Steps"), feeds: t("Feeds {n}", { n: recipe.feeds }) });
       const file = new File([blob], `${title.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "recipe"}.jpg`, { type: "image/jpeg" });
       if (navigator.canShare?.({ files: [file] })) {
         try {
@@ -61,35 +62,35 @@ export function SharePanel({ recipe }: { recipe: Recipe }) {
       const link = Object.assign(document.createElement("a"), { href: url, download: file.name });
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
-      setNote("Picture saved");
+      setNote(t("Picture saved"));
     });
 
   const toggle = (on: boolean) =>
     run(async () => {
       const { url } = on ? await turnShareOn(recipeId) : await turnShareOff(recipeId);
       setLink(url);
-      if (!on) setNote("Link turned off");
+      if (!on) setNote(t("Link turned off"));
     });
 
   return (
     <section className="panel share">
       <div className="bar">
-        <h2>Share</h2>
+        <h2>{t("Share")}</h2>
         <button type="button" className="ink-button small" disabled={busy} onClick={() => void share()}>
-          Share link
+          {t("Share link")}
         </button>
         <button type="button" className="ink-button small" disabled={busy} onClick={() => void sharePicture()}>
-          Share as picture
+          {t("Share as picture")}
         </button>
       </div>
       <label className="switch">
         <input type="checkbox" role="switch" aria-label="Share link" checked={!!link} disabled={busy} onChange={(event) => void toggle(event.target.checked)} />
-        <span>{link ? "Share link is on" : "Share link is off"}</span>
+        <span>{link ? t("Share link is on") : t("Share link is off")}</span>
       </label>
       {link ? (
-        <p className="hint share-url">Anyone with this link can see the recipe, no login needed: {link}</p>
+        <p className="hint share-url">{t("Anyone with this link can see the recipe, no login needed: {link}", { link })}</p>
       ) : (
-        <p className="hint">The link is off. Only you two can see this recipe.</p>
+        <p className="hint">{t("The link is off. Only you two can see this recipe.")}</p>
       )}
       {note && (
         <p className="sticker mint tilt-l share-note" role="status">

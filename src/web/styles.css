@@ -54,7 +54,8 @@ input{font:inherit;font-size:max(16px,1rem)}
 .top .me summary{display:flex;align-items:center;gap:.35rem}
 .top .me .caret::after{content:"▾";font-size:.8rem;opacity:.6}
 .top .me[open] .caret::after{content:"▴"}
-.top .me .btn{position:absolute;inset-block-start:calc(100% + .4rem);inset-inline-start:0;z-index:5;white-space:nowrap}
+.top .me .menu{position:absolute;inset-block-start:calc(100% + .4rem);inset-inline-start:0;z-index:5;display:grid;gap:.4rem;justify-items:start}
+.top .me .btn{white-space:nowrap}
 .logo{flex:none;inline-size:3rem;block-size:3rem;border:var(--line) solid var(--ink);border-radius:50%;background:var(--sun);box-shadow:var(--pop-sm);object-fit:cover}
 
 /* sticker */

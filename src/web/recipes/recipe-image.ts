@@ -1,5 +1,6 @@
 import { formatMinutes, type Recipe } from "../../shared/recipes.ts";
 import { formatAmount } from "../../shared/units.ts";
+import { t } from "../i18n.ts";
 
 const width = 1080;
 const pad = 64;
@@ -46,7 +47,7 @@ export async function recipeImage(recipe: Recipe, words: { ingredients: string; 
   if (recipe.description) blocks.push({ text: recipe.description, size: 32, weight: 400, gap: 32 });
   blocks.push({ text: words.ingredients, size: 44, weight: 800, gap: 16 });
   for (const line of recipe.lines) {
-    const amount = line.amount !== null && line.unit !== null ? `${formatAmount(line.amount, line.unit)} ${line.unit} ` : "";
+    const amount = line.amount !== null && line.unit !== null ? `${formatAmount(line.amount, line.unit)} ${t(line.unit)} ` : "";
     blocks.push({ text: `• ${amount}${line.ingredient.name}${line.note ? `, ${line.note}` : ""}`, size: 34, weight: 500, gap: 8 });
   }
   blocks.push({ text: "", size: 16, gap: 16 });

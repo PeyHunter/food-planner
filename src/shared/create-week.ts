@@ -1,4 +1,6 @@
 import { fitsAge } from "./child-age.ts";
+import { translate } from "./i18n.ts";
+import type { Language } from "./profile.ts";
 import { isBabyOnly } from "./rule-swaps.ts";
 import { checkRules, matches, mealOf, type Dish, type PlanDay, type Rule, type RuleStatus } from "./rules.ts";
 import { buildShoppingList, type ShoppingDay, type ShoppingRecipe } from "./shopping.ts";
@@ -19,6 +21,8 @@ export type CreateWeekInput = {
   children: PlannerChild[];
   /** Days before this are past and never filled. Dishes cooked in the 14 days before it are skipped. */
   today: string;
+  /** The language of the note; English when not given. */
+  language?: Language;
 };
 /** Put `recipeId` on `date`, as the dinner (childId null) or as that child's meal. With sameAsDinner, the child eats that day's dinner (recipeId) mashed. */
 export type Fill = { date: string; childId: string | null; recipeId: string; sameAsDinner?: true };
@@ -41,7 +45,7 @@ function fitsChild(recipe: PlannerRecipe, child: PlannerChild) {
  * when it meets a rule a grown-up recipe can't, uses up the most leftover packs, then takes the dish not made for the longest time (then by title).
  * Skips dishes made in the last 14 days and dishes already in the week.
  */
-export function createWeek({ rules, days, recipes, children, today }: CreateWeekInput): CreateWeekResult {
+export function createWeek({ rules, days, recipes, children, today, language = "en" }: CreateWeekInput): CreateWeekResult {
   const plan: PlannerDay[] = days.map((day) => ({ ...day, children: { ...day.children } }));
   const byId = new Map(recipes.map((recipe) => [recipe.id, recipe]));
   const used = new Set<string>();
@@ -110,7 +114,7 @@ export function createWeek({ rules, days, recipes, children, today }: CreateWeek
 
   const statuses = checkRules(rules, plan);
   const stillEmpty = open.filter((day) => (day.dinner === null && !day.away) || children.some((child) => isEmpty(day, child))).length;
-  return { fills, rules: statuses, note: noteFor(fills, toFill, stillEmpty, statuses, children) };
+  return { fills, rules: statuses, note: noteFor(fills, toFill, stillEmpty, statuses, children, language) };
 }
 
 const beats = (score: number[], other: number[]) => {
@@ -144,25 +148,25 @@ function leftoverIngredients(plan: PlannerDay[], children: PlannerChild[], byId:
   );
 }
 
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
-
 /** "Filled 4 dinners and 2 meals for Runi Lee. 3 days still empty: add more recipes to fill them. Fish 2/2 for Runi Lee ✓" */
-function noteFor(fills: Fill[], open: number, stillEmpty: number, statuses: RuleStatus[], children: PlannerChild[]) {
-  if (!open) return "Nothing to fill. Every day is already planned.";
-  if (!fills.length) return "No recipe fits the empty days. Add more recipes or loosen the rules.";
+function noteFor(fills: Fill[], open: number, stillEmpty: number, statuses: RuleStatus[], children: PlannerChild[], language: Language) {
+  const tr = (text: string, values?: Record<string, string | number>) => translate(language, text, values);
+  if (!open) return tr("Nothing to fill. Every day is already planned.");
+  if (!fills.length) return tr("No recipe fits the empty days. Add more recipes or loosen the rules.");
+  const dinners = fills.filter((fill) => fill.childId === null).length;
   const parts = [
-    ...(fills.some((fill) => fill.childId === null) ? [plural(fills.filter((fill) => fill.childId === null).length, "dinner")] : []),
+    ...(dinners ? [tr(dinners === 1 ? "1 dinner" : "{n} dinners", { n: dinners })] : []),
     ...children.flatMap((child) => {
       const n = fills.filter((fill) => fill.childId === child.id).length;
-      return n ? [`${plural(n, "meal")} for ${child.name}`] : [];
+      return n ? [tr(n === 1 ? "1 meal for {name}" : "{n} meals for {name}", { n, name: child.name })] : [];
     }),
   ];
   const goals = statuses
     .filter((status) => status.op === "at-least" && status.n > 0)
     .map((status) => {
-      const who = status.childId ? ` for ${children.find((child) => child.id === status.childId)?.name ?? "the child"}` : "";
-      return `${status.what} ${status.count}/${status.n}${who} ${status.met ? "✓" : "not met yet"}`;
+      const who = status.childId ? ` ${tr("for {name}", { name: children.find((child) => child.id === status.childId)?.name ?? tr("the child") })}` : "";
+      return `${tr(status.what)} ${status.count}/${status.n}${who} ${status.met ? "✓" : tr("not met yet")}`;
     });
-  const empty = stillEmpty ? `${plural(stillEmpty, "day")} still empty: add more recipes to fill them.` : "";
-  return [`Filled ${parts.join(" and ")}.`, empty, goals.join(" · ")].filter(Boolean).join(" ");
+  const empty = stillEmpty ? tr(stillEmpty === 1 ? "1 day still empty: add more recipes to fill them." : "{n} days still empty: add more recipes to fill them.", { n: stillEmpty }) : "";
+  return [tr("Filled {parts}.", { parts: parts.join(` ${tr("and")} `) }), empty, goals.join(" · ")].filter(Boolean).join(" ");
 }

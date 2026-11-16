@@ -64,4 +64,4 @@ export const mondayOf = (date: string) => addDays(date, -((utc(date).getUTCDay()
 
 export const weekDates = (monday: string) => Array.from({ length: 7 }, (_, index) => addDays(monday, index));
 
-export const weekdayName = (date: string) => utc(date).toLocaleDateString("en-GB", { weekday: "long", timeZone: "UTC" });
+export const weekdayName = (date: string, locale = "en-GB") => utc(date).toLocaleDateString(locale, { weekday: "long", timeZone: "UTC" });
