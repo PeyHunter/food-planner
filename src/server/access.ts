@@ -52,12 +52,12 @@ export function createAccessRoutes({ database, now, publicUrl }: AppDependencies
     const user = await sessionUser(database, now, c);
     if (!user) return c.json({ error: "Not logged in" }, 401);
     const [kitchen] = await db
-      .select({ id: kitchens.id, name: kitchens.name, kids: kitchens.kids })
+      .select({ id: kitchens.id, name: kitchens.name, kids: kitchens.kids, nemligOn: kitchens.nemligOn })
       .from(kitchenMembers)
       .innerJoin(kitchens, eq(kitchens.id, kitchenMembers.kitchenId))
       .where(eq(kitchenMembers.userId, user.id))
       .limit(1);
-    return c.json({ username: user.username, kitchen: kitchen ?? null });
+    return c.json({ username: user.username, language: user.language === "da" ? "da" : "en", kitchen: kitchen ?? null });
   });
 
   routes.post("/api/logout", async (c) => {
