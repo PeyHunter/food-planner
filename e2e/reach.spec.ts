@@ -39,7 +39,7 @@ test("the dinner sheet keeps every button reachable on a small phone", async ({ 
   await page.keyboard.press("Escape");
 
   const stamp = Date.now();
-  for (let n = 0; n < 8; n++) await page.request.post("/api/recipes", { data: recipe(`Reach test dish ${n} with a long name ${stamp}`) });
+  for (let n = 0; n < 8; n++) await page.request.post("/api/recipes", { data: recipe(`Reach test dish ${n} ${stamp} with plenty of extra words`) });
 
   await page.getByRole("button", { name: "Next week" }).click();
   const friday = page.getByRole("listitem", { name: "Friday" });
