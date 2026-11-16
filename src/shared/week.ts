@@ -2,13 +2,22 @@ import type { RecipeSummary } from "./recipes.ts";
 import type { RuleStatus } from "./rules.ts";
 import type { Suggestion } from "./rule-swaps.ts";
 
-export type Child = { id: string; name: string; birthday: string | null };
+/** sameAsDinnerByDefault: a day with nothing planned for the child reads as "Same as dinner". */
+export type Child = { id: string; name: string; birthday: string | null; sameAsDinnerByDefault: boolean };
+/** A dinner with no recipe: visiting others, takeout, or something else. Nothing goes on the shopping list. */
+export const awayKinds = ["out", "takeout", "other"] as const;
+export type AwayKind = (typeof awayKinds)[number];
+export type Away = { kind: AwayKind; note: string };
 export type ChildDayKind = "empty" | "same-as-dinner" | "recipe";
 export type ChildDay = { childId: string; kind: ChildDayKind; recipe: RecipeSummary | null };
 export type WeekDay = {
   date: string;
   people: number;
   dinner: RecipeSummary | null;
+  /** More dishes for the same dinner, like a salad. */
+  sides: { position: number; recipe: RecipeSummary }[];
+  /** Set when the dinner is out, takeout or something else; dinner is null then. */
+  away: Away | null;
   /** The dinner is a portion from the freezer, so it adds nothing to the shopping list. */
   fromFreezer: boolean;
   /** Each child eating "Same as dinner, mashed" adds half a portion. */
@@ -36,6 +45,8 @@ export type CreatedWeek = { fills: { date: string; childId: string | null; recip
 export const childRecipeTag = "for Runi";
 export const defaultPeople = 2;
 export const maxPeople = 50;
+export const maxSides = 4;
+export const maxAwayNote = 60;
 export const sameAsDinnerPortion = 0.5;
 
 const isoDate = /^\d{4}-\d{2}-\d{2}$/;
@@ -53,4 +64,4 @@ export const mondayOf = (date: string) => addDays(date, -((utc(date).getUTCDay()
 
 export const weekDates = (monday: string) => Array.from({ length: 7 }, (_, index) => addDays(monday, index));
 
-export const weekdayName = (date: string) => utc(date).toLocaleDateString("en-GB", { weekday: "long", timeZone: "UTC" });
+export const weekdayName = (date: string, locale = "en-GB") => utc(date).toLocaleDateString(locale, { weekday: "long", timeZone: "UTC" });

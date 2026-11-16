@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { locale, t } from "../i18n.ts";
 import { formatMinutes, type RecipeSummary } from "../../shared/recipes.ts";
 import { weekdayName, type WeekView } from "../../shared/week.ts";
 import { getWeek, setDinner } from "../week/api.ts";
@@ -65,20 +66,20 @@ export function BrowseScreen() {
   return (
     <section className="book">
       <div className="book-head">
-        <p className="kicker">What's for dinner?</p>
+        <p className="kicker">{t("What's for dinner?")}</p>
         <div className="book-actions">
           <a className="btn small white" href="#/recipes/list" aria-label="List and search">
-            ☰ List
+            {t("☰ List")}
           </a>
           <a className="btn small white" href="#/recipes/freezer">
-            ❄ Freezer
+            {t("❄ Freezer")}
           </a>
           <a className="btn small sun" href="#/recipes/new" aria-label="+ Add recipe">
-            + Add
+            {t("+ Add")}
           </a>
         </div>
         <h2>
-          Flip through <em>the book</em>
+          {t("Flip through")} <em>{t("the book")}</em>
         </h2>
       </div>
 
@@ -94,7 +95,7 @@ export function BrowseScreen() {
               aria-pressed={chosen.some((each) => sameChip(each, chip))}
               onClick={() => toggle(chip)}
             >
-              {chip.value === "freezable" ? "❄ freezable" : chip.value}
+              {chip.value === "freezable" ? t("❄ freezable") : chip.value}
             </button>
           ))}
         </div>
@@ -102,14 +103,14 @@ export function BrowseScreen() {
 
       {recipes && recipes.length === 0 && (
         <div className="empty">
-          <p className="big">The book is empty.</p>
-          <p>Add your first recipe.</p>
+          <p className="big">{t("The book is empty.")}</p>
+          <p>{t("Add your first recipe.")}</p>
         </div>
       )}
       {recipes && recipes.length > 0 && pages.length === 0 && (
         <div className="empty">
-          <p className="big">No page matches.</p>
-          <p>Tap a chip again to take that filter off.</p>
+          <p className="big">{t("No page matches.")}</p>
+          <p>{t("Tap a chip again to take that filter off.")}</p>
         </div>
       )}
 
@@ -132,7 +133,7 @@ export function BrowseScreen() {
             </button>
             {page && (
               <button type="button" className="btn add-week" onClick={() => setAdding(page)}>
-                <span aria-hidden="true">📅</span> Add to week
+                <span aria-hidden="true">📅</span> {t("Add to week")}
               </button>
             )}
             <button type="button" className="round" onClick={() => step(1)} disabled={at >= pages.length - 1} aria-label="Next page">
@@ -180,10 +181,10 @@ function BookPage({ recipe, number, total, showPhoto }: { recipe: RecipeSummary;
           <a href={`#/recipes/${recipe.id}`}>{recipe.title}</a>
         </h3>
         <p className="meta">
-          <span>feeds {recipe.feeds}</span>
+          <span>{t("feeds {n}", { n: recipe.feeds })}</span>
           {recipe.minutes !== null && <span>{formatMinutes(recipe.minutes)}</span>}
-          <span>{recipe.timesMade ? `Made ${recipe.timesMade}×` : "Not made yet"}</span>
-          {recipe.lastMadeOn && <span>last {showDate(recipe.lastMadeOn)}</span>}
+          <span>{recipe.timesMade ? t("Made {n}×", { n: recipe.timesMade }) : t("Not made yet")}</span>
+          {recipe.lastMadeOn && <span>{t("last {date}", { date: showDate(recipe.lastMadeOn) })}</span>}
         </p>
         <TypeStickers recipe={recipe} />
       </div>
@@ -226,7 +227,7 @@ function DayPicker({ recipe, onClose, onAdded }: { recipe: RecipeSummary; onClos
     setProblem(undefined);
     try {
       await setDinner(date, recipe.id);
-      onAdded(`Added to ${weekdayName(date)}${nextWeek ? " next week" : ""}`);
+      onAdded(t(nextWeek ? "Added to {day} next week" : "Added to {day}", { day: weekdayName(date, locale()) }));
     } catch (error) {
       setProblem((error as Error).message);
       setBusy(false);
@@ -243,9 +244,9 @@ function DayPicker({ recipe, onClose, onAdded }: { recipe: RecipeSummary; onClos
             return (
               <li key={date}>
                 <button type="button" disabled={busy || !view} onClick={() => choose(date, nextWeek)}>
-                  <b>{weekdayName(date)}</b>
+                  <b>{weekdayName(date, locale())}</b>
                   <span className="date">{showDate(date).replace(/^\w+ /, "")}</span>
-                  <span className={dinner ? "planned" : "free"}>{!view ? "…" : dinner ? dinner.title : "Free"}</span>
+                  <span className={dinner ? "planned" : "free"}>{!view ? "…" : dinner ? dinner.title : t("Free")}</span>
                 </button>
               </li>
             );
@@ -257,15 +258,15 @@ function DayPicker({ recipe, onClose, onAdded }: { recipe: RecipeSummary; onClos
   return (
     <dialog ref={ref} className="sheet" aria-label={`Add ${recipe.title} to the week`} onClose={onClose}>
       <div className="sheet-head">
-        <h2>Which day?</h2>
+        <h2>{t("Which day?")}</h2>
         <button type="button" className="btn small white" onClick={onClose}>
-          Close
+          {t("Close")}
         </button>
       </div>
-      <p className="hint">{recipe.title} becomes that day's dinner.</p>
+      <p className="hint">{t("{title} becomes that day's dinner.", { title: recipe.title })}</p>
       {problem && <p role="alert">{problem}</p>}
-      {group("This week", days.thisWeek.dates, weeks?.thisWeek, false)}
-      {group("Next week", days.nextWeek.dates, weeks?.nextWeek, true)}
+      {group(t("This week"), days.thisWeek.dates, weeks?.thisWeek, false)}
+      {group(t("Next week"), days.nextWeek.dates, weeks?.nextWeek, true)}
     </dialog>
   );
 }

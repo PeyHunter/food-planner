@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { t } from "../i18n.ts";
 import { formatMinutes, type RecipeSummary } from "../../shared/recipes.ts";
 import { listRecipes } from "./api.ts";
 import { TypeStickers } from "./RecipePage.tsx";
@@ -25,34 +26,34 @@ export function RecipeList() {
   return (
     <section className="recipe-list">
       <div className="bar">
-        <h2>Recipes</h2>
+        <h2>{t("Recipes")}</h2>
         <span className="bar-buttons">
           <a className="ink-button white small" href="#/recipes">
-            Book
+            {t("Book")}
           </a>
           <a className="ink-button white small" href="#/recipes/ingredients">
-            Ingredients
+            {t("Ingredients")}
           </a>
           <a className="ink-button white small" href="#/recipes/from-link">
-            From a link
+            {t("From a link")}
           </a>
           <a className="ink-button white small" href="#/recipes/from-photo">
-            Photo to recipe
+            {t("Photo to recipe")}
           </a>
           <a className="ink-button" href="#/recipes/new">
-            + Add recipe
+            {t("+ Add recipe")}
           </a>
         </span>
       </div>
-      <input type="search" className="search" placeholder="Search by name or ingredient" aria-label="Search recipes" value={q} onChange={(event) => setQ(event.target.value)} />
+      <input type="search" className="search" placeholder={t("Search by name or ingredient")} aria-label="Search recipes" value={q} onChange={(event) => setQ(event.target.value)} />
       {problem && <p role="alert">{problem}</p>}
       {recipes && recipes.length === 0 && !q && (
         <div className="empty">
-          <p className="big">Nothing here yet.</p>
-          <p>Add your first recipe.</p>
+          <p className="big">{t("Nothing here yet.")}</p>
+          <p>{t("Add your first recipe.")}</p>
         </div>
       )}
-      {recipes && recipes.length === 0 && q && <p className="hint">No recipe matches "{q}".</p>}
+      {recipes && recipes.length === 0 && q && <p className="hint">{t('No recipe matches "{q}".', { q })}</p>}
       <ul className="cards">
         {recipes?.map((recipe) => (
           <li key={recipe.id}>

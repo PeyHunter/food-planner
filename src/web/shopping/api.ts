@@ -7,3 +7,4 @@ export const addExtra = (monday: string, name: string) => call<{ id: string }>(`
 export const removeExtra = (monday: string, id: string) => call<void>(`/api/shopping/${monday}/extras/${id}`, { method: "DELETE" });
 export const clearTicked = (monday: string) => call<void>(`/api/shopping/${monday}/clear`, { method: "POST" });
 export const bringBack = (monday: string) => call<void>(`/api/shopping/${monday}/bring-back`, { method: "POST" });
+export const boughtAll = (monday: string, keys: string[]) => call<void>(`/api/shopping/${monday}/bought`, json("POST", { keys }));

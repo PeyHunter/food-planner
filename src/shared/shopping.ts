@@ -1,6 +1,8 @@
+import { localeOf, translate } from "./i18n.ts";
+import type { Language } from "./profile.ts";
 import { shopSections, type ShopSection } from "./recipes.ts";
 import { addDays, mondayOf, sameAsDinnerPortion } from "./week.ts";
-import { convert, formatAmount, kindOf, roundUp, type Unit } from "./units.ts";
+import { convert, formatAmount, isMeasured, kindOf, roundUp, type Kind, type Unit } from "./units.ts";
 
 export type ShoppingIngredient = {
   id: string;
@@ -21,6 +23,8 @@ export type ShoppingDay = {
   /** Children eating "same as dinner": each adds half a portion. */
   sameAsDinner: number;
   dinner: ShoppingRecipe | null;
+  /** More dishes for the same dinner, for the same people. */
+  sides?: ShoppingRecipe[];
   childMeals: { childName: string; recipe: ShoppingRecipe }[];
 };
 
@@ -57,12 +61,12 @@ export type ShoppingView = {
 /** A child recipe day is one serving of that recipe, as written for the child. Only "Same as dinner" counts as half. */
 export const childPortion = 1;
 
-type Measure = "mass" | "volume" | "pcs" | "none";
+type Measure = Kind | "none";
 const measureOf = (amount: number | null, unit: Unit | null): Measure => {
   if (amount === null || unit === null) return "none";
   return kindOf(unit);
 };
-const baseUnit: Record<Exclude<Measure, "none">, Unit> = { mass: "g", volume: "ml", pcs: "pcs" };
+const baseUnit: Record<Exclude<Measure, "none">, Unit> = { mass: "g", volume: "ml", pcs: "pcs", bag: "bag" };
 
 /** Default days: today through Sunday of today's week. */
 export const restOfWeek = (today: string) => {
@@ -73,12 +77,16 @@ export const restOfWeek = (today: string) => {
 };
 
 // One formatter for all calls: building it each time is slow, and Create week builds the list for every day it fills.
-const shortDayFormat = new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: "UTC" });
+const shortDayFormats: Record<Language, Intl.DateTimeFormat> = {
+  en: new Intl.DateTimeFormat(localeOf("en"), { weekday: "short", timeZone: "UTC" }),
+  da: new Intl.DateTimeFormat(localeOf("da"), { weekday: "short", timeZone: "UTC" }),
+};
 // Formatting is slow even with one formatter, and Reduce waste builds the list for each dish and day it tries.
 const shortDays = new Map<string, string>();
-const shortDay = (date: string) => {
-  let label = shortDays.get(date);
-  if (label === undefined) shortDays.set(date, (label = shortDayFormat.format(new Date(`${date}T00:00:00Z`))));
+const shortDay = (date: string, language: Language) => {
+  const key = `${language}:${date}`;
+  let label = shortDays.get(key);
+  if (label === undefined) shortDays.set(key, (label = shortDayFormats[language].format(new Date(`${date}T00:00:00Z`))));
   return label;
 };
 
@@ -91,7 +99,8 @@ function tidy(amount: number, unit: Unit): { amount: number; unit: Unit } {
   return inSmall >= 1000 ? { amount: Number((inSmall / 1000).toFixed(3)), unit: big } : { amount: Number(inSmall.toFixed(1)), unit: small };
 }
 
-const show = (amount: number, unit: Unit, name: string) => (unit === "pcs" ? `${formatAmount(amount)} ${name}` : `${formatAmount(amount, unit)} ${unit} ${name}`);
+const show = (amount: number, unit: Unit, name: string, language: Language) =>
+  unit === "pcs" ? `${formatAmount(amount)} ${name}` : `${formatAmount(amount, unit)} ${translate(language, unit)} ${name}`;
 
 type Part = { amount: number; unit: Unit };
 type Group = { ingredient: ShoppingIngredient; measure: Measure; parts: Part[]; meals: string[] };
@@ -106,10 +115,10 @@ function total(measure: Exclude<Measure, "none">, parts: Part[]): { amount: numb
   const base = baseUnit[measure];
   const sum = parts.reduce((all, part) => all + convert(part.amount, part.unit, base), 0);
   const rounded = roundUp(sum, base);
-  return measure === "pcs" ? { amount: rounded, unit: "pcs" } : tidy(rounded, base);
+  return isMeasured(measure) ? tidy(rounded, base) : { amount: rounded, unit: base };
 }
 
-function packsFor(amount: number, unit: Unit, ingredient: ShoppingIngredient) {
+function packsFor(amount: number, unit: Unit, ingredient: ShoppingIngredient, language: Language) {
   const { packAmount, packUnit } = ingredient;
   if (packAmount === null || packUnit === null) return { packs: null, leftover: null, spare: null };
   if (kindOf(unit) !== kindOf(packUnit)) return { packs: null, leftover: null, spare: null };
@@ -118,14 +127,15 @@ function packsFor(amount: number, unit: Unit, ingredient: ShoppingIngredient) {
   const spare = packs * packAmount - needed;
   if (spare <= packAmount * 1e-6) return { packs, leftover: null, spare: null };
   const left = tidy(spare, packUnit);
-  return { packs, leftover: `${show(left.amount, left.unit, ingredient.name.toLowerCase())} left`, spare: left };
+  const shown = show(left.amount, left.unit, ingredient.name.toLowerCase(), language);
+  return { packs, leftover: translate(language, "{amount} left", { amount: shown }), spare: left };
 }
 
 /**
  * Scales each planned meal to its day's eaters, adds the same ingredient across meals (within one kind of unit),
  * rounds up once, then rounds up to whole packs. Always-at-home items are left out.
  */
-export function buildShoppingList(days: ShoppingDay[]): ShoppingSection[] {
+export function buildShoppingList(days: ShoppingDay[], language: Language = "en"): ShoppingSection[] {
   const groups = new Map<string, Group>();
   const add = (recipe: ShoppingRecipe, eaters: number, meal: string) => {
     for (const line of recipe.lines) {
@@ -139,9 +149,11 @@ export function buildShoppingList(days: ShoppingDay[]): ShoppingSection[] {
     }
   };
   for (const day of [...days].sort((a, b) => a.date.localeCompare(b.date))) {
-    const label = shortDay(day.date);
-    if (day.dinner) add(day.dinner, day.people + day.sameAsDinner * sameAsDinnerPortion, `${label}: ${day.dinner.title}`);
-    for (const meal of day.childMeals) add(meal.recipe, childPortion, `${label}: ${meal.recipe.title} for ${meal.childName}`);
+    const label = shortDay(day.date, language);
+    const eaters = day.people + day.sameAsDinner * sameAsDinnerPortion;
+    if (day.dinner) add(day.dinner, eaters, `${label}: ${day.dinner.title}`);
+    for (const side of day.sides ?? []) add(side, eaters, `${label}: ${side.title}`);
+    for (const meal of day.childMeals) add(meal.recipe, childPortion, `${label}: ${translate(language, "{title} for {name}", { title: meal.recipe.title, name: meal.childName })}`);
   }
 
   const lines: ShoppingLine[] = [];
@@ -149,7 +161,7 @@ export function buildShoppingList(days: ShoppingDay[]): ShoppingSection[] {
     const { ingredient, measure, meals } = group;
     if (measure === "none") {
       // "Salt, to taste" next to "5 ml salt" is the same thing to buy.
-      const measured = ["mass", "volume", "pcs"].map((other) => groups.get(`${ingredient.id}:${other}`)).find(Boolean);
+      const measured = ["mass", "volume", "pcs", "bag"].map((other) => groups.get(`${ingredient.id}:${other}`)).find(Boolean);
       if (measured) {
         for (const meal of meals) if (!measured.meals.includes(meal)) measured.meals.push(meal);
         continue;
@@ -158,9 +170,9 @@ export function buildShoppingList(days: ShoppingDay[]): ShoppingSection[] {
       continue;
     }
     const { amount, unit } = total(measure, group.parts);
-    const { packs, leftover, spare } = packsFor(amount, unit, ingredient);
-    // Pieces are bought as counted ("3 onions"), so only weights and volumes ask for a pack size.
-    lines.push({ key, ingredient, amount, unit, packs, leftover, spare, needsPackSize: ingredient.packAmount === null && measure !== "pcs", meals });
+    const { packs, leftover, spare } = packsFor(amount, unit, ingredient, language);
+    // Pieces and bags are bought as counted ("3 onions"), so only weights and volumes ask for a pack size.
+    lines.push({ key, ingredient, amount, unit, packs, leftover, spare, needsPackSize: ingredient.packAmount === null && isMeasured(measure), meals });
   }
 
   return shopSections

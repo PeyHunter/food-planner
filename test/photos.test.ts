@@ -1,10 +1,13 @@
 import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
-import { stat } from "node:fs/promises";
+import { stat, writeFile } from "node:fs/promises";
+import { eq } from "drizzle-orm";
 import { join } from "node:path";
 import sharp from "sharp";
 import { expect, inject, test } from "vitest";
 import type { Photo, Recipe } from "../src/shared/recipes.ts";
+import { photoStore, shrinkOldPhotos } from "../src/server/photos.ts";
+import { photos } from "../src/server/schema.ts";
 import { createTestApp, startingUsers } from "./support/test-app.ts";
 
 const fileOf = (id: string) => join(inject("scratchDir"), `${id}.jpg`);
@@ -36,7 +39,7 @@ async function setUp() {
   return { app, headers, recipeId, upload, recipe };
 }
 
-test("an uploaded photo is shrunk to 1600 px, saved as a small JPEG and served with a long cache", async () => {
+test("an uploaded photo is shrunk to 1280 px, saved as a small JPEG and served with a long cache", async () => {
   const { app, headers, upload, recipe } = await setUp();
 
   const response = await upload(await phonePhoto(), "main");
@@ -45,9 +48,9 @@ test("an uploaded photo is shrunk to 1600 px, saved as a small JPEG and served w
   expect(photo).toMatchObject({ role: "main", url: `/api/photos/${photo.id}.jpg`, cookId: null });
 
   const stored = await sharp(fileOf(photo.id)).metadata();
-  expect([stored.format, stored.width, stored.height]).toEqual(["jpeg", 1600, 1200]);
+  expect([stored.format, stored.width, stored.height]).toEqual(["jpeg", 1280, 960]);
   const { size } = await stat(fileOf(photo.id));
-  expect(size).toBeLessThanOrEqual(400 * 1024);
+  expect(size).toBeLessThanOrEqual(250 * 1024);
 
   const served = await app.request(photo.url, { headers });
   expect(served.status).toBe(200);
@@ -58,13 +61,13 @@ test("an uploaded photo is shrunk to 1600 px, saved as a small JPEG and served w
   expect((await recipe()).mainPhoto?.id).toBe(photo.id);
 });
 
-test("a photo that compresses badly still ends up at 400 kB or less", async () => {
+test("a photo that compresses badly still ends up at 250 kB or less", async () => {
   const { upload } = await setUp();
   // Sharp noise at 1600 px is about 800 kB at quality 75: it needs lower quality and a smaller size.
   const photo = (await (await upload(await phonePhoto(1600, 1200, undefined, false), "main")).json()) as Photo;
 
   const { size } = await stat(fileOf(photo.id));
-  expect(size).toBeLessThanOrEqual(400 * 1024);
+  expect(size).toBeLessThanOrEqual(250 * 1024);
   const stored = await sharp(fileOf(photo.id)).metadata();
   expect(stored.width! / stored.height!).toBeCloseTo(4 / 3, 1);
   expect(stored.width).toBeGreaterThan(800);
@@ -153,4 +156,23 @@ test('"I made this" logs the date and adds the photos from that cook to the gall
   const bad = new FormData();
   bad.set("madeOn", "last week");
   expect((await app.request(`/api/recipes/${recipeId}/cooks`, { method: "POST", headers, body: bad })).status).toBe(400);
+});
+
+test("photos saved before the smaller limits are shrunk in place at startup", async () => {
+  const { app, upload } = await setUp();
+  const photo = (await (await upload(await phonePhoto(), "main")).json()) as Photo;
+  // Pretend it was saved under the old 1600 px / 400 kB limits.
+  const big = await sharp(await phonePhoto(1600, 1200)).jpeg({ quality: 95 }).toBuffer();
+  await writeFile(fileOf(photo.id), big);
+  await app.database.db.update(photos).set({ width: 1600, height: 1200, bytes: big.length }).where(eq(photos.id, photo.id));
+
+  const store = photoStore(inject("scratchDir"));
+  expect(await shrinkOldPhotos(app.database, store)).toBeGreaterThanOrEqual(1);
+
+  const stored = await sharp(fileOf(photo.id)).metadata();
+  expect([stored.width, stored.height]).toEqual([1280, 960]);
+  const [row] = await app.database.db.select().from(photos).where(eq(photos.id, photo.id));
+  expect(row).toMatchObject({ width: 1280, height: 960 });
+  expect(row!.bytes).toBeLessThanOrEqual(250 * 1024);
+  expect(await shrinkOldPhotos(app.database, store)).toBe(0);
 });

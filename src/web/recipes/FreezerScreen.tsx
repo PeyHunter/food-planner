@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { t } from "../i18n.ts";
 import type { FreezerItem } from "../../shared/week.ts";
 import { addToFreezer, getFreezer } from "./api.ts";
 import { TypeStickers } from "./RecipePage.tsx";
@@ -35,12 +36,12 @@ export function FreezerScreen() {
           ←
         </a>
         <h2>
-          <span aria-hidden="true">❄ </span>Freezer
+          <span aria-hidden="true">❄ </span>{t("Freezer")}
         </h2>
         <span />
       </nav>
       {problem && <p role="alert">{problem}</p>}
-      {items && items.length === 0 && <p className="hint">Nothing in the freezer. After you cook a freezable dish, press "I made this" and put the spare portions here.</p>}
+      {items && items.length === 0 && <p className="hint">{t("Nothing in the freezer. After you cook a freezable dish, press \"I made this\" and put the spare portions here.")}</p>}
       <ul className="freezer-rows">
         {items?.map(({ recipe, count }) => (
           <li key={recipe.id} className={`panel freezer-row${count === 0 ? " gone" : ""}`}>
@@ -53,7 +54,7 @@ export function FreezerScreen() {
                 −
               </button>
               <output aria-live="polite">
-                {count} {count === 1 ? "portion" : "portions"}
+                {count} {count === 1 ? t("portion") : t("portions")}
               </output>
               <button type="button" aria-label={`One more ${recipe.title}`} onClick={() => void change(recipe.id, 1)}>
                 +

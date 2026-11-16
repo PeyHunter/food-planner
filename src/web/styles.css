@@ -54,7 +54,8 @@ input{font:inherit;font-size:max(16px,1rem)}
 .top .me summary{display:flex;align-items:center;gap:.35rem}
 .top .me .caret::after{content:"▾";font-size:.8rem;opacity:.6}
 .top .me[open] .caret::after{content:"▴"}
-.top .me .btn{position:absolute;inset-block-start:calc(100% + .4rem);inset-inline-start:0;z-index:5;white-space:nowrap}
+.top .me .menu{position:absolute;inset-block-start:calc(100% + .4rem);inset-inline-start:0;z-index:5;display:grid;gap:.4rem;justify-items:start}
+.top .me .btn{white-space:nowrap}
 .logo{flex:none;inline-size:3rem;block-size:3rem;border:var(--line) solid var(--ink);border-radius:50%;background:var(--sun);box-shadow:var(--pop-sm);object-fit:cover}
 
 /* sticker */
@@ -116,3 +117,7 @@ input{inline-size:100%;padding:.75rem .9rem;border:var(--line) solid var(--ink);
 @media (min-width:110rem){
   .week .days{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
+/* An on/off switch, outside the recipe screens (Profile, Runi & kids). */
+.toggle{display:flex;align-items:center;gap:.6rem;font-weight:800}
+.toggle input{appearance:none;flex:none;inline-size:3.4rem;block-size:2rem;margin:0;padding:0;border:var(--line) solid var(--ink);border-radius:999px;background:radial-gradient(circle at .85rem 50%,var(--paper) 0 .6rem,transparent .65rem),color-mix(in srgb,var(--ink) 25%,white);box-shadow:2px 2px 0 var(--ink);cursor:pointer}
+.toggle input:checked{background:radial-gradient(circle at calc(100% - .85rem) 50%,var(--paper) 0 .6rem,transparent .65rem),var(--mint)}

@@ -37,7 +37,7 @@ export async function ensureHousehold(database: Database, people: StartingUser[]
       )
       .limit(1);
     const kitchenId = shared?.kitchenId ?? (await tx.insert(kitchens).values(kitchen).returning({ id: kitchens.id }))[0]!.id;
-    if (shared) await tx.update(kitchens).set({ kids: kitchen.kids }).where(eq(kitchens.id, kitchenId));
+    // An existing kitchen keeps its own "kids" setting: it can be changed on the Profile page.
     await tx
       .insert(kitchenMembers)
       .values(members.map((member) => ({ kitchenId, userId: member.id })))

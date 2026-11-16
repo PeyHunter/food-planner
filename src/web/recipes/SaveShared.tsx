@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { t } from "../i18n.ts";
 import type { SharedRecipe } from "../../shared/recipes.ts";
 import { getShared, go, saveShared } from "./api.ts";
 
@@ -26,20 +27,20 @@ export function SaveShared({ token }: { token: string }) {
 
   return (
     <section className="panel save-shared">
-      <span className="sticker sun tilt-l">Sent to you</span>
+      <span className="sticker sun tilt-l">{t("Sent to you")}</span>
       {recipe && (
         <>
           {recipe.mainPhoto && <img className="save-photo" src={recipe.mainPhoto.smallUrl} alt="" />}
           <h2>{recipe.title}</h2>
-          <p>Save a copy in your recipes. You can change your copy without changing theirs.</p>
+          <p>{t("Save a copy in your recipes. You can change your copy without changing theirs.")}</p>
           <button type="button" className="btn" disabled={busy} onClick={save}>
-            {busy ? "Saving…" : "Save to my recipes"}
+            {busy ? t("Saving…") : t("Save to my recipes")}
           </button>
         </>
       )}
-      {!recipe && !problem && <p>Loading…</p>}
+      {!recipe && !problem && <p>{t("Loading…")}</p>}
       {problem && <p role="alert">{problem}</p>}
-      <a href="#/recipes">Back to the book</a>
+      <a href="#/recipes">{t("Back to the book")}</a>
     </section>
   );
 }

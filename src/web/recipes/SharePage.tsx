@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { t } from "../i18n.ts";
 import { formatMinutes, sharePhotoMedia, type SharedRecipe } from "../../shared/recipes.ts";
 import { IngredientsPanel, StepsPanel, TypeStickers } from "./RecipePage.tsx";
 import "./recipes.css";
@@ -36,19 +37,19 @@ export function SharePage({ token }: { token: string }) {
       <div className="recipes">
         {state.kind === "gone" && (
           <section className="panel gone">
-            <span className="sticker tomato tilt-l">Not found</span>
-            <h1>This link doesn't work</h1>
-            <p>The recipe was unshared, or the link is wrong. Ask the person who sent it for a new one.</p>
+            <span className="sticker tomato tilt-l">{t("Not found")}</span>
+            <h1>{t("This link doesn't work")}</h1>
+            <p>{t("The recipe was unshared, or the link is wrong. Ask the person who sent it for a new one.")}</p>
           </section>
         )}
-        {state.kind === "offline" && <p role="alert">Can't reach the server right now. Try again in a moment.</p>}
+        {state.kind === "offline" && <p role="alert">{t("Can't reach the server right now. Try again in a moment.")}</p>}
         {state.kind === "ready" && <SharedRecipeView recipe={state.recipe} />}
         {state.kind === "ready" && (
           <section className="panel save-shared">
-            <h2>Use our food planner too?</h2>
-            <p>Copy this recipe into your own recipes, so you can plan it and shop for it.</p>
+            <h2>{t("Use our food planner too?")}</h2>
+            <p>{t("Copy this recipe into your own recipes, so you can plan it and shop for it.")}</p>
             <a className="ink-button" href={`/#/recipes/save/${encodeURIComponent(token)}`}>
-              Save to my recipes
+              {t("Save to my recipes")}
             </a>
           </section>
         )}
@@ -61,7 +62,7 @@ function SharedRecipeView({ recipe }: { recipe: SharedRecipe }) {
   const gallery = recipe.photos.filter((photo) => photo.role === "gallery");
   return (
     <article className="shared">
-      <span className="sticker white tilt-r shared-from">Shared from our food planner</span>
+      <span className="sticker white tilt-r shared-from">{t("Shared from our food planner")}</span>
       <div className="hero">
         {recipe.mainPhoto ? (
           <picture>
@@ -74,13 +75,13 @@ function SharedRecipeView({ recipe }: { recipe: SharedRecipe }) {
         <TypeStickers recipe={recipe} />
       </div>
       <h1>{recipe.title}</h1>
-      {recipe.minutes !== null && <p className="time">Takes {formatMinutes(recipe.minutes)}</p>}
+      {recipe.minutes !== null && <p className="time">{t("Takes {time}", { time: formatMinutes(recipe.minutes) })}</p>}
       {recipe.description && <p className="description">{recipe.description}</p>}
       <IngredientsPanel recipe={recipe} />
       <StepsPanel steps={recipe.steps} />
       {gallery.length > 0 && (
         <section className="panel">
-          <h2>Photos</h2>
+          <h2>{t("Photos")}</h2>
           <ul className="gallery">
             {gallery.map((photo) => (
               <li key={photo.id}>

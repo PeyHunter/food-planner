@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { locale, t } from "../i18n.ts";
 import { shopSections, type ShopSection } from "../../shared/recipes.ts";
 import { restOfWeek, type ShoppingItem, type ShoppingView } from "../../shared/shopping.ts";
 import { formatAmount, units, type Unit } from "../../shared/units.ts";
 import { addDays, mondayOf, weekDates } from "../../shared/week.ts";
 import { saveIngredient, today } from "../recipes/api.ts";
-import { addExtra, bringBack, clearTicked, getShopping, removeExtra, setTick } from "./api.ts";
+import { nemligSearchUrl, type Profile } from "../../shared/profile.ts";
+import { getProfile } from "../profile/api.ts";
+import { addExtra, boughtAll, bringBack, clearTicked, getShopping, removeExtra, setTick } from "./api.ts";
 import "./shopping.css";
 
 const pollMs = 3000;
-const dayLetter = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" });
-const dayName = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", { weekday: "long", timeZone: "UTC" });
-const amountText = (amount: number, unit: Unit) => (unit === "pcs" ? formatAmount(amount) : `${formatAmount(amount, unit)} ${unit}`);
+const dayLetter = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString(locale(), { weekday: "short", timeZone: "UTC" });
+const dayName = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString(locale(), { weekday: "long", timeZone: "UTC" });
+const amountText = (amount: number, unit: Unit) => (unit === "pcs" ? formatAmount(amount) : `${formatAmount(amount, unit)} ${t(unit)}`);
 
 /** A tick the server may not have seen yet. `doneAt` is when the save finished. */
 type Pending = { ticked: boolean; doneAt?: number };
@@ -25,6 +28,12 @@ export function ShoppingScreen() {
   const pending = useRef(new Map<string, Pending>());
   const [, redraw] = useState(0);
   const latest = useRef(0);
+  const [nemlig, setNemlig] = useState<Profile["nemlig"]>();
+  const [nemligList, setNemligList] = useState(false);
+
+  useEffect(() => {
+    getProfile().then((profile) => setNemlig(profile.nemlig), () => setNemlig(undefined));
+  }, []);
 
   const load = useCallback(async () => {
     const request = ++latest.current;
@@ -82,19 +91,20 @@ export function ShoppingScreen() {
   const shown = view?.monday === monday ? view : undefined;
   const anyTicked = !!shown && (shown.sections.some((section) => section.lines.some((line) => isTicked(line.key, line.ticked))) || shown.extras.some((extra) => isTicked(extra.key, extra.ticked)));
   const empty = !!shown && shown.sections.length === 0 && shown.extras.length === 0;
+  const allKeys = shown ? [...shown.sections.flatMap((section) => section.lines.map((line) => line.key)), ...shown.extras.map((extra) => extra.key)] : [];
 
   return (
     <section className="shopping">
       <div className="head">
-        <h2>Shopping</h2>
-        <span className="sticker mint tilt-r">{shown ? `${shown.sections.reduce((sum, section) => sum + section.lines.length, 0) + shown.extras.length} things` : "…"}</span>
+        <h2>{t("Shopping")}</h2>
+        <span className="sticker mint tilt-r">{shown ? t("{n} things", { n: shown.sections.reduce((sum, section) => sum + section.lines.length, 0) + shown.extras.length }) : "…"}</span>
       </div>
       <div className="chips" role="group" aria-label="Which week">
         <button type="button" className="chip" aria-pressed={monday === thisMonday} onClick={() => pickWeek(thisMonday)}>
-          This week
+          {t("This week")}
         </button>
         <button type="button" className="chip" aria-pressed={monday !== thisMonday} onClick={() => pickWeek(addDays(thisMonday, 7))}>
-          Next week
+          {t("Next week")}
         </button>
       </div>
       <div className="day-chips" role="group" aria-label="Days to shop for">
@@ -105,12 +115,20 @@ export function ShoppingScreen() {
         ))}
       </div>
       {problem && <p role="alert">{problem}</p>}
-      {empty && <p className="card note">Nothing to buy for these days. Plan some dinners on the Week tab, or add something below.</p>}
-      {shown?.sections.map(({ section, lines }) => {
+      {nemlig?.on && shown && !empty && (
+        <button type="button" className="btn small white nemlig-switch" aria-pressed={nemligList} onClick={() => setNemligList(!nemligList)}>
+          {nemligList ? t("Back to the shop list") : t("nemlig.com list")}
+        </button>
+      )}
+      {nemlig?.on && nemligList && shown && (
+        <NemligList view={shown} organic={nemlig.organic} isTicked={isTicked} />
+      )}
+      {empty && <p className="card note">{t("Nothing to buy for these days. Plan some dinners on the Week tab, or add something below.")}</p>}
+      {!nemligList && shown?.sections.map(({ section, lines }) => {
         const ordered = [...lines].sort((a, b) => Number(isTicked(a.key, a.ticked)) - Number(isTicked(b.key, b.ticked)));
         return (
           <section key={section} className="aisle" aria-label={section}>
-            <h3>{section}</h3>
+            <h3>{t(section)}</h3>
             <ul>
               {ordered.map((line) => (
                 <Line
@@ -139,9 +157,9 @@ export function ShoppingScreen() {
           </section>
         );
       })}
-      {shown && (
+      {shown && !nemligList && (
         <section className="aisle extras" aria-label="Extras">
-          <h3>Extras</h3>
+          <h3>{t("Extras")}</h3>
           {shown.extras.length > 0 && (
             <ul>
               {[...shown.extras]
@@ -169,18 +187,23 @@ export function ShoppingScreen() {
           <AddExtra onAdd={(name) => act(() => addExtra(monday, name))} />
         </section>
       )}
-      {shown && (anyTicked || shown.cleared > 0) && (
+      {shown && (allKeys.length > 0 || shown.cleared > 0) && (
         <div className="foot">
+          {allKeys.length > 0 && (
+            <button type="button" className="btn sun" onClick={() => act(() => boughtAll(monday, allKeys))}>
+              {t("✓ Bought it all")}
+            </button>
+          )}
           {anyTicked && (
             <button type="button" className="btn mint" onClick={() => act(() => clearTicked(monday))}>
-              Clear ticked
+              {t("Clear ticked")}
             </button>
           )}
           {shown.cleared > 0 && (
             <p className="note">
-              {shown.cleared} cleared.{" "}
+              {t("{n} cleared.", { n: shown.cleared })}{" "}
               <button type="button" className="link" onClick={() => act(() => bringBack(monday))}>
-                Bring back
+                {t("Bring back")}
               </button>
             </p>
           )}
@@ -209,7 +232,7 @@ function Line({
 }) {
   const { ingredient } = line;
   const { packAmount, packUnit } = ingredient;
-  const pack = line.packs !== null && packAmount !== null && packUnit !== null ? `${formatAmount(packAmount, packUnit)} ${packUnit}` : null;
+  const pack = line.packs !== null && packAmount !== null && packUnit !== null ? `${formatAmount(packAmount, packUnit)} ${t(packUnit)}` : null;
   const need = line.amount !== null && line.unit !== null ? amountText(line.amount, line.unit) : null;
   return (
     <li className={ticked ? "item done" : "item"}>
@@ -221,10 +244,10 @@ function Line({
           <strong>{ingredient.name}</strong>
           {pack && (
             <>
-              <span className="buy">{line.packs === 1 ? `Buy 1 pack (${pack})` : `Buy ${line.packs} packs (${pack} each)`}</span>
+              <span className="buy">{t(line.packs === 1 ? "Buy 1 pack ({pack})" : "Buy {n} packs ({pack} each)", { n: line.packs ?? 0, pack })}</span>
               <span className="need">
-                You need {need}
-                {line.spare && ` · ${amountText(line.spare.amount, line.spare.unit)} left over`}
+                {t("You need {amount}", { amount: need ?? "" })}
+                {line.spare && ` · ${t("{amount} left over", { amount: amountText(line.spare.amount, line.spare.unit) })}`}
               </span>
             </>
           )}
@@ -236,17 +259,19 @@ function Line({
         <div className="line-tools">
           {line.needsPackSize && (
             <button type="button" className="link" onClick={() => onEdit(true)}>
-              Set pack size
+              {t("Set pack size")}
             </button>
           )}
           <select className="move" aria-label={`Move ${ingredient.name} to another shop section`} value="" onChange={(event) => onMove(event.target.value as ShopSection)}>
             <option value="" disabled>
-              Move to…
+              {t("Move to…")}
             </option>
             {shopSections
               .filter((section) => section !== ingredient.shopSection)
               .map((section) => (
-                <option key={section}>{section}</option>
+                <option key={section} value={section}>
+                  {t(section)}
+                </option>
               ))}
           </select>
         </div>
@@ -262,28 +287,30 @@ function PackEditor({ name, unit, onSave, onCancel }: { name: string; unit: Unit
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const amount = Number(String(form.get("amount")).replace(",", "."));
-    if (!Number.isFinite(amount) || amount <= 0) return setProblem("Write a number above 0.");
+    if (!Number.isFinite(amount) || amount <= 0) return setProblem(t("Write a number above 0."));
     onSave(amount, form.get("unit") as Unit);
   };
   return (
     <form className="pack" aria-label={`Pack size for ${name}`} onSubmit={submit}>
       <label>
-        Pack size
+        {t("Pack size")}
         <input name="amount" inputMode="decimal" autoFocus placeholder="1" />
       </label>
       <label>
-        Unit
+        {t("Unit")}
         <select name="unit" defaultValue={unit}>
           {units.map((one) => (
-            <option key={one}>{one}</option>
+            <option key={one} value={one}>
+              {t(one)}
+            </option>
           ))}
         </select>
       </label>
       <button type="submit" className="btn small mint">
-        Save
+        {t("Save")}
       </button>
       <button type="button" className="btn small white" onClick={onCancel}>
-        Cancel
+        {t("Cancel")}
       </button>
       {problem && <p role="alert">{problem}</p>}
     </form>
@@ -301,10 +328,45 @@ function AddExtra({ onAdd }: { onAdd: (name: string) => Promise<void> }) {
   };
   return (
     <form className="add" onSubmit={submit}>
-      <input aria-label="Add something" placeholder="Add something, like milk" value={name} onChange={(event) => setName(event.target.value)} maxLength={80} />
+      <input aria-label="Add something" placeholder={t("Add something, like milk")} value={name} onChange={(event) => setName(event.target.value)} maxLength={80} />
       <button type="submit" className="btn small mint">
-        Add
+        {t("Add")}
       </button>
     </form>
+  );
+}
+
+/** Each item still to buy, as a link to nemlig.com's search, so it can go in the nemlig basket. */
+function NemligList({ view, organic, isTicked }: { view: ShoppingView; organic: boolean; isTicked: (key: string, fromServer: boolean) => boolean }) {
+  const items = [
+    ...view.sections.flatMap((section) =>
+      section.lines
+        .filter((line) => !isTicked(line.key, line.ticked))
+        .map((line) => ({
+          key: line.key,
+          name: line.ingredient.name,
+          amount: line.packs !== null ? t(line.packs === 1 ? "1 pack" : "{n} packs", { n: line.packs }) : line.amount !== null && line.unit !== null ? amountText(line.amount, line.unit) : "",
+        })),
+    ),
+    ...view.extras.filter((extra) => !isTicked(extra.key, extra.ticked)).map((extra) => ({ key: extra.key, name: extra.name, amount: "" })),
+  ];
+  return (
+    <section className="aisle nemlig" aria-label="nemlig.com">
+      <h3>nemlig.com {organic && <span className="sticker mint">{t("Organic")}</span>}</h3>
+      <p className="note">{t("Tap an item to find it on nemlig.com and put it in your basket.")}</p>
+      <ul>
+        {items.map((item) => (
+          <li key={item.key} className="item">
+            <a className="tick" href={nemligSearchUrl(item.name, organic)} target="_blank" rel="noreferrer">
+              <span className="what">
+                <strong>{item.name}</strong>
+                {item.amount && <small>{item.amount}</small>}
+              </span>
+              <span aria-hidden="true">↗</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

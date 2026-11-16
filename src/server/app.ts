@@ -4,6 +4,7 @@ import { createAccessRoutes } from "./access.ts";
 import { createChildRoutes } from "./children.ts";
 import type { Database } from "./db.ts";
 import { createFreezerRoutes } from "./freezer.ts";
+import { createProfileRoutes } from "./profile.ts";
 import { createPhotoRecipeRoutes, type PhotoRecipeClient } from "./photo-recipe.ts";
 import { createRecipeRoutes } from "./recipes.ts";
 import { createShoppingRoutes } from "./shopping.ts";
@@ -43,6 +44,7 @@ export function createApp(dependencies: AppDependencies) {
   app.route("/", createChildRoutes(dependencies));
   app.route("/", createShoppingRoutes(dependencies));
   app.route("/", createFreezerRoutes(dependencies));
+  app.route("/", createProfileRoutes(dependencies));
 
   return app;
 }

@@ -149,3 +149,18 @@ test("perf: the list for 7 planned days builds in 200 ms or less", async () => {
   runs.sort((a, b) => a - b);
   expect(runs[2]).toBeLessThanOrEqual(200);
 });
+
+test("Bought it all clears every item at once, and Bring back shows them again", async () => {
+  const { call, create, list } = await loggedIn();
+  const soup = await create(recipe("Soup", [line(400, "g", "Carrots"), line(2, "pcs", "Onion")]));
+  await call("/api/plan/days/2026-03-02", "PUT", { dinnerRecipeId: soup });
+  await call(`/api/shopping/${monday}/extras`, "POST", { name: "Milk" });
+  const before = await list();
+  const keys = [...before.sections.flatMap((section) => section.lines.map((one) => one.key)), ...before.extras.map((extra) => extra.key)];
+  expect((await call(`/api/shopping/${monday}/bought`, "POST", { keys })).status).toBe(204);
+  const after = await list();
+  expect([after.sections, after.extras, after.cleared]).toEqual([[], [], 2]);
+  expect((await call(`/api/shopping/${monday}/bought`, "POST", { keys: [42] })).status).toBe(400);
+  await call(`/api/shopping/${monday}/bring-back`, "POST");
+  expect(names(await list())).toEqual(["Carrots", "Onion"]);
+});

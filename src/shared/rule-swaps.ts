@@ -1,4 +1,6 @@
 import { checkRules, countFor, mealOf, type Dish, type PlanDay, type Rule, type RuleStatus } from "./rules.ts";
+import { localeOf, translate } from "./i18n.ts";
+import type { Language } from "./profile.ts";
 import { weekdayName } from "./week.ts";
 
 /** `babyOnly`: the recipe's age range ends before `adultFoodFromMonths`, so it is never offered to adults. */
@@ -25,6 +27,8 @@ export type SwapInput = {
   childNames: Record<string, string>;
   /** Days before this are past and never changed. */
   today: string;
+  /** The language of the sentences; English when not given. */
+  language?: Language;
 };
 
 /**
@@ -32,7 +36,7 @@ export type SwapInput = {
  * For a child, eating a matching dinner mashed comes first. Then empty days before planned ones,
  * and dishes not made for the longest time first. When nothing helps, a plain note.
  */
-export function suggestSwaps({ rules, days, recipes, childNames, today }: SwapInput): Suggestion[] {
+export function suggestSwaps({ rules, days, recipes, childNames, today, language = "en" }: SwapInput): Suggestion[] {
   const before = checkRules(rules, days);
   const metBefore = before.filter((status) => status.met);
   const ordered = [...recipes].sort(
@@ -42,8 +46,9 @@ export function suggestSwaps({ rules, days, recipes, childNames, today }: SwapIn
 
   for (const missed of before.filter((status) => !status.met)) {
     const { childId } = missed;
-    const child = childId === null ? null : (childNames[childId] ?? "the child");
-    const open = days.filter((day) => day.date >= today);
+    const child = childId === null ? null : (childNames[childId] ?? translate(language, "the child"));
+    // The adults' dinner on a day out or with takeout is not swapped.
+    const open = days.filter((day) => day.date >= today && !(childId === null && day.away));
     const tryDays = [...open.filter((day) => mealOf(day, childId) === null), ...open.filter((day) => mealOf(day, childId) !== null)];
     const used = new Set(days.map((day) => mealOf(day, childId)?.id).filter(Boolean));
     const unused = ordered.filter((recipe) => !used.has(recipe.id));
@@ -63,7 +68,7 @@ export function suggestSwaps({ rules, days, recipes, childNames, today }: SwapIn
       const count = countFor(missed, changed);
       const better = missed.op === "at-least" ? count > missed.count : count < missed.count;
       if (!better || checkRules(metBefore, changed).some((status) => !status.met)) return false;
-      const base = { ruleId: missed.id, childId, date: day.date, text: sentence(missed, count, day, recipe, child) };
+      const base = { ruleId: missed.id, childId, date: day.date, text: sentence(missed, count, day, recipe, child, language) };
       suggestions.push(
         recipe
           ? { ...base, id: `${missed.id}:${day.date}:${recipe.id}`, kind: "recipe", recipeId: recipe.id }
@@ -71,7 +76,7 @@ export function suggestSwaps({ rules, days, recipes, childNames, today }: SwapIn
       );
       return true;
     });
-    if (!found) suggestions.push({ id: `${missed.id}:note`, ruleId: missed.id, childId, kind: "note", date: null, recipeId: null, text: note(missed, child) });
+    if (!found) suggestions.push({ id: `${missed.id}:note`, ruleId: missed.id, childId, kind: "note", date: null, recipeId: null, text: note(missed, child, language) });
   }
   return suggestions;
 }
@@ -82,28 +87,43 @@ function place(day: PlanDay, childId: string | null, dish: Dish | null): PlanDay
   return { ...day, children: { ...day.children, [childId]: dish ? { kind: "recipe", dish } : { kind: "same-as-dinner" } } };
 }
 
-function sentence(rule: Rule, count: number, day: PlanDay, recipe: Dish | null, child: string | null) {
-  const weekday = weekdayName(day.date);
+function sentence(rule: Rule, count: number, day: PlanDay, recipe: Dish | null, child: string | null, language: Language) {
+  const tr = (text: string, values: Record<string, string | number>) => translate(language, text, values);
+  const weekday = weekdayName(day.date, localeOf(language));
   const empty = mealOf(day, rule.childId) === null;
-  const slot = child ? `${child}'s ${weekday}` : weekday;
+  const slot = child ? tr("{child}'s {day}", { child, day: weekday }) : weekday;
   const change = !recipe
-    ? `Give ${child} ${weekday}'s dinner (${day.dinner!.title}), mashed,`
+    ? tr("Give {child} {day}'s dinner ({title}), mashed,", { child: child!, day: weekday, title: day.dinner!.title })
     : empty
-      ? `Add ${recipe.title} on ${slot}`
-      : `Swap ${slot} for ${recipe.title}`;
-  const what = rule.what.toLowerCase();
-  const goal = rule.op === "at-least" ? `to get ${what} ${count}/${rule.n}` : `to get ${what} down to ${count}`;
+      ? tr("Add {title} on {slot}", { title: recipe.title, slot })
+      : tr("Swap {slot} for {title}", { slot, title: recipe.title });
+  const what = translate(language, rule.what).toLowerCase();
+  const goal = rule.op === "at-least" ? tr("to get {what} {count}/{n}", { what, count, n: rule.n }) : tr("to get {what} down to {count}", { what, count });
   return `${change} ${goal}`;
 }
 
-const meals = (n: number, what: string) => `${n} ${what} ${n === 1 ? "meal" : "meals"}`;
-
 /** What to do when no single change this week helps. */
-function note(rule: RuleStatus, child: string | null) {
-  const what = rule.what.toLowerCase();
-  if (rule.op === "at-most") return `${child ?? "Adults"}: ${meals(rule.count - rule.n, what)} too many this week. Swap one for something else.`;
-  const missing = rule.n - rule.count;
-  const more = `${missing} more ${what} ${missing === 1 ? "meal" : "meals"}`;
-  if (child) return `${child} needs ${more} this week. Plan a ${what} dinner and choose Same as dinner, or add a ${what} recipe for ${child}.`;
-  return `Adults need ${more} this week. Add a ${what} recipe to the book, then plan it on a free day.`;
+function note(rule: RuleStatus, child: string | null, language: Language) {
+  const tr = (text: string, values: Record<string, string | number>) => translate(language, text, values);
+  const what = translate(language, rule.what).toLowerCase();
+  if (rule.op === "at-most") {
+    const n = rule.count - rule.n;
+    const who = child ?? translate(language, "Adults");
+    return tr(n === 1 ? "{who}: {n} {what} meal too many this week. Swap one for something else." : "{who}: {n} {what} meals too many this week. Swap one for something else.", { who, n, what });
+  }
+  const n = rule.n - rule.count;
+  const values = { n, what, child: child ?? "" };
+  if (child)
+    return tr(
+      n === 1
+        ? "{child} needs {n} more {what} meal this week. Plan a {what} dinner and choose Same as dinner, or add a {what} recipe for {child}."
+        : "{child} needs {n} more {what} meals this week. Plan a {what} dinner and choose Same as dinner, or add a {what} recipe for {child}.",
+      values,
+    );
+  return tr(
+    n === 1
+      ? "Adults need {n} more {what} meal this week. Add a {what} recipe to the book, then plan it on a free day."
+      : "Adults need {n} more {what} meals this week. Add a {what} recipe to the book, then plan it on a free day.",
+    values,
+  );
 }

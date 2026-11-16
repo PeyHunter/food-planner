@@ -7,6 +7,8 @@ export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   username: text("username").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
+  /** "en" or "da". */
+  language: text("language").notNull().default("en"),
   createdAt: at("created_at").notNull().defaultNow(),
 });
 
@@ -15,6 +17,11 @@ export const kitchens = pgTable("kitchens", {
   name: text("name").notNull(),
   /** False for a kitchen without children: no Runi & kids tab, no child rules or meals. */
   kids: boolean("kids").notNull().default(true),
+  /** Getting ready for nemlig.com home delivery. Nothing is sent to nemlig yet. */
+  nemligOn: boolean("nemlig_on").notNull().default(false),
+  /** 0 is Monday, 6 is Sunday. */
+  nemligDay: integer("nemlig_day").notNull().default(6),
+  nemligOrganic: boolean("nemlig_organic").notNull().default(false),
 });
 
 export const kitchenMembers = pgTable(
@@ -151,6 +158,8 @@ export const children = pgTable(
     kitchenId: kitchenId(),
     name: text("name").notNull(),
     birthday: date("birthday", { mode: "string" }),
+    /** A day with no meal planned for the child reads as "Same as dinner". */
+    sameAsDinnerByDefault: boolean("same_as_dinner_by_default").notNull().default(false),
     createdAt: at("created_at").notNull().defaultNow(),
   },
   (table) => [index("children_kitchen").on(table.kitchenId)],
@@ -166,8 +175,24 @@ export const planDays = pgTable(
     dinnerRecipeId: uuid("dinner_recipe_id").references(() => recipes.id, { onDelete: "set null" }),
     /** The dinner is a portion taken from the freezer: it adds nothing to the shopping list. */
     fromFreezer: boolean("from_freezer").notNull().default(false),
+    /** A dinner with no recipe and nothing to buy: out, takeout or other. Null for a normal dinner. */
+    awayKind: text("away_kind"),
+    /** Free words for the away dinner, like "At Isabel's". */
+    awayNote: text("away_note").notNull().default(""),
   },
   (table) => [primaryKey({ columns: [table.kitchenId, table.date] }), check("plan_days_people", sql`${table.people} between 1 and 50`)],
+);
+
+/** More dishes for the same dinner, like a salad next to the main dish. */
+export const planSides = pgTable(
+  "plan_sides",
+  {
+    kitchenId: kitchenId(),
+    date: date("date", { mode: "string" }).notNull(),
+    position: integer("position").notNull(),
+    recipeId: recipeId(),
+  },
+  (table) => [primaryKey({ columns: [table.kitchenId, table.date, table.position] })],
 );
 
 /** kind is empty, same-as-dinner or recipe. A recipe row whose recipe was deleted reads as empty. */

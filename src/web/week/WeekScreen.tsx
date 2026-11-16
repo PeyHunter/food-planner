@@ -1,18 +1,23 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { locale, t } from "../i18n.ts";
 import { kidTags, mainTypes, type MainType, type RecipeSummary } from "../../shared/recipes.ts";
 import type { ReduceWaste as WasteIdea } from "../../shared/reduce-waste.ts";
 import type { RuleOp } from "../../shared/rules.ts";
-import { addDays, maxPeople, mondayOf, weekdayName, type Child, type CreatedWeek, type WeekDay, type WeekRule, type WeekView } from "../../shared/week.ts";
+import { addDays, awayKinds, maxAwayNote, maxPeople, maxSides, mondayOf, weekdayName, type AwayKind, type Child, type CreatedWeek, type WeekDay, type WeekRule, type WeekView } from "../../shared/week.ts";
 import { useKids } from "../kitchen.ts";
 import { listRecipes, today } from "../recipes/api.ts";
-import { acceptSuggestion, addRule, createWeek, deleteRule, getWeek, reduceWaste, setChildDay, setDinner, setPeople, undoCreateWeek, updateRule, type RuleInput } from "./api.ts";
+import { acceptSuggestion, addRule, addSide, createWeek, deleteRule, getWeek, reduceWaste, removeSide, setAway, setChildDay, setDinner, setPeople, undoCreateWeek, updateRule, type RuleInput } from "./api.ts";
 import "./week.css";
 
-type Picking = { date: string; childId: string | null };
+/** side: adding another dish to the dinner rather than picking the dinner. */
+type Picking = { date: string; childId: string | null; side?: true };
+
+const awayLabel: Record<AwayKind, string> = { out: "Visiting others", takeout: "Takeout", other: "Something else" };
+const awayIcon: Record<AwayKind, string> = { out: "🏠", takeout: "🥡", other: "✏️" };
 
 const typeColour: Record<string, string> = { Fish: "sky", Meat: "tomato", Chicken: "sun", Vegetarian: "mint", Vegetables: "mint" };
 const utc = (date: string) => new Date(`${date}T00:00:00Z`);
-const short = (date: string, parts: Intl.DateTimeFormatOptions) => utc(date).toLocaleDateString("en-GB", { ...parts, timeZone: "UTC" });
+const short = (date: string, parts: Intl.DateTimeFormatOptions) => utc(date).toLocaleDateString(locale(), { ...parts, timeZone: "UTC" });
 
 /** ISO week number: the week that holds the year's first Thursday is week 1. */
 function weekNumber(monday: string) {
@@ -63,7 +68,7 @@ export function WeekScreen() {
   };
 
   const shown = view?.monday === monday ? view : undefined;
-  const nameOf = (childId: string | null) => (childId === null ? "Adults" : (shown?.children.find((child) => child.id === childId)?.name ?? ""));
+  const nameOf = (childId: string | null) => (childId === null ? t("Adults") : (shown?.children.find((child) => child.id === childId)?.name ?? ""));
 
   return (
     <section className="week">
@@ -72,7 +77,7 @@ export function WeekScreen() {
           ←
         </button>
         <div className="wk-title">
-          <h2>Week {weekNumber(monday)}</h2>
+          <h2>{t("Week {n}", { n: weekNumber(monday) })}</h2>
           <p>{weekRange(monday)}</p>
         </div>
         <button type="button" className="nav" aria-label="Next week" onClick={() => setMonday(addDays(monday, 7))}>
@@ -91,13 +96,15 @@ export function WeekScreen() {
                 people={people.count(day)}
                 kids={shown.children}
                 onPick={(childId) => setPicking({ date: day.date, childId })}
+                onAddSide={() => setPicking({ date: day.date, childId: null, side: true })}
+                onRemoveSide={(position) => void act(() => removeSide(day.date, position))}
                 onPeople={(step) => people.change(day, step)}
               />
             ))}
           </ol>
           <div className="week-bar">
             <button type="button" className="btn small sun" aria-expanded={open} aria-controls="week-suggestions" onClick={() => toggle(!open)}>
-              Suggestions
+              {t("Suggestions")}
               {shown.suggestions.length > 0 && (
                 <span className="sticker tomato badge" aria-label={`${shown.suggestions.length} ideas to meet the rules`}>
                   {shown.suggestions.length}
@@ -106,7 +113,7 @@ export function WeekScreen() {
               <span aria-hidden="true">{open ? "▴" : "▾"}</span>
             </button>
             <a className="btn small white freezer-link" href="#/recipes/freezer">
-              ❄ Freezer
+              {t("❄ Freezer")}
               {shown.freezer.length > 0 && <span className="sticker sky">{shown.freezer.reduce((sum, item) => sum + item.count, 0)}</span>}
             </a>
           </div>
@@ -114,14 +121,14 @@ export function WeekScreen() {
             <RulesCard view={shown} onEdit={() => setEditingRules(true)} />
             {shown.suggestions.length > 0 && (
               <section className="swaps" aria-label="Ideas to meet the rules">
-                <h3>Ideas to meet the rules</h3>
+                <h3>{t("Ideas to meet the rules")}</h3>
                 <ul>
                   {shown.suggestions.map((suggestion) => (
-                    <li key={suggestion.id}>
+                    <li key={suggestion.id} className={suggestion.childId ? "kid-idea" : undefined}>
                       <p>{suggestion.text}</p>
                       {suggestion.kind !== "note" && (
                         <button type="button" className="btn small mint" aria-label={`Do it: ${suggestion.text}`} onClick={() => act(() => acceptSuggestion(suggestion.id))}>
-                          Do it
+                          {t("Do it")}
                         </button>
                       )}
                     </li>
@@ -245,7 +252,7 @@ function CreateWeek({ monday, onDone, setProblem }: { monday: string; onDone: ()
   return (
     <section className="create-week" aria-label="Create week">
       <button type="button" className="btn sun" disabled={busy} onClick={create}>
-        Create week
+        {t("Create week")}
       </button>
       <div role="status">
         {shown && (
@@ -253,7 +260,7 @@ function CreateWeek({ monday, onDone, setProblem }: { monday: string; onDone: ()
             <p>{shown.note}</p>
             {shown.fills.length > 0 && (
               <button type="button" className="btn small white" disabled={busy} onClick={() => undo(shown)}>
-                Undo
+                {t("Undo")}
               </button>
             )}
           </div>
@@ -294,30 +301,30 @@ function ReduceWaste({ monday, onDone, setProblem }: { monday: string; onDone: (
   return (
     <section className="reduce-waste" aria-label="Reduce waste">
       <button type="button" className="btn lilac" disabled={busy} onClick={ask}>
-        Reduce waste
+        {t("Reduce waste")}
       </button>
       <div role="status">
         {shown && (
           <div className="waste-idea">
-            <p>{shown.accepted ? "Done. The week is updated." : shown.text}</p>
+            <p>{shown.accepted ? t("Done. The week is updated.") : shown.text}</p>
             {shown.swap && !shown.accepted && (
               <div className="actions">
                 <button type="button" className="btn small mint" disabled={busy} onClick={() => accept(shown.swap!)}>
-                  Accept
+                  {t("Accept")}
                 </button>
                 <button type="button" className="btn small white" disabled={busy} onClick={() => setIdea(undefined)}>
-                  Not now
+                  {t("Not now")}
                 </button>
               </div>
             )}
             {shown.swap && shown.accepted && (
               <button type="button" className="btn small white" disabled={busy} onClick={() => undo(shown.swap!)}>
-                Undo
+                {t("Undo")}
               </button>
             )}
             {!shown.swap && (
               <button type="button" className="btn small white" onClick={() => setIdea(undefined)}>
-                OK
+                {t("OK")}
               </button>
             )}
           </div>
@@ -328,15 +335,15 @@ function ReduceWaste({ monday, onDone, setProblem }: { monday: string; onDone: (
 }
 
 function RulesCard({ view, onEdit }: { view: WeekView; onEdit: () => void }) {
-  const groups: { id: string | null; name: string }[] = [{ id: null, name: "Adults" }, ...view.children];
+  const groups: { id: string | null; name: string }[] = [{ id: null, name: t("Adults") }, ...view.children];
   const toGo = view.rules.filter((rule) => !rule.met).length;
   return (
     <section className="rules-card" aria-labelledby="rules-title">
       <div className="head">
-        <h2 id="rules-title">Rules</h2>
-        <span className={`sticker ${toGo ? "tomato" : "mint"} tilt-r`}>{toGo ? `${toGo} to go` : "All met"}</span>
+        <h2 id="rules-title">{t("Rules")}</h2>
+        <span className={`sticker ${toGo ? "tomato" : "mint"} tilt-r`}>{toGo ? t("{n} to go", { n: toGo }) : t("All met")}</span>
         <button type="button" className="btn small white end" onClick={onEdit}>
-          Edit rules
+          {t("Edit rules")}
         </button>
       </div>
       <div className="rule-groups">
@@ -358,7 +365,7 @@ function RulesCard({ view, onEdit }: { view: WeekView; onEdit: () => void }) {
 }
 
 function RuleLine({ rule }: { rule: WeekRule }) {
-  const label = rule.op === "at-least" ? rule.what : `${rule.what} ≤ ${rule.n}`;
+  const label = rule.op === "at-least" ? t(rule.what) : `${t(rule.what)} ≤ ${rule.n}`;
   return (
     <li className={rule.met ? "met" : "warn"} title={rule.sentence}>
       <span className="box" aria-hidden="true">
@@ -377,12 +384,12 @@ function Stickers({ recipe }: { recipe: Pick<RecipeSummary, "types" | "tags"> })
     <span className="stickers">
       {recipe.types.map((type, index) => (
         <span key={type} className={`sticker ${typeColour[type] ?? "sun"} ${index % 2 ? "tilt-r" : "tilt-l"}`}>
-          {type}
+          {t(type)}
         </span>
       ))}
       {recipe.tags.map((tag) => (
         <span key={tag} className="sticker white">
-          {tag}
+          {t(tag)}
         </span>
       ))}
     </span>
@@ -394,10 +401,19 @@ function Plate({ recipe, big = false }: { recipe: RecipeSummary; big?: boolean }
   return recipe.mainPhoto ? <img className={kind} src={recipe.mainPhoto.url} alt="" loading="lazy" /> : <span className={`${kind} none`} aria-hidden="true" />;
 }
 
-type DayCardProps = { day: WeekDay; index: number; people: number; kids: Child[]; onPick: (childId: string | null) => void; onPeople: (step: number) => void };
+type DayCardProps = {
+  day: WeekDay;
+  index: number;
+  people: number;
+  kids: Child[];
+  onPick: (childId: string | null) => void;
+  onPeople: (step: number) => void;
+  onAddSide: () => void;
+  onRemoveSide: (position: number) => void;
+};
 
-function DayCard({ day, index, people, kids, onPick, onPeople }: DayCardProps) {
-  const weekday = weekdayName(day.date);
+function DayCard({ day, index, people, kids, onPick, onPeople, onAddSide, onRemoveSide }: DayCardProps) {
+  const weekday = weekdayName(day.date, locale());
   const isToday = day.date === today();
   return (
     <li className={`day${isToday ? " today" : ""}`} style={{ "--c": `var(--day-${index + 1})` } as CSSProperties} aria-label={weekday}>
@@ -407,19 +423,27 @@ function DayCard({ day, index, people, kids, onPick, onPeople }: DayCardProps) {
       </div>
       <div className="day-body">
         <div className="dinner">
-          {isToday && <span className="sticker sun tilt-l next">Next up</span>}
+          {isToday && <span className="sticker sun tilt-l next">{t("Next up")}</span>}
           <button type="button" className={`dish${day.dinner ? "" : " empty"}`} onClick={() => onPick(null)}>
             {day.dinner ? (
               <>
                 <Plate recipe={day.dinner} big />
                 <span className="dish-text">
                   <strong>{day.dinner.title}</strong>
-                  {day.fromFreezer && <span className="sticker sky tilt-r from-freezer">❄ From the freezer</span>}
+                  {day.fromFreezer && <span className="sticker sky tilt-r from-freezer">{t("❄ From the freezer")}</span>}
                   <Stickers recipe={day.dinner} />
                 </span>
               </>
+            ) : day.away ? (
+              <span className="dish-text away">
+                <span className="away-icon" aria-hidden="true">
+                  {awayIcon[day.away.kind]}
+                </span>
+                <strong>{day.away.note || t(awayLabel[day.away.kind])}</strong>
+                {day.away.note && <span className="sticker white">{t(awayLabel[day.away.kind])}</span>}
+              </span>
             ) : (
-              <span className="pick">+ Pick a dinner</span>
+              <span className="pick">{t("+ Pick a dinner")}</span>
             )}
           </button>
           <div className="ppl" role="group" aria-label={`People on ${weekday}`}>
@@ -436,9 +460,29 @@ function DayCard({ day, index, people, kids, onPick, onPeople }: DayCardProps) {
             </button>
           </div>
         </div>
+        {day.dinner && (
+          <ul className="sides" aria-label={`More dishes on ${weekday}`}>
+            {day.sides.map(({ position, recipe }) => (
+              <li key={position}>
+                <Plate recipe={recipe} />
+                <span>{recipe.title}</span>
+                <button type="button" className="remove" aria-label={`Remove ${recipe.title} from ${weekday}`} onClick={() => onRemoveSide(position)}>
+                  ✕
+                </button>
+              </li>
+            ))}
+            {day.sides.length < maxSides && (
+              <li>
+                <button type="button" className="add-side" onClick={onAddSide}>
+                  {t("+ Add a dish (like a salad)")}
+                </button>
+              </li>
+            )}
+          </ul>
+        )}
         {kids.map((kid) => {
           const meal = day.children.find((entry) => entry.childId === kid.id);
-          const text = meal?.kind === "same-as-dinner" ? "Same as dinner, mashed" : meal?.kind === "recipe" && meal.recipe ? meal.recipe.title : "Nothing yet";
+          const text = meal?.kind === "same-as-dinner" ? t("Same as dinner, mashed") : meal?.kind === "recipe" && meal.recipe ? meal.recipe.title : t("Nothing yet");
           return (
             <button key={kid.id} type="button" className={`kid${meal?.kind === "empty" || !meal ? " nothing" : ""}`} onClick={() => onPick(kid.id)}>
               <span aria-hidden="true">🧒</span>
@@ -463,7 +507,7 @@ function Sheet({ title, onClose, children }: { title: string; onClose: () => voi
       <div className="sheet-head">
         <h2>{title}</h2>
         <button type="button" className="btn small white" onClick={onClose}>
-          Close
+          {t("Close")}
         </button>
       </div>
       {children}
@@ -474,12 +518,13 @@ function Sheet({ title, onClose, children }: { title: string; onClose: () => voi
 type PickerProps = { picking: Picking; view: WeekView; who: string; onClose: () => void; onChoose: (change: () => Promise<unknown>) => void };
 
 function Picker({ picking, view, who, onClose, onChoose }: PickerProps) {
-  const { date, childId } = picking;
+  const { date, childId, side } = picking;
+  const [awayNote, setAwayNote] = useState("");
   const [q, setQ] = useState("");
   const [found, setFound] = useState<RecipeSummary[]>();
   const [type, setType] = useState<MainType>();
   const day = view.days.find((entry) => entry.date === date)!;
-  const weekday = weekdayName(date);
+  const weekday = weekdayName(date, locale());
 
   useEffect(() => {
     if (childId !== null) return;
@@ -493,15 +538,36 @@ function Picker({ picking, view, who, onClose, onChoose }: PickerProps) {
 
   const searched = childId === null ? found : view.childRecipes.filter((recipe) => recipe.title.toLowerCase().includes(q.trim().toLowerCase()));
   const recipes = type ? searched?.filter((recipe) => recipe.types.includes(type)) : searched;
-  const choose = (recipeId: string) => onChoose(() => (childId === null ? setDinner(date, recipeId) : setChildDay(date, childId, "recipe", recipeId)));
+  const choose = (recipeId: string) =>
+    onChoose(() => (side ? addSide(date, recipeId) : childId === null ? setDinner(date, recipeId) : setChildDay(date, childId, "recipe", recipeId)));
+  const title = t(side ? "Another dish for {day}" : childId === null ? "Dinner for {day}" : "{who} on {day}", { day: weekdayName(date, locale()), who });
 
   return (
-    <Sheet title={childId === null ? `Dinner for ${weekday}` : `${who} on ${weekday}`} onClose={onClose}>
-      <input type="search" className="search" placeholder="Search recipes" aria-label="Search recipes" value={q} onChange={(event) => setQ(event.target.value)} />
+    <Sheet title={title} onClose={onClose}>
+      {childId === null && !side && (
+        <section className="away-pick" aria-label="No cooking">
+          <div className="sheet-actions">
+            {awayKinds.map((kind) => (
+              <button key={kind} type="button" className="btn small white" onClick={() => onChoose(() => setAway(date, { kind, note: awayNote.trim() }))}>
+                <span aria-hidden="true">{awayIcon[kind]}</span> {t(awayLabel[kind])}
+              </button>
+            ))}
+          </div>
+          <input
+            className="search"
+            aria-label="Note, like where you eat"
+            placeholder={t("Note, like “At Isabel's” (optional)")}
+            maxLength={maxAwayNote}
+            value={awayNote}
+            onChange={(event) => setAwayNote(event.target.value)}
+          />
+        </section>
+      )}
+      <input type="search" className="search" placeholder={t("Search recipes")} aria-label="Search recipes" value={q} onChange={(event) => setQ(event.target.value)} />
       <div className="chips" role="group" aria-label="Filter by type">
         {[undefined, ...mainTypes].map((option) => (
           <button key={option ?? "all"} type="button" className="chip" aria-pressed={type === option} onClick={() => setType(option)}>
-            {option ?? "All"}
+            {option ? t(option) : t("All")}
           </button>
         ))}
       </div>
@@ -515,28 +581,28 @@ function Picker({ picking, view, who, onClose, onChoose }: PickerProps) {
               aria-describedby={day.dinner ? undefined : "no-dinner-hint"}
               onClick={() => onChoose(() => setChildDay(date, childId, "same-as-dinner"))}
             >
-              Same as dinner, mashed
+              {t("Same as dinner, mashed")}
             </button>
             <button type="button" className="btn small white" onClick={() => onChoose(() => setChildDay(date, childId, "empty"))}>
-              Nothing yet
+              {t("Nothing yet")}
             </button>
             {!day.dinner && (
               <p id="no-dinner-hint" className="hint no-dinner">
-                Pick a dinner first
+                {t("Pick a dinner first")}
               </p>
             )}
           </>
         )}
-        {childId === null && day.dinner && (
+        {childId === null && !side && (day.dinner || day.away) && (
           <button type="button" className="btn small white" onClick={() => onChoose(() => setDinner(date, null))}>
-            No dinner
+            {t("No dinner")}
           </button>
         )}
       </div>
-      {childId === null && view.freezer.length > 0 && (
+      {childId === null && !side && view.freezer.length > 0 && (
         <section className="freezer-pick" aria-label="From the freezer">
-          <h3>❄ From the freezer</h3>
-          <p className="hint">Takes one portion out. Nothing goes on the shopping list.</p>
+          <h3>{t("❄ From the freezer")}</h3>
+          <p className="hint">{t("Takes one portion out. Nothing goes on the shopping list.")}</p>
           <ul className="pick-list">
             {view.freezer.map(({ recipe, count }) => (
               <li key={recipe.id}>
@@ -544,7 +610,7 @@ function Picker({ picking, view, who, onClose, onChoose }: PickerProps) {
                   <Plate recipe={recipe} />
                   <span className="dish-text">
                     <strong>{recipe.title}</strong>
-                    <span className="sticker sky">{count} left</span>
+                    <span className="sticker sky">{t("{n} left", { n: count })}</span>
                   </span>
                 </button>
               </li>
@@ -553,7 +619,7 @@ function Picker({ picking, view, who, onClose, onChoose }: PickerProps) {
         </section>
       )}
       {recipes && recipes.length === 0 && (
-        <p className="hint">{childId === null || type ? "No recipe matches." : `No recipes for ${who} yet. Tag a recipe "for Runi" or give it an age range.`}</p>
+        <p className="hint">{childId === null || type ? t("No recipe matches.") : t('No recipes for {who} yet. Tag a recipe "for Runi" or give it an age range.', { who })}</p>
       )}
       <ul className="pick-list">
         {recipes?.map((recipe) => (
@@ -577,15 +643,15 @@ const ruleWhats = [...mainTypes, "Freezable", "kid-friendly"];
 function RulesEditor({ view, onChange, onClose }: { view: WeekView; onChange: (change: () => Promise<unknown>) => Promise<void>; onClose: () => void }) {
   const hasKids = useKids();
   return (
-    <Sheet title="Edit rules" onClose={onClose}>
-      <p className="hint">{hasKids ? "Each rule counts the dinners (or the child's meals) in one week." : "Each rule counts the dinners in one week."}</p>
+    <Sheet title={t("Edit rules")} onClose={onClose}>
+      <p className="hint">{hasKids ? t("Each rule counts the dinners (or the child's meals) in one week.") : t("Each rule counts the dinners in one week.")}</p>
       <ul className="rule-rows">
         {view.rules.map((rule, index) => (
           <RuleRow key={rule.id} rule={rule} n={index + 1} kids={view.children} onChange={onChange} />
         ))}
       </ul>
       <button type="button" className="btn small sun" onClick={() => onChange(() => addRule({ childId: null, op: "at-least", n: 1, what: "Fish" }))}>
-        + Add a rule
+        {t("+ Add a rule")}
       </button>
     </Sheet>
   );
@@ -607,7 +673,7 @@ function RuleRow({ rule, n, kids, onChange }: { rule: WeekRule; n: number; kids:
       {hasKids && (
         <>
           <select aria-label={`Who ${n}`} value={draft.childId ?? ""} onChange={(event) => save({ childId: event.target.value || null })}>
-            <option value="">Adults</option>
+            <option value="">{t("Adults")}</option>
             {kids.map((kid) => (
               <option key={kid.id} value={kid.id}>
                 {kid.name}
@@ -619,19 +685,21 @@ function RuleRow({ rule, n, kids, onChange }: { rule: WeekRule; n: number; kids:
       )}
       <select aria-label={`What ${n}`} value={draft.what} onChange={(event) => save({ what: event.target.value })}>
         {whats.map((what) => (
-          <option key={what}>{what}</option>
+          <option key={what} value={what}>
+            {t(what)}
+          </option>
         ))}
       </select>
       <select aria-label={`At least or at most ${n}`} value={draft.op} onChange={(event) => save({ op: event.target.value as RuleOp })}>
-        <option value="at-least">at least</option>
-        <option value="at-most">at most</option>
+        <option value="at-least">{t("at least")}</option>
+        <option value="at-most">{t("at most")}</option>
       </select>
       <select aria-label={`How many ${n}`} value={draft.n} onChange={(event) => save({ n: Number(event.target.value) })}>
         {Array.from({ length: 8 }, (_, count) => (
           <option key={count}>{count}</option>
         ))}
       </select>
-      <span>a week</span>
+      <span>{t("a week")}</span>
       <button type="button" className="remove" aria-label={`Remove rule: ${rule.sentence}`} onClick={() => onChange(() => deleteRule(rule.id))}>
         ✕
       </button>

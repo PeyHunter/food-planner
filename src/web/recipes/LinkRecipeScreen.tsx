@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { t } from "../i18n.ts";
 import type { PhotoRecipeDraft } from "../../shared/recipes.ts";
 import { readRecipeLink } from "./api.ts";
 import { RecipeForm } from "./RecipeForm.tsx";
@@ -10,7 +11,7 @@ export function LinkRecipeScreen() {
   const [problem, setProblem] = useState<string>();
   const [draft, setDraft] = useState<PhotoRecipeDraft>();
 
-  if (draft) return <RecipeForm fromPhoto={{ ...draft, photos: [], intro: "Read from the link. Check it, fix anything that's wrong, then save." }} />;
+  if (draft) return <RecipeForm fromPhoto={{ ...draft, photos: [], intro: t("Read from the link. Check it, fix anything that's wrong, then save.") }} />;
 
   const read = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -30,19 +31,19 @@ export function LinkRecipeScreen() {
         <a className="back" href="#/recipes/new" aria-label="Back">
           ←
         </a>
-        <h2>Recipe from a link</h2>
+        <h2>{t("Recipe from a link")}</h2>
       </nav>
-      <p className="hint">Paste the link to a recipe page. We'll fill in the name, ingredients, steps and a picture of the dish for you to check.</p>
+      <p className="hint">{t("Paste the link to a recipe page. We'll fill in the name, ingredients, steps and a picture of the dish for you to check.")}</p>
       <label>
-        Link
+        {t("Link")}
         <input type="url" inputMode="url" autoCapitalize="none" autoCorrect="off" placeholder="https://…" required value={link} onChange={(event) => setLink(event.target.value)} disabled={reading} />
       </label>
       <button type="submit" className="ink-button big" disabled={reading || !link.trim()}>
-        {reading ? "Reading the recipe…" : "Get the recipe"}
+        {reading ? t("Reading the recipe…") : t("Get the recipe")}
       </button>
       {reading && (
         <p className="hint" role="status">
-          Reading the recipe… This can take up to a minute.
+          {t("Reading the recipe… This can take up to a minute.")}
         </p>
       )}
       {problem && <p role="alert">{problem}</p>}

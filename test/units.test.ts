@@ -9,6 +9,7 @@ test("every unit has a kind", () => {
     ["dl", "volume"],
     ["l", "volume"],
     ["pcs", "pcs"],
+    ["bag", "bag"],
   ]);
   expect(isUnit("dl")).toBe(true);
   expect(isUnit("cup")).toBe(false);
@@ -36,6 +37,9 @@ describe("convert", () => {
     ["ml", "g"],
     ["pcs", "g"],
     ["ml", "pcs"],
+    ["bag", "pcs"],
+    ["pcs", "bag"],
+    ["bag", "g"],
   ])("%s never converts to %s", (from, to) => {
     expect(canConvert(from, to)).toBe(false);
     expect(() => convert(1, from, to)).toThrow();
@@ -128,4 +132,9 @@ test.each<[number, Unit, string]>([
   [1.5, "pcs", "1½"],
 ])("formatAmount(%d, %s) is %s", (amount, unit, expected) => {
   expect(formatAmount(amount, unit)).toBe(expected);
+});
+
+test("bags round up to whole bags", () => {
+  expect(roundUp(1.2, "bag")).toBe(2);
+  expect(scale(1, "bag", 4, 6)).toBe(2);
 });

@@ -42,3 +42,5 @@
 
 .shopping .foot{display:grid;gap:.5rem;justify-items:start}
 .shopping .foot .note{color:var(--muted)}
+.shopping .nemlig-switch{justify-self:start}
+.shopping .nemlig a.tick{text-decoration:none;color:inherit}

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { currentLanguage, locale, t } from "../i18n.ts";
 import { ageInWords, ageRangeLabel } from "../../shared/child-age.ts";
 import type { ChildRecipe, ChildRecipes, ChildView } from "../../shared/children.ts";
 import { mainTypes } from "../../shared/recipes.ts";
@@ -10,8 +11,9 @@ import { addChild, getChildRecipes, getChildren, updateChild } from "./api.ts";
 import "./kids.css";
 
 const ruleWhats = [...mainTypes, "Freezable", "kid-friendly"];
-const longDate = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
-const ruleText = (rule: Pick<RuleInput, "op" | "n" | "what">) => `${rule.what} ${rule.op === "at-least" ? "at least" : "at most"} ${rule.n} a week`;
+const longDate = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString(locale(), { day: "numeric", month: "long", year: "numeric" });
+const ruleText = (rule: Pick<RuleInput, "op" | "n" | "what">) =>
+  t(rule.op === "at-least" ? "{what} at least {n} a week" : "{what} at most {n} a week", { what: t(rule.what), n: rule.n });
 
 /** The "Runi & kids" tab: one child at a time, with age, birthday, rules and the recipes that fit. */
 export function KidsScreen() {
@@ -45,7 +47,7 @@ export function KidsScreen() {
           </button>
         ))}
         <button type="button" className="chip" aria-pressed={adding} onClick={() => setAdding(true)}>
-          + Add a child
+          {t("+ Add a child")}
         </button>
       </div>
       {problem && <p role="alert">{problem}</p>}
@@ -79,22 +81,22 @@ function AddChild({ onAdded, onCancel }: { onAdded: (id: string) => Promise<void
   };
   return (
     <form className="card kid-card" onSubmit={submit} aria-label="Add a child">
-      <h2>Add a child</h2>
+      <h2>{t("Add a child")}</h2>
       <label>
-        Name
+        {t("Name")}
         <input name="name" required maxLength={60} autoComplete="off" />
       </label>
       <label>
-        Birthday
+        {t("Birthday")}
         <input name="birthday" type="date" max={today()} />
       </label>
       {problem && <p role="alert">{problem}</p>}
       <div className="actions">
         <button type="submit" className="btn lilac">
-          Add child
+          {t("Add child")}
         </button>
         <button type="button" className="btn white" onClick={onCancel}>
-          Cancel
+          {t("Cancel")}
         </button>
       </div>
     </form>
@@ -117,26 +119,26 @@ function ChildPage({ kid, onChanged }: { kid: ChildView; onChanged: () => Promis
       <RulesCard kid={kid} />
       {problem && <p role="alert">{problem}</p>}
       <a className="btn lilac new-recipe" href={newRecipe}>
-        + New recipe for {kid.name}
+        {t("+ New recipe for {name}", { name: kid.name })}
       </a>
       {recipes && (
         <>
           <section className="kid-recipes" aria-labelledby="fits-title">
-            <h2 id="fits-title">Fits {kid.name}'s age now</h2>
+            <h2 id="fits-title">{t("Fits {name}'s age now", { name: kid.name })}</h2>
             {kid.ageMonths === null ? (
-              <p className="hint">Set the birthday above to see which recipes fit.</p>
+              <p className="hint">{t("Set the birthday above to see which recipes fit.")}</p>
             ) : recipes.fitsNow.length ? (
               <RecipeCards recipes={recipes.fitsNow} label={`Fits ${kid.name}'s age now`} />
             ) : (
-              <p className="hint">No recipe for {ageInWords(kid.ageMonths)} yet. Give a recipe an age range and it shows here.</p>
+              <p className="hint">{t("No recipe for {age} yet. Give a recipe an age range and it shows here.", { age: ageInWords(kid.ageMonths, currentLanguage()) })}</p>
             )}
           </section>
           <section className="kid-recipes" aria-labelledby="all-title">
-            <h2 id="all-title">All {kid.name}'s recipes</h2>
+            <h2 id="all-title">{t("All {name}'s recipes", { name: kid.name })}</h2>
             {recipes.all.length ? (
               <RecipeCards recipes={recipes.all} label={`All ${kid.name}'s recipes`} />
             ) : (
-              <p className="hint">None yet. Tag a recipe "{childRecipeTag}" or give it an age range.</p>
+              <p className="hint">{t('None yet. Tag a recipe "{tag}" or give it an age range.', { tag: childRecipeTag })}</p>
             )}
           </section>
         </>
@@ -168,35 +170,53 @@ function AboutCard({ kid, onChanged }: { kid: ChildView; onChanged: () => Promis
         🧒
       </span>
       <h2>{kid.name}</h2>
-      <p className="age-words">{kid.ageMonths === null ? "Age not known yet" : `${ageInWords(kid.ageMonths)} old`}</p>
+      <p className="age-words">{kid.ageMonths === null ? t("Age not known yet") : t("{age} old", { age: ageInWords(kid.ageMonths, currentLanguage()) })}</p>
       {editing ? (
         <form className="kid-edit" onSubmit={save}>
           <label>
-            Name
+            {t("Name")}
             <input name="name" required maxLength={60} defaultValue={kid.name} />
           </label>
           <label>
-            Birthday
+            {t("Birthday")}
             <input name="birthday" type="date" max={today()} defaultValue={kid.birthday ?? ""} />
           </label>
           {problem && <p role="alert">{problem}</p>}
           <div className="actions">
             <button type="submit" className="btn small lilac">
-              Save
+              {t("Save")}
             </button>
             <button type="button" className="btn small white" onClick={() => setEditing(false)}>
-              Cancel
+              {t("Cancel")}
             </button>
           </div>
         </form>
       ) : (
         <p className="birthday">
-          {kid.birthday ? `Birthday: ${longDate(kid.birthday)}` : "No birthday yet."}
+          {kid.birthday ? t("Birthday: {date}", { date: longDate(kid.birthday) }) : t("No birthday yet.")}
           <button type="button" className="btn small white" onClick={() => setEditing(true)}>
-            {kid.birthday ? "Edit" : "Set birthday"}
+            {kid.birthday ? t("Edit") : t("Set birthday")}
           </button>
         </p>
       )}
+      <label className="toggle">
+        <input
+          type="checkbox"
+          role="switch"
+          checked={kid.sameAsDinnerByDefault}
+          onChange={async (event) => {
+            try {
+              await updateChild(kid.id, { name: kid.name, birthday: kid.birthday, sameAsDinnerByDefault: event.target.checked });
+              await onChanged();
+            } catch (error) {
+              setProblem((error as Error).message);
+            }
+          }}
+        />
+        <span>{t("Eats the same as the grown-ups by default")}</span>
+      </label>
+      <p className="hint">{t("Every day with a dinner gives {name} the same dinner, unless you pick something else for that day.", { name: kid.name })}</p>
+      {!editing && problem && <p role="alert">{problem}</p>}
     </section>
   );
 }
@@ -232,9 +252,9 @@ function RulesCard({ kid }: { kid: ChildView }) {
   return (
     <section className="card kid-rules" aria-labelledby="kid-rules-title">
       <div className="head">
-        <h2 id="kid-rules-title">{kid.name}'s rules</h2>
+        <h2 id="kid-rules-title">{t("{name}'s rules", { name: kid.name })}</h2>
         <button type="button" className="btn small white" onClick={() => setEditing(!editing)}>
-          {editing ? "Done" : "Change rules"}
+          {editing ? t("Done") : t("Change rules")}
         </button>
       </div>
       <p className="hint">Each rule counts {kid.name}'s meals in one week. Progress is for this week.</p>
@@ -245,7 +265,7 @@ function RulesCard({ kid }: { kid: ChildView }) {
       </ul>
       {editing && (
         <button type="button" className="btn small lilac" onClick={() => act(() => addRule({ childId: kid.id, op: "at-least", n: 1, what: "Fish" }))}>
-          + Add a rule
+          {t("+ Add a rule")}
         </button>
       )}
     </section>
@@ -253,10 +273,10 @@ function RulesCard({ kid }: { kid: ChildView }) {
 }
 
 function progress(rule: WeekRule) {
-  if (rule.op === "at-most") return rule.met ? `${rule.count} so far this week` : `${rule.count} this week, that's too many`;
-  if (rule.met) return `Done this week: ${rule.count} of ${rule.n}`;
-  const left = rule.n - rule.count;
-  return `${rule.count} of ${rule.n} this week, ${left} to go`;
+  const values = { count: rule.count, n: rule.n, left: rule.n - rule.count };
+  if (rule.op === "at-most") return t(rule.met ? "{count} so far this week" : "{count} this week, that's too many", values);
+  if (rule.met) return t("Done this week: {count} of {n}", values);
+  return t("{count} of {n} this week, {left} to go", values);
 }
 
 function BigRule({ rule }: { rule: WeekRule }) {
@@ -287,19 +307,21 @@ function RuleEditor({ rule, onChange }: { rule: WeekRule; onChange: (change: () 
     <li className="rule-edit">
       <select aria-label={`What: ${text}`} value={draft.what} onChange={(event) => save({ what: event.target.value })}>
         {whats.map((what) => (
-          <option key={what}>{what}</option>
+          <option key={what} value={what}>
+            {t(what)}
+          </option>
         ))}
       </select>
       <select aria-label={`At least or at most: ${text}`} value={draft.op} onChange={(event) => save({ op: event.target.value as RuleOp })}>
-        <option value="at-least">at least</option>
-        <option value="at-most">at most</option>
+        <option value="at-least">{t("at least")}</option>
+        <option value="at-most">{t("at most")}</option>
       </select>
       <select aria-label={`How many: ${text}`} value={draft.n} onChange={(event) => save({ n: Number(event.target.value) })}>
         {Array.from({ length: 8 }, (_, count) => (
           <option key={count}>{count}</option>
         ))}
       </select>
-      <span>a week</span>
+      <span>{t("a week")}</span>
       <button type="button" className="remove" aria-label={`Remove rule: ${text}`} onClick={() => onChange(() => deleteRule(rule.id))}>
         ✕
       </button>
@@ -315,7 +337,7 @@ function RecipeCards({ recipes, label }: { recipes: ChildRecipe[]; label: string
           <a href={`#/recipes/${recipe.id}`}>
             {recipe.mainPhoto ? <img src={recipe.mainPhoto.url} alt="" loading="lazy" /> : <span className="plate" aria-hidden="true" />}
             <strong>{recipe.title}</strong>
-            {ageRangeLabel(recipe) && <span className="sticker lilac tilt-r">{ageRangeLabel(recipe)}</span>}
+            {ageRangeLabel(recipe, currentLanguage()) && <span className="sticker lilac tilt-r">{ageRangeLabel(recipe, currentLanguage())}</span>}
           </a>
         </li>
       ))}

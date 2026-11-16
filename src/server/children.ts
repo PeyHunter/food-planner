@@ -16,7 +16,9 @@ function parseChild(body: unknown, today: string): ChildInput | { error: string 
   const birthday = raw.birthday === null || raw.birthday === undefined || raw.birthday === "" ? null : raw.birthday;
   if (birthday !== null && (typeof birthday !== "string" || !isDate(birthday))) return { error: "Pick a birthday." };
   if (birthday !== null && birthday > today) return { error: "The birthday can't be in the future." };
-  return { name, birthday };
+  const byDefault = raw.sameAsDinnerByDefault;
+  if (byDefault !== undefined && typeof byDefault !== "boolean") return { error: "Say yes or no to same as dinner." };
+  return byDefault === undefined ? { name, birthday } : { name, birthday, sameAsDinnerByDefault: byDefault };
 }
 
 export function createChildRoutes({ database, now }: AppDependencies) {
@@ -30,7 +32,7 @@ export function createChildRoutes({ database, now }: AppDependencies) {
 
   const listChildren = (kitchenId: string) =>
     db
-      .select({ id: children.id, name: children.name, birthday: children.birthday })
+      .select({ id: children.id, name: children.name, birthday: children.birthday, sameAsDinnerByDefault: children.sameAsDinnerByDefault })
       .from(children)
       .where(eq(children.kitchenId, kitchenId))
       .orderBy(asc(children.createdAt), asc(children.id));

@@ -245,3 +245,93 @@ test("Reduce waste suggests one dish that uses the leftover carrots, within 200 
   console.log(`POST reduce-waste: median ${median.toFixed(1)} ms over 7 calls`);
   expect(median).toBeLessThanOrEqual(200);
 });
+
+test("a dinner out or takeout needs no recipe, is skipped by Create week, and buys nothing", async () => {
+  const { call, create, week } = await loggedIn();
+  await create(recipe("Fish soup", ["Fish"], { tags: ["freezable"] }));
+  expect((await call(`/api/plan/days/${wednesday}`, "PUT", { away: { kind: "out", note: "At Isabel's" } })).status).toBe(204);
+  expect((await call(`/api/plan/days/${monday}`, "PUT", { away: { kind: "nope" } })).status).toBe(400);
+  let view = await week();
+  expect(view.days[2]).toMatchObject({ dinner: null, away: { kind: "out", note: "At Isabel's" } });
+
+  const created = (await (await call(`/api/plan/weeks/${monday}/create`, "POST", {})).json()) as CreatedWeek;
+  expect(created.fills.some((fill) => fill.childId === null && fill.date === wednesday)).toBe(false);
+  view = await week();
+  expect(view.days[2]!.away?.kind).toBe("out");
+
+  const shopping = (await (await call(`/api/shopping/${monday}?days=${wednesday}`)).json()) as { sections: unknown[] };
+  expect(shopping.sections).toEqual([]);
+
+  // Picking a recipe clears the away note.
+  const soup = view.days.find((day) => day.dinner)!.dinner!.id;
+  await call(`/api/plan/days/${wednesday}`, "PUT", { dinnerRecipeId: soup });
+  expect((await week()).days[2]).toMatchObject({ away: null, dinner: { id: soup } });
+});
+
+test("a dinner can have extra dishes that go on the shopping list for the same people", async () => {
+  const { call, create, week } = await loggedIn();
+  const salmon = await create(recipe("Salmon", ["Fish"]));
+  const salad = await create(recipe("Green salad", ["Vegetables"], { feeds: 2, lines: [{ amount: 1, unit: "bag", ingredient: "Spinach", note: "" }] }));
+  await call(`/api/plan/days/${wednesday}`, "PUT", { dinnerRecipeId: salmon, people: 4 });
+  expect((await call(`/api/plan/days/${wednesday}/sides`, "POST", { recipeId: salad })).status).toBe(204);
+  let view = await week();
+  expect(view.days[2]!.sides.map((side) => side.recipe.title)).toEqual(["Green salad"]);
+
+  const shopping = (await (await call(`/api/shopping/${monday}?days=${wednesday}`)).json()) as { sections: { lines: { amount: number; unit: string; meals: string[] }[] }[] };
+  const spinach = shopping.sections.flatMap((section) => section.lines)[0]!;
+  expect([spinach.amount, spinach.unit, spinach.meals]).toEqual([2, "bag", ["Wed: Green salad"]]);
+
+  const position = view.days[2]!.sides[0]!.position;
+  expect((await call(`/api/plan/days/${wednesday}/sides/${position}`, "DELETE")).status).toBe(204);
+  view = await week();
+  expect(view.days[2]!.sides).toEqual([]);
+});
+
+test("a child who eats the dinner by default gets it on every day with a dinner, unless set otherwise", async () => {
+  const { call, create, week } = await loggedIn();
+  const fish = await create(recipe("Fish cakes", ["Fish"]));
+  const runi = (await week()).children[0]!;
+  expect((await call(`/api/children/${runi.id}`, "PUT", { name: runi.name, birthday: null, sameAsDinnerByDefault: true })).status).toBe(200);
+  await call(`/api/plan/days/${monday}`, "PUT", { dinnerRecipeId: fish });
+  await call(`/api/plan/days/${wednesday}`, "PUT", { dinnerRecipeId: fish });
+  await call(`/api/plan/days/${wednesday}/children/${runi.id}`, "PUT", { kind: "empty" });
+  const view = await week();
+  expect(view.children[0]!.sameAsDinnerByDefault).toBe(true);
+  expect(view.days.map((day) => day.children[0]!.kind)).toEqual(["same-as-dinner", "empty", "empty", "empty", "empty", "empty", "empty"]);
+  expect(view.days[0]!.extraPortions).toBe(0.5);
+  expect(view.rules.find((rule) => rule.childId === runi.id && rule.what === "Fish")!.count).toBe(1);
+});
+
+test("side dishes go with their dinner: none without one, and a deleted dinner's sides don't come back", async () => {
+  const { call, create, week } = await loggedIn();
+  const main = await create(recipe("Main", ["Fish"]));
+  const other = await create(recipe("Other main", ["Meat"]));
+  const salad = await create(recipe("Salad", ["Vegetables"], { lines: [{ amount: 1, unit: "bag", ingredient: "Spinach", note: "" }] }));
+  expect((await call(`/api/plan/days/${wednesday}/sides`, "POST", { recipeId: salad })).status).toBe(409);
+
+  await call(`/api/plan/days/${wednesday}`, "PUT", { dinnerRecipeId: main });
+  await call(`/api/plan/days/${wednesday}/sides`, "POST", { recipeId: salad });
+  expect((await call(`/api/recipes/${main}`, "DELETE")).status).toBe(204);
+  expect((await week()).days[2]!.sides).toEqual([]);
+  const shopping = (await (await call(`/api/shopping/${monday}?days=${wednesday}`)).json()) as { sections: unknown[] };
+  expect(shopping.sections).toEqual([]);
+
+  await call(`/api/plan/weeks/${monday}/create`, "POST", {});
+  expect((await week()).days[2]!.sides).toEqual([]);
+  await call(`/api/plan/days/${wednesday}`, "PUT", { dinnerRecipeId: other });
+  expect((await week()).days[2]!.sides).toEqual([]);
+});
+
+test("Create week gives a child who eats the dinner by default the new dinners, not child recipes", async () => {
+  const { call, create, week } = await loggedIn();
+  for (let n = 1; n <= 7; n++) await create(recipe(`Dinner ${n}`, n <= 2 ? ["Fish"] : ["Vegetables"], { tags: n === 1 ? ["freezable"] : [] }));
+  for (let n = 1; n <= 3; n++) await create(recipe(`Mash ${n}`, ["Vegetables"], { tags: ["for Runi"] }));
+  const runi = (await week()).children[0]!;
+  await call(`/api/children/${runi.id}`, "PUT", { name: runi.name, birthday: null, sameAsDinnerByDefault: true });
+
+  const created = (await (await call(`/api/plan/weeks/${monday}/create`, "POST", {})).json()) as CreatedWeek;
+  expect(created.fills.filter((fill) => fill.childId !== null)).toEqual([]);
+  expect(created.note).not.toMatch(/still empty/);
+  const view = await week();
+  expect(view.days.every((day) => day.dinner !== null && day.children[0]!.kind === "same-as-dinner")).toBe(true);
+});
