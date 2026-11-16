@@ -107,3 +107,15 @@
 .week .freezer-pick{display:grid;gap:.5rem;padding:.8rem;border:1.5px dashed var(--ink);border-radius:1.2rem;background:color-mix(in oklab,var(--sky) 25%,var(--paper))}
 .week .freezer-pick .hint{margin:0}
 .week .freezer-pick .sticker{justify-self:start;font-size:.8rem}
+/* Ideas for a child stand out from the adults' ideas, in the kids' colour. */
+.week .swaps li.kid-idea{background:var(--lilac-soft)}
+.week .swaps li.kid-idea p::before{content:"🧒 "}
+.week .sides{list-style:none;margin:0;padding:0;display:grid;gap:.4rem}
+.week .sides li{display:flex;align-items:center;gap:.6rem;font-weight:700}
+.week .sides li>span{flex:1}
+.week .sides .plate{inline-size:2.4rem;block-size:2.4rem}
+.week .sides .remove{inline-size:2.25rem;block-size:2.25rem;border:1.5px solid var(--ink);border-radius:50%;background:var(--paper);font-weight:800}
+.week .add-side{min-block-size:2.5rem;padding:.3rem .8rem;border:1.5px dashed var(--ink);border-radius:.9rem;background:var(--paper);font-weight:700}
+.week .dish-text.away{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem}
+.week .away-icon{font-size:2rem}
+.week .away-pick{display:grid;gap:.5rem;margin-block-end:.75rem}

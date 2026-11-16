@@ -2,13 +2,17 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties, type Reac
 import { kidTags, mainTypes, type MainType, type RecipeSummary } from "../../shared/recipes.ts";
 import type { ReduceWaste as WasteIdea } from "../../shared/reduce-waste.ts";
 import type { RuleOp } from "../../shared/rules.ts";
-import { addDays, maxPeople, mondayOf, weekdayName, type Child, type CreatedWeek, type WeekDay, type WeekRule, type WeekView } from "../../shared/week.ts";
+import { addDays, awayKinds, maxAwayNote, maxPeople, maxSides, mondayOf, weekdayName, type AwayKind, type Child, type CreatedWeek, type WeekDay, type WeekRule, type WeekView } from "../../shared/week.ts";
 import { useKids } from "../kitchen.ts";
 import { listRecipes, today } from "../recipes/api.ts";
-import { acceptSuggestion, addRule, createWeek, deleteRule, getWeek, reduceWaste, setChildDay, setDinner, setPeople, undoCreateWeek, updateRule, type RuleInput } from "./api.ts";
+import { acceptSuggestion, addRule, addSide, createWeek, deleteRule, getWeek, reduceWaste, removeSide, setAway, setChildDay, setDinner, setPeople, undoCreateWeek, updateRule, type RuleInput } from "./api.ts";
 import "./week.css";
 
-type Picking = { date: string; childId: string | null };
+/** side: adding another dish to the dinner rather than picking the dinner. */
+type Picking = { date: string; childId: string | null; side?: true };
+
+const awayLabel: Record<AwayKind, string> = { out: "Visiting others", takeout: "Takeout", other: "Something else" };
+const awayIcon: Record<AwayKind, string> = { out: "🏠", takeout: "🥡", other: "✏️" };
 
 const typeColour: Record<string, string> = { Fish: "sky", Meat: "tomato", Chicken: "sun", Vegetarian: "mint", Vegetables: "mint" };
 const utc = (date: string) => new Date(`${date}T00:00:00Z`);
@@ -91,6 +95,8 @@ export function WeekScreen() {
                 people={people.count(day)}
                 kids={shown.children}
                 onPick={(childId) => setPicking({ date: day.date, childId })}
+                onAddSide={() => setPicking({ date: day.date, childId: null, side: true })}
+                onRemoveSide={(position) => void act(() => removeSide(day.date, position))}
                 onPeople={(step) => people.change(day, step)}
               />
             ))}
@@ -117,7 +123,7 @@ export function WeekScreen() {
                 <h3>Ideas to meet the rules</h3>
                 <ul>
                   {shown.suggestions.map((suggestion) => (
-                    <li key={suggestion.id}>
+                    <li key={suggestion.id} className={suggestion.childId ? "kid-idea" : undefined}>
                       <p>{suggestion.text}</p>
                       {suggestion.kind !== "note" && (
                         <button type="button" className="btn small mint" aria-label={`Do it: ${suggestion.text}`} onClick={() => act(() => acceptSuggestion(suggestion.id))}>
@@ -394,9 +400,18 @@ function Plate({ recipe, big = false }: { recipe: RecipeSummary; big?: boolean }
   return recipe.mainPhoto ? <img className={kind} src={recipe.mainPhoto.url} alt="" loading="lazy" /> : <span className={`${kind} none`} aria-hidden="true" />;
 }
 
-type DayCardProps = { day: WeekDay; index: number; people: number; kids: Child[]; onPick: (childId: string | null) => void; onPeople: (step: number) => void };
+type DayCardProps = {
+  day: WeekDay;
+  index: number;
+  people: number;
+  kids: Child[];
+  onPick: (childId: string | null) => void;
+  onPeople: (step: number) => void;
+  onAddSide: () => void;
+  onRemoveSide: (position: number) => void;
+};
 
-function DayCard({ day, index, people, kids, onPick, onPeople }: DayCardProps) {
+function DayCard({ day, index, people, kids, onPick, onPeople, onAddSide, onRemoveSide }: DayCardProps) {
   const weekday = weekdayName(day.date);
   const isToday = day.date === today();
   return (
@@ -418,6 +433,14 @@ function DayCard({ day, index, people, kids, onPick, onPeople }: DayCardProps) {
                   <Stickers recipe={day.dinner} />
                 </span>
               </>
+            ) : day.away ? (
+              <span className="dish-text away">
+                <span className="away-icon" aria-hidden="true">
+                  {awayIcon[day.away.kind]}
+                </span>
+                <strong>{day.away.note || awayLabel[day.away.kind]}</strong>
+                {day.away.note && <span className="sticker white">{awayLabel[day.away.kind]}</span>}
+              </span>
             ) : (
               <span className="pick">+ Pick a dinner</span>
             )}
@@ -436,6 +459,26 @@ function DayCard({ day, index, people, kids, onPick, onPeople }: DayCardProps) {
             </button>
           </div>
         </div>
+        {day.dinner && (
+          <ul className="sides" aria-label={`More dishes on ${weekday}`}>
+            {day.sides.map(({ position, recipe }) => (
+              <li key={position}>
+                <Plate recipe={recipe} />
+                <span>{recipe.title}</span>
+                <button type="button" className="remove" aria-label={`Remove ${recipe.title} from ${weekday}`} onClick={() => onRemoveSide(position)}>
+                  ✕
+                </button>
+              </li>
+            ))}
+            {day.sides.length < maxSides && (
+              <li>
+                <button type="button" className="add-side" onClick={onAddSide}>
+                  + Add a dish (like a salad)
+                </button>
+              </li>
+            )}
+          </ul>
+        )}
         {kids.map((kid) => {
           const meal = day.children.find((entry) => entry.childId === kid.id);
           const text = meal?.kind === "same-as-dinner" ? "Same as dinner, mashed" : meal?.kind === "recipe" && meal.recipe ? meal.recipe.title : "Nothing yet";
@@ -474,7 +517,8 @@ function Sheet({ title, onClose, children }: { title: string; onClose: () => voi
 type PickerProps = { picking: Picking; view: WeekView; who: string; onClose: () => void; onChoose: (change: () => Promise<unknown>) => void };
 
 function Picker({ picking, view, who, onClose, onChoose }: PickerProps) {
-  const { date, childId } = picking;
+  const { date, childId, side } = picking;
+  const [awayNote, setAwayNote] = useState("");
   const [q, setQ] = useState("");
   const [found, setFound] = useState<RecipeSummary[]>();
   const [type, setType] = useState<MainType>();
@@ -493,10 +537,31 @@ function Picker({ picking, view, who, onClose, onChoose }: PickerProps) {
 
   const searched = childId === null ? found : view.childRecipes.filter((recipe) => recipe.title.toLowerCase().includes(q.trim().toLowerCase()));
   const recipes = type ? searched?.filter((recipe) => recipe.types.includes(type)) : searched;
-  const choose = (recipeId: string) => onChoose(() => (childId === null ? setDinner(date, recipeId) : setChildDay(date, childId, "recipe", recipeId)));
+  const choose = (recipeId: string) =>
+    onChoose(() => (side ? addSide(date, recipeId) : childId === null ? setDinner(date, recipeId) : setChildDay(date, childId, "recipe", recipeId)));
+  const title = side ? `Another dish for ${weekday}` : childId === null ? `Dinner for ${weekday}` : `${who} on ${weekday}`;
 
   return (
-    <Sheet title={childId === null ? `Dinner for ${weekday}` : `${who} on ${weekday}`} onClose={onClose}>
+    <Sheet title={title} onClose={onClose}>
+      {childId === null && !side && (
+        <section className="away-pick" aria-label="No cooking">
+          <div className="sheet-actions">
+            {awayKinds.map((kind) => (
+              <button key={kind} type="button" className="btn small white" onClick={() => onChoose(() => setAway(date, { kind, note: awayNote.trim() }))}>
+                <span aria-hidden="true">{awayIcon[kind]}</span> {awayLabel[kind]}
+              </button>
+            ))}
+          </div>
+          <input
+            className="search"
+            aria-label="Note, like where you eat"
+            placeholder="Note, like “At Isabel's” (optional)"
+            maxLength={maxAwayNote}
+            value={awayNote}
+            onChange={(event) => setAwayNote(event.target.value)}
+          />
+        </section>
+      )}
       <input type="search" className="search" placeholder="Search recipes" aria-label="Search recipes" value={q} onChange={(event) => setQ(event.target.value)} />
       <div className="chips" role="group" aria-label="Filter by type">
         {[undefined, ...mainTypes].map((option) => (
@@ -527,13 +592,13 @@ function Picker({ picking, view, who, onClose, onChoose }: PickerProps) {
             )}
           </>
         )}
-        {childId === null && day.dinner && (
+        {childId === null && !side && (day.dinner || day.away) && (
           <button type="button" className="btn small white" onClick={() => onChoose(() => setDinner(date, null))}>
             No dinner
           </button>
         )}
       </div>
-      {childId === null && view.freezer.length > 0 && (
+      {childId === null && !side && view.freezer.length > 0 && (
         <section className="freezer-pick" aria-label="From the freezer">
           <h3>❄ From the freezer</h3>
           <p className="hint">Takes one portion out. Nothing goes on the shopping list.</p>

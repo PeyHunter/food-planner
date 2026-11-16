@@ -6,7 +6,7 @@ import type { Unit } from "../shared/units.ts";
 import { defaultPeople, isDate, mondayOf, weekDates } from "../shared/week.ts";
 import type { AppDependencies } from "./app.ts";
 import { kitchenMember, type MemberEnv } from "./recipes.ts";
-import { childDays, children, ingredients, planDays, recipeLines, recipes, shoppingExtras, shoppingTicks } from "./schema.ts";
+import { childDays, children, ingredients, planDays, planSides, recipeLines, recipes, shoppingExtras, shoppingTicks } from "./schema.ts";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const maxKey = 120;
@@ -27,19 +27,28 @@ export function createShoppingRoutes({ database, now }: AppDependencies) {
   /** The planned days, each with its dinner and child meals, ready for the list builder. */
   async function loadDays(kitchenId: string, dates: string[]): Promise<ShoppingDay[]> {
     if (!dates.length) return [];
-    const [dayRows, childRows] = await Promise.all([
+    const [dayRows, childRows, sideRows, kids] = await Promise.all([
       db
         .select()
         .from(planDays)
         .where(and(eq(planDays.kitchenId, kitchenId), inArray(planDays.date, dates))),
       db
-        .select({ date: childDays.date, kind: childDays.kind, recipeId: childDays.recipeId, name: children.name })
+        .select({ childId: childDays.childId, date: childDays.date, kind: childDays.kind, recipeId: childDays.recipeId, name: children.name })
         .from(childDays)
         .innerJoin(children, eq(children.id, childDays.childId))
         .where(and(eq(children.kitchenId, kitchenId), inArray(childDays.date, dates)))
         .orderBy(asc(children.createdAt), asc(children.id)),
+      db
+        .select()
+        .from(planSides)
+        .where(and(eq(planSides.kitchenId, kitchenId), inArray(planSides.date, dates)))
+        .orderBy(asc(planSides.position)),
+      db
+        .select({ id: children.id, sameAsDinnerByDefault: children.sameAsDinnerByDefault })
+        .from(children)
+        .where(eq(children.kitchenId, kitchenId)),
     ]);
-    const recipeIds = [...new Set([...dayRows.map((row) => (row.fromFreezer ? null : row.dinnerRecipeId)), ...childRows.map((row) => (row.kind === "recipe" ? row.recipeId : null))].filter((id) => id !== null))];
+    const recipeIds = [...new Set([...dayRows.map((row) => (row.fromFreezer ? null : row.dinnerRecipeId)), ...sideRows.map((row) => row.recipeId), ...childRows.map((row) => (row.kind === "recipe" ? row.recipeId : null))].filter((id) => id !== null))];
     const [recipeRows, lineRows] = recipeIds.length
       ? await Promise.all([
           db
@@ -77,12 +86,15 @@ export function createShoppingRoutes({ database, now }: AppDependencies) {
     return dates.map((date) => {
       const row = dayRows.find((day) => day.date === date);
       const meals = childRows.filter((meal) => meal.date === date);
+      // A child who eats the dinner by default does so on any day with a dinner and nothing else planned for them.
+      const byDefault = row?.dinnerRecipeId ? kids.filter((kid) => kid.sameAsDinnerByDefault && !meals.some((meal) => meal.childId === kid.id)).length : 0;
       return {
         date,
         people: row?.people ?? defaultPeople,
         // A dinner from the freezer is already cooked, so it needs nothing from the shop.
         dinner: (row?.dinnerRecipeId && !row.fromFreezer && byId.get(row.dinnerRecipeId)) || null,
-        sameAsDinner: meals.filter((meal) => meal.kind === "same-as-dinner").length,
+        sides: sideRows.filter((side) => side.date === date).flatMap((side) => byId.get(side.recipeId) ?? []),
+        sameAsDinner: meals.filter((meal) => meal.kind === "same-as-dinner").length + byDefault,
         childMeals: meals.flatMap((meal) => {
           const recipe = meal.kind === "recipe" && meal.recipeId ? byId.get(meal.recipeId) : undefined;
           return recipe ? [{ childName: meal.name, recipe }] : [];

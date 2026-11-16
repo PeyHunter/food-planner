@@ -6,18 +6,34 @@ import { reduceWaste, type ReduceWaste } from "../shared/reduce-waste.ts";
 import type { ShopSection } from "../shared/recipes.ts";
 import { isBabyOnly, suggestSwaps } from "../shared/rule-swaps.ts";
 import { checkRules, ruleOps, ruleSentence, type ChildMeal, type PlanDay, type Rule, type RuleOp } from "../shared/rules.ts";
-import { childRecipeTag, defaultPeople, isDate, maxPeople, mondayOf, sameAsDinnerPortion, weekDates, type Child, type ChildDayKind, type CreatedWeek, type WeekView } from "../shared/week.ts";
+import {
+  awayKinds,
+  childRecipeTag,
+  defaultPeople,
+  isDate,
+  maxAwayNote,
+  maxPeople,
+  maxSides,
+  mondayOf,
+  sameAsDinnerPortion,
+  weekDates,
+  type AwayKind,
+  type Child,
+  type ChildDayKind,
+  type CreatedWeek,
+  type WeekView,
+} from "../shared/week.ts";
 import type { Unit } from "../shared/units.ts";
 import type { AppDependencies } from "./app.ts";
 import { addPortions, freezerCounts, takePortion, type Queries } from "./freezer.ts";
 import { kitchenMember, recipeSummaries, type MemberEnv } from "./recipes.ts";
-import { childDays, children, ingredients, planDays, recipeLines, recipes, rules } from "./schema.ts";
+import { childDays, children, ingredients, planDays, planSides, recipeLines, recipes, rules } from "./schema.ts";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const childKinds: ChildDayKind[] = ["empty", "same-as-dinner", "recipe"];
 
 type Body = Record<string, unknown>;
-type DinnerChange = { dinnerRecipeId?: string | null; people?: number; fromFreezer?: boolean };
+type DinnerChange = { dinnerRecipeId?: string | null; people?: number; fromFreezer?: boolean; awayKind?: AwayKind | null; awayNote?: string };
 const readBody = async (request: { json(): Promise<unknown> }): Promise<Body> => {
   const body = await request.json().catch(() => undefined);
   return body && typeof body === "object" ? (body as Body) : {};
@@ -52,9 +68,9 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
   async function loadPlan(kitchenId: string, monday: string) {
     const dates = weekDates(monday);
     const sunday = dates[6]!;
-    const [kids, recipeRows, dayRows, ruleRows, freezerRows] = await Promise.all([
+    const [kids, recipeRows, dayRows, ruleRows, freezerRows, sideRows] = await Promise.all([
       db
-        .select({ id: children.id, name: children.name, birthday: children.birthday })
+        .select({ id: children.id, name: children.name, birthday: children.birthday, sameAsDinnerByDefault: children.sameAsDinnerByDefault })
         .from(children)
         .where(eq(children.kitchenId, kitchenId))
         .orderBy(asc(children.createdAt), asc(children.id)),
@@ -71,6 +87,11 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
         .from(rules)
         .where(eq(rules.kitchenId, kitchenId)),
       freezerCounts(db, kitchenId),
+      db
+        .select()
+        .from(planSides)
+        .where(and(eq(planSides.kitchenId, kitchenId), between(planSides.date, monday, sunday)))
+        .orderBy(asc(planSides.date), asc(planSides.position)),
     ]);
     const childRows = kids.length
       ? await db
@@ -101,13 +122,20 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
       const meals = kids.map((kid) => {
         const childRow = childRows.find((day) => day.childId === kid.id && day.date === date);
         const recipe = (childRow?.recipeId && byId.get(childRow.recipeId)) || null;
-        const kind: ChildDayKind = childRow?.kind === "same-as-dinner" ? "same-as-dinner" : recipe ? "recipe" : "empty";
+        const byDefault = !childRow && kid.sameAsDinnerByDefault && dinner !== null;
+        const kind: ChildDayKind = childRow?.kind === "same-as-dinner" || byDefault ? "same-as-dinner" : recipe ? "recipe" : "empty";
         return { childId: kid.id, kind, recipe };
       });
+      const away = !dinner && row?.awayKind && (awayKinds as readonly string[]).includes(row.awayKind) ? { kind: row.awayKind as AwayKind, note: row.awayNote } : null;
       return {
         date,
         people: row?.people ?? defaultPeople,
         dinner,
+        sides: sideRows.filter((side) => side.date === date).flatMap((side) => {
+          const recipe = byId.get(side.recipeId);
+          return recipe ? [{ position: side.position, recipe }] : [];
+        }),
+        away,
         fromFreezer: dinner !== null && row!.fromFreezer,
         extraPortions: meals.filter((meal) => meal.kind === "same-as-dinner").length * sameAsDinnerPortion, children: meals };
     });
@@ -115,6 +143,7 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
     const plan: PlanDay[] = days.map((day) => ({
       date: day.date,
       dinner: day.dinner,
+      away: day.away !== null,
       children: Object.fromEntries(
         day.children.map((meal): [string, ChildMeal] => [meal.childId, meal.kind === "recipe" ? { kind: "recipe", dish: meal.recipe! } : { kind: meal.kind as "empty" | "same-as-dinner" }]),
       ),
@@ -183,7 +212,10 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
           tx.rollback();
         }
       }
-      await upsertDay(tx, kitchenId, date, { ...change, fromFreezer });
+      const away = change.dinnerRecipeId === null && change.awayKind ? { awayKind: change.awayKind, awayNote: change.awayNote ?? "" } : { awayKind: null, awayNote: "" };
+      await upsertDay(tx, kitchenId, date, { ...change, fromFreezer, ...away });
+      // No dinner, or a dinner out, has no side dishes either.
+      if (change.dinnerRecipeId === null) await tx.delete(planSides).where(and(eq(planSides.kitchenId, kitchenId), eq(planSides.date, date)));
       return true;
     }).catch((error: unknown) => {
       if (error instanceof TransactionRollbackError) return false;
@@ -194,12 +226,22 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
   async function upsertDay(queries: Queries, kitchenId: string, date: string, change: DinnerChange) {
     await queries
       .insert(planDays)
-      .values({ kitchenId, date, people: change.people ?? defaultPeople, dinnerRecipeId: change.dinnerRecipeId ?? null, fromFreezer: change.fromFreezer ?? false })
+      .values({
+        kitchenId,
+        date,
+        people: change.people ?? defaultPeople,
+        dinnerRecipeId: change.dinnerRecipeId ?? null,
+        fromFreezer: change.fromFreezer ?? false,
+        awayKind: change.awayKind ?? null,
+        awayNote: change.awayNote ?? "",
+      })
       .onConflictDoUpdate({ target: [planDays.kitchenId, planDays.date], set: change });
   }
 
   async function setChildDay(childId: string, date: string, kind: ChildDayKind, recipeId: string | null) {
-    if (kind === "empty") {
+    const [kid] = await db.select({ byDefault: children.sameAsDinnerByDefault }).from(children).where(eq(children.id, childId));
+    // A child who eats the dinner by default needs a row saying "nothing" on that day.
+    if (kind === "empty" && !kid?.byDefault) {
       await db.delete(childDays).where(and(eq(childDays.childId, childId), eq(childDays.date, date)));
       return;
     }
@@ -230,6 +272,15 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
         change.fromFreezer = body.fromFreezer === true;
       }
     }
+    if ("away" in body && body.away !== null) {
+      const away = (body.away ?? {}) as Body;
+      if (!(awayKinds as readonly string[]).includes(away.kind as string)) return c.json({ error: "Pick out, takeout or something else." }, 400);
+      const note = typeof away.note === "string" ? away.note.trim() : "";
+      if (note.length > maxAwayNote) return c.json({ error: "Keep the note short." }, 400);
+      change.dinnerRecipeId = null;
+      change.awayKind = away.kind as AwayKind;
+      change.awayNote = note;
+    }
     if ("people" in body) {
       const people = body.people;
       if (!Number.isInteger(people) || (people as number) < 1 || (people as number) > maxPeople) return c.json({ error: `People must be a whole number from 1 to ${maxPeople}.` }, 400);
@@ -237,6 +288,31 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
     }
     if (!Object.keys(change).length) return c.json({ error: "Send a dinner or a people count." }, 400);
     if (!(await setDinner(kitchenId, date, change, c.get("member").userId))) return c.json({ error: "None of that dish is left in the freezer." }, 409);
+    return c.body(null, 204);
+  });
+
+  // Another dish for the same dinner, like a salad. It goes on the shopping list for the day's people.
+  routes.post("/api/plan/days/:date/sides", member, async (c) => {
+    const date = c.req.param("date");
+    if (!isDate(date)) return c.json({ error: "Pick a date." }, 400);
+    const { kitchenId } = c.get("member");
+    const recipeId = await ownRecipeId(kitchenId, (await readBody(c.req)).recipeId);
+    if (!recipeId) return c.json({ error: "No such recipe." }, 404);
+    const sides = await db
+      .select({ position: planSides.position })
+      .from(planSides)
+      .where(and(eq(planSides.kitchenId, kitchenId), eq(planSides.date, date)));
+    if (sides.length >= maxSides) return c.json({ error: `A dinner can have at most ${maxSides} extra dishes.` }, 409);
+    const position = Math.max(-1, ...sides.map((side) => side.position)) + 1;
+    await db.insert(planSides).values({ kitchenId, date, position, recipeId }).onConflictDoNothing();
+    return c.body(null, 204);
+  });
+
+  routes.delete("/api/plan/days/:date/sides/:position", member, async (c) => {
+    const date = c.req.param("date");
+    const position = Number(c.req.param("position"));
+    if (!isDate(date) || !Number.isInteger(position)) return c.json({ error: "No such dish." }, 404);
+    await db.delete(planSides).where(and(eq(planSides.kitchenId, c.get("member").kitchenId), eq(planSides.date, date), eq(planSides.position, position)));
     return c.body(null, 204);
   });
 
@@ -337,7 +413,7 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
           await tx
             .insert(planDays)
             .values({ kitchenId, date: fill.date, people: defaultPeople, dinnerRecipeId: fill.recipeId })
-            .onConflictDoUpdate({ target: [planDays.kitchenId, planDays.date], set: { dinnerRecipeId: fill.recipeId }, setWhere: isNull(planDays.dinnerRecipeId) });
+            .onConflictDoUpdate({ target: [planDays.kitchenId, planDays.date], set: { dinnerRecipeId: fill.recipeId }, setWhere: and(isNull(planDays.dinnerRecipeId), isNull(planDays.awayKind)) });
         }
       }
     });

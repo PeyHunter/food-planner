@@ -35,7 +35,7 @@ function fitsChild(recipe: PlannerRecipe, child: PlannerChild) {
 }
 
 /**
- * Fills only empty dinners, then each child's empty days, one at a time. A child first gets "Same as dinner, mashed" on days
+ * Fills only empty dinners (a day out or with takeout is not empty), then each child's empty days, one at a time. A child first gets "Same as dinner, mashed" on days
  * whose dinner helps one of the child's at-least rules still short, then child recipes on the days left. Each recipe pick:
  * never pushes an at-most rule over, helps the most at-least rules still short, gives the adults a child recipe only
  * when it meets a rule a grown-up recipe can't, uses up the most leftover packs, then takes the dish not made for the longest time (then by title).
@@ -57,7 +57,7 @@ export function createWeek({ rules, days, recipes, children, today }: CreateWeek
   const open = plan.filter((day) => day.date >= today);
   const isEmpty = (day: PlannerDay, child: PlannerChild) => (day.children[child.id] ?? { kind: "empty" }).kind === "empty";
   const slots: { day: PlannerDay; child: PlannerChild | null; mash: boolean }[] = [
-    ...open.filter((day) => day.dinner === null).map((day) => ({ day, child: null, mash: false })),
+    ...open.filter((day) => day.dinner === null && !day.away).map((day) => ({ day, child: null, mash: false })),
     ...children.flatMap((child) => {
       const empty = open.filter((day) => isEmpty(day, child));
       return [...empty.map((day) => ({ day, child, mash: true })), ...empty.map((day) => ({ day, child, mash: false }))];
@@ -109,7 +109,7 @@ export function createWeek({ rules, days, recipes, children, today }: CreateWeek
   }
 
   const statuses = checkRules(rules, plan);
-  const stillEmpty = open.filter((day) => day.dinner === null || children.some((child) => isEmpty(day, child))).length;
+  const stillEmpty = open.filter((day) => (day.dinner === null && !day.away) || children.some((child) => isEmpty(day, child))).length;
   return { fills, rules: statuses, note: noteFor(fills, toFill, stillEmpty, statuses, children) };
 }
 

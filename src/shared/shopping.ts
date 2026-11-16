@@ -21,6 +21,8 @@ export type ShoppingDay = {
   /** Children eating "same as dinner": each adds half a portion. */
   sameAsDinner: number;
   dinner: ShoppingRecipe | null;
+  /** More dishes for the same dinner, for the same people. */
+  sides?: ShoppingRecipe[];
   childMeals: { childName: string; recipe: ShoppingRecipe }[];
 };
 
@@ -140,7 +142,9 @@ export function buildShoppingList(days: ShoppingDay[]): ShoppingSection[] {
   };
   for (const day of [...days].sort((a, b) => a.date.localeCompare(b.date))) {
     const label = shortDay(day.date);
-    if (day.dinner) add(day.dinner, day.people + day.sameAsDinner * sameAsDinnerPortion, `${label}: ${day.dinner.title}`);
+    const eaters = day.people + day.sameAsDinner * sameAsDinnerPortion;
+    if (day.dinner) add(day.dinner, eaters, `${label}: ${day.dinner.title}`);
+    for (const side of day.sides ?? []) add(side, eaters, `${label}: ${side.title}`);
     for (const meal of day.childMeals) add(meal.recipe, childPortion, `${label}: ${meal.recipe.title} for ${meal.childName}`);
   }
 

@@ -56,7 +56,7 @@ export function reduceWaste(input: CreateWeekInput): ReduceWaste {
     .sort((a, b) => a.title.localeCompare(b.title) || a.id.localeCompare(b.id));
   const slots = days
     .map((day, index) => ({ day, index }))
-    .filter(({ day }) => day.date >= today)
+    .filter(({ day }) => day.date >= today && !day.away)
     .sort((a, b) => Number(a.day.dinner !== null) - Number(b.day.dinner !== null) || a.index - b.index);
 
   // Leftovers add up per ingredient over the whole week. So one ingredient's leftover after a change depends only on

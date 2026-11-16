@@ -10,4 +10,5 @@ export type ChildRecipes = {
   /** Recipes tagged "for Runi" or with any age range. */
   all: ChildRecipe[];
 };
-export type ChildInput = { name: string; birthday: string | null };
+/** sameAsDinnerByDefault is left as it is when not sent. */
+export type ChildInput = { name: string; birthday: string | null; sameAsDinnerByDefault?: boolean };

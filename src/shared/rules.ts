@@ -5,7 +5,8 @@ export type RuleStatus = Rule & { count: number; met: boolean };
 
 export type Dish = { id: string; title: string; types: readonly string[]; tags: readonly string[] };
 export type ChildMeal = { kind: "empty" } | { kind: "same-as-dinner" } | { kind: "recipe"; dish: Dish };
-export type PlanDay = { date: string; dinner: Dish | null; children: Record<string, ChildMeal> };
+/** away: the adults eat out, takeout or something else that day, so the dinner is not planned or swapped. */
+export type PlanDay = { date: string; dinner: Dish | null; children: Record<string, ChildMeal>; away?: boolean };
 
 export const ruleOps: RuleOp[] = ["at-least", "at-most"];
 

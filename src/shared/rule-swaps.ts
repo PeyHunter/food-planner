@@ -43,7 +43,8 @@ export function suggestSwaps({ rules, days, recipes, childNames, today }: SwapIn
   for (const missed of before.filter((status) => !status.met)) {
     const { childId } = missed;
     const child = childId === null ? null : (childNames[childId] ?? "the child");
-    const open = days.filter((day) => day.date >= today);
+    // The adults' dinner on a day out or with takeout is not swapped.
+    const open = days.filter((day) => day.date >= today && !(childId === null && day.away));
     const tryDays = [...open.filter((day) => mealOf(day, childId) === null), ...open.filter((day) => mealOf(day, childId) !== null)];
     const used = new Set(days.map((day) => mealOf(day, childId)?.id).filter(Boolean));
     const unused = ordered.filter((recipe) => !used.has(recipe.id));
