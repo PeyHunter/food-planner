@@ -55,7 +55,7 @@ test("share a recipe, open it logged out with the stepper, then turn the link of
   await expect(page.getByRole("switch", { name: "Share link" })).toBeEnabled();
   await expect(page.getByText("Share link is off")).toBeVisible();
 
-  await page.getByRole("button", { name: "Share recipe" }).click();
+  await page.getByRole("button", { name: "Share link" }).click();
   await expect(page.getByRole("switch", { name: "Share link" })).toBeChecked();
   await expect(page.getByText("Share link is on")).toBeVisible();
   const shared = await page.evaluate(() => (window as unknown as { shared: ShareData }).shared);
@@ -107,7 +107,7 @@ test("without a share sheet the link is copied", async ({ page }) => {
   await logIn(page);
   const id = await addRecipe(page, `Copied pie ${Date.now()}`);
   await page.goto(`/#/recipes/${id}`);
-  await page.getByRole("button", { name: "Share recipe" }).click();
+  await page.getByRole("button", { name: "Share link" }).click();
   await expect(page.locator(".share-note")).toHaveText("Link copied");
   const copied = await page.evaluate(() => (window as unknown as { copied: string }).copied);
   expect(copied).toMatch(/\/s\/[A-Za-z0-9_-]{43}$/);

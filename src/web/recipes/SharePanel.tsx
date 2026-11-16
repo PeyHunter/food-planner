@@ -1,8 +1,11 @@
 import { useState } from "react";
+import type { Recipe } from "../../shared/recipes.ts";
 import { turnShareOff, turnShareOn } from "./api.ts";
+import { recipeImage } from "./recipe-image.ts";
 
-/** Share button (iPhone share sheet, or copy the link) and the switch that turns the link off. `shareUrl` comes with the recipe. */
-export function SharePanel({ recipeId, title, shareUrl }: { recipeId: string; title: string; shareUrl: string | null }) {
+/** Share button (iPhone share sheet, or copy the link), share as a picture, and the switch that turns the link off. */
+export function SharePanel({ recipe }: { recipe: Recipe }) {
+  const { id: recipeId, title, shareUrl } = recipe;
   const [link, setLink] = useState(shareUrl);
   const [note, setNote] = useState<string>();
   const [problem, setProblem] = useState<string>();
@@ -41,6 +44,26 @@ export function SharePanel({ recipeId, title, shareUrl }: { recipeId: string; ti
       }
     });
 
+  // A JPEG of the whole recipe, for chats where a picture works better than a link. Needs no share link.
+  const sharePicture = () =>
+    run(async () => {
+      const blob = await recipeImage(recipe, { ingredients: "Ingredients", steps: "Steps", feeds: `Feeds ${recipe.feeds}` });
+      const file = new File([blob], `${title.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "recipe"}.jpg`, { type: "image/jpeg" });
+      if (navigator.canShare?.({ files: [file] })) {
+        try {
+          return await navigator.share({ files: [file], title });
+        } catch (error) {
+          if ((error as Error).name === "AbortError") return;
+        }
+      }
+      // No share sheet for files (most computers): save the picture instead.
+      const url = URL.createObjectURL(blob);
+      const link = Object.assign(document.createElement("a"), { href: url, download: file.name });
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      setNote("Picture saved");
+    });
+
   const toggle = (on: boolean) =>
     run(async () => {
       const { url } = on ? await turnShareOn(recipeId) : await turnShareOff(recipeId);
@@ -53,7 +76,10 @@ export function SharePanel({ recipeId, title, shareUrl }: { recipeId: string; ti
       <div className="bar">
         <h2>Share</h2>
         <button type="button" className="ink-button small" disabled={busy} onClick={() => void share()}>
-          Share recipe
+          Share link
+        </button>
+        <button type="button" className="ink-button small" disabled={busy} onClick={() => void sharePicture()}>
+          Share as picture
         </button>
       </div>
       <label className="switch">
