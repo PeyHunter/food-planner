@@ -169,6 +169,24 @@ export function createShoppingRoutes({ database, now }: AppDependencies) {
     return c.body(null, 204);
   });
 
+  // "Bought it all": ticks every item sent, then clears the ticked ones like "Clear ticked".
+  routes.post("/api/shopping/:monday/bought", member, async (c) => {
+    const monday = weekOf(c.req.param("monday"));
+    if (!monday) return c.json({ error: "A week starts on a Monday (YYYY-MM-DD)." }, 400);
+    const { kitchenId, userId } = c.get("member");
+    const body = await readBody(c.req);
+    const keys = Array.isArray(body.keys) ? [...new Set(body.keys)] : [];
+    if (keys.length > 500 || keys.some((key) => typeof key !== "string" || !key || key.length > maxKey)) return c.json({ error: "Send the items you bought." }, 400);
+    if (keys.length) {
+      await db
+        .insert(shoppingTicks)
+        .values((keys as string[]).map((itemKey) => ({ kitchenId, monday, itemKey, tickedBy: userId })))
+        .onConflictDoUpdate({ target: [shoppingTicks.kitchenId, shoppingTicks.monday, shoppingTicks.itemKey], set: { cleared: false } });
+    }
+    await clearTicked(kitchenId, monday);
+    return c.body(null, 204);
+  });
+
   routes.post("/api/shopping/:monday/extras", member, async (c) => {
     const monday = weekOf(c.req.param("monday"));
     if (!monday) return c.json({ error: "A week starts on a Monday (YYYY-MM-DD)." }, 400);
@@ -199,7 +217,11 @@ export function createShoppingRoutes({ database, now }: AppDependencies) {
   routes.post("/api/shopping/:monday/clear", member, async (c) => {
     const monday = weekOf(c.req.param("monday"));
     if (!monday) return c.json({ error: "A week starts on a Monday (YYYY-MM-DD)." }, 400);
-    const { kitchenId } = c.get("member");
+    await clearTicked(c.get("member").kitchenId, monday);
+    return c.body(null, 204);
+  });
+
+  async function clearTicked(kitchenId: string, monday: string) {
     const thisWeek = and(eq(shoppingTicks.kitchenId, kitchenId), eq(shoppingTicks.monday, monday));
     await db.transaction(async (tx) => {
       const gone = await tx
@@ -215,8 +237,7 @@ export function createShoppingRoutes({ database, now }: AppDependencies) {
       if (gone.length) await tx.delete(shoppingTicks).where(and(thisWeek, inArray(shoppingTicks.itemKey, gone.map((row) => extraKey(row.id)))));
       await tx.update(shoppingTicks).set({ cleared: true }).where(thisWeek);
     });
-    return c.body(null, 204);
-  });
+  }
 
   routes.post("/api/shopping/:monday/bring-back", member, async (c) => {
     const monday = weekOf(c.req.param("monday"));

@@ -4,7 +4,7 @@ import { restOfWeek, type ShoppingItem, type ShoppingView } from "../../shared/s
 import { formatAmount, units, type Unit } from "../../shared/units.ts";
 import { addDays, mondayOf, weekDates } from "../../shared/week.ts";
 import { saveIngredient, today } from "../recipes/api.ts";
-import { addExtra, bringBack, clearTicked, getShopping, removeExtra, setTick } from "./api.ts";
+import { addExtra, boughtAll, bringBack, clearTicked, getShopping, removeExtra, setTick } from "./api.ts";
 import "./shopping.css";
 
 const pollMs = 3000;
@@ -82,6 +82,7 @@ export function ShoppingScreen() {
   const shown = view?.monday === monday ? view : undefined;
   const anyTicked = !!shown && (shown.sections.some((section) => section.lines.some((line) => isTicked(line.key, line.ticked))) || shown.extras.some((extra) => isTicked(extra.key, extra.ticked)));
   const empty = !!shown && shown.sections.length === 0 && shown.extras.length === 0;
+  const allKeys = shown ? [...shown.sections.flatMap((section) => section.lines.map((line) => line.key)), ...shown.extras.map((extra) => extra.key)] : [];
 
   return (
     <section className="shopping">
@@ -169,8 +170,13 @@ export function ShoppingScreen() {
           <AddExtra onAdd={(name) => act(() => addExtra(monday, name))} />
         </section>
       )}
-      {shown && (anyTicked || shown.cleared > 0) && (
+      {shown && (allKeys.length > 0 || shown.cleared > 0) && (
         <div className="foot">
+          {allKeys.length > 0 && (
+            <button type="button" className="btn sun" onClick={() => act(() => boughtAll(monday, allKeys))}>
+              ✓ Bought it all
+            </button>
+          )}
           {anyTicked && (
             <button type="button" className="btn mint" onClick={() => act(() => clearTicked(monday))}>
               Clear ticked
