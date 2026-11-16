@@ -1,3 +1,4 @@
+import type { Language } from "../shared/profile.ts";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import type { ShopSection } from "../shared/recipes.ts";
@@ -93,7 +94,8 @@ export function createShoppingRoutes({ database, now }: AppDependencies) {
         people: row?.people ?? defaultPeople,
         // A dinner from the freezer is already cooked, so it needs nothing from the shop.
         dinner: (row?.dinnerRecipeId && !row.fromFreezer && byId.get(row.dinnerRecipeId)) || null,
-        sides: sideRows.filter((side) => side.date === date).flatMap((side) => byId.get(side.recipeId) ?? []),
+        // Side dishes only count next to a dinner; one from the freezer still needs its salad bought.
+        sides: row?.dinnerRecipeId ? sideRows.filter((side) => side.date === date).flatMap((side) => byId.get(side.recipeId) ?? []) : [],
         sameAsDinner: meals.filter((meal) => meal.kind === "same-as-dinner").length + byDefault,
         childMeals: meals.flatMap((meal) => {
           const recipe = meal.kind === "recipe" && meal.recipeId ? byId.get(meal.recipeId) : undefined;
@@ -103,7 +105,7 @@ export function createShoppingRoutes({ database, now }: AppDependencies) {
     });
   }
 
-  async function loadView(kitchenId: string, monday: string, dates: string[]): Promise<ShoppingView> {
+  async function loadView(kitchenId: string, monday: string, dates: string[], language: Language = "en"): Promise<ShoppingView> {
     const [days, tickRows, extraRows] = await Promise.all([
       loadDays(kitchenId, dates),
       db
@@ -118,7 +120,7 @@ export function createShoppingRoutes({ database, now }: AppDependencies) {
     ]);
     const ticked = new Set(tickRows.filter((row) => !row.cleared).map((row) => row.key));
     const cleared = new Set(tickRows.filter((row) => row.cleared).map((row) => row.key));
-    const sections = buildShoppingList(days)
+    const sections = buildShoppingList(days, language)
       .map(({ section, lines }) => ({ section, lines: lines.filter((line) => !cleared.has(line.key)).map((line) => ({ ...line, ticked: ticked.has(line.key) })) }))
       .filter((section) => section.lines.length > 0);
     return {
@@ -147,7 +149,8 @@ export function createShoppingRoutes({ database, now }: AppDependencies) {
       dates = asked ? [...new Set(asked.split(","))].sort() : [];
       if (dates.some((date) => !week.includes(date))) return c.json({ error: "Pick days in that week." }, 400);
     }
-    return c.json(await loadView(c.get("member").kitchenId, monday, dates));
+    const { kitchenId, language } = c.get("member");
+    return c.json(await loadView(kitchenId, monday, dates, language));
   });
 
   // Sets a tick to the given state rather than flipping it, so two phones tapping at once agree.

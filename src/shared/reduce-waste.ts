@@ -17,7 +17,7 @@ type Spare = { packs: number; leftover: string; ingredientId: string; name: stri
 /** Each shopping line with a leftover: how much of a pack is left (0.6 for 600 g of a 1 kg bag) and its "600 g carrots left". */
 function spareOf(days: PlannerDay[], input: CreateWeekInput, byId: Map<string, PlannerRecipe>) {
   const spare = new Map<string, Spare>();
-  for (const line of buildShoppingList(toShoppingDays(days, input.children, byId)).flatMap((section) => section.lines)) {
+  for (const line of buildShoppingList(toShoppingDays(days, input.children, byId), input.language).flatMap((section) => section.lines)) {
     const packs = leftPacks(line);
     if (packs > 0) spare.set(line.key, { packs, leftover: line.leftover!, ingredientId: line.ingredient.id, name: line.ingredient.name });
   }

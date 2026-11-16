@@ -379,4 +379,7 @@ export const danish: Record<string, string> = {
   "None of that dish is left in the freezer.": "Der er ikke mere af den ret i fryseren.",
   "That swap no longer fits the week. Have another look.": "Det bytte passer ikke længere til ugen. Kig igen.",
   "Keep the note short.": "Hold noten kort.",
+  "{amount} left": "{amount} til overs",
+  "{title} for {name}": "{title} til {name}",
+  "A dinner can have at most 4 extra dishes.": "En aftensmad kan højst have 4 ekstra retter.",
 };

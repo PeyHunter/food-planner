@@ -301,3 +301,35 @@ test("a child who eats the dinner by default gets it on every day with a dinner,
   expect(view.days[0]!.extraPortions).toBe(0.5);
   expect(view.rules.find((rule) => rule.childId === runi.id && rule.what === "Fish")!.count).toBe(1);
 });
+
+test("side dishes go with their dinner: none without one, and a deleted dinner's sides don't come back", async () => {
+  const { call, create, week } = await loggedIn();
+  const main = await create(recipe("Main", ["Fish"]));
+  const other = await create(recipe("Other main", ["Meat"]));
+  const salad = await create(recipe("Salad", ["Vegetables"], { lines: [{ amount: 1, unit: "bag", ingredient: "Spinach", note: "" }] }));
+  expect((await call(`/api/plan/days/${wednesday}/sides`, "POST", { recipeId: salad })).status).toBe(409);
+
+  await call(`/api/plan/days/${wednesday}`, "PUT", { dinnerRecipeId: main });
+  await call(`/api/plan/days/${wednesday}/sides`, "POST", { recipeId: salad });
+  expect((await call(`/api/recipes/${main}`, "DELETE")).status).toBe(204);
+  expect((await week()).days[2]!.sides).toEqual([]);
+  const shopping = (await (await call(`/api/shopping/${monday}?days=${wednesday}`)).json()) as { sections: unknown[] };
+  expect(shopping.sections).toEqual([]);
+
+  await call(`/api/plan/days/${wednesday}`, "PUT", { dinnerRecipeId: other });
+  expect((await week()).days[2]!.sides).toEqual([]);
+});
+
+test("Create week gives a child who eats the dinner by default the new dinners, not child recipes", async () => {
+  const { call, create, week } = await loggedIn();
+  for (let n = 1; n <= 7; n++) await create(recipe(`Dinner ${n}`, n <= 2 ? ["Fish"] : ["Vegetables"], { tags: n === 1 ? ["freezable"] : [] }));
+  for (let n = 1; n <= 3; n++) await create(recipe(`Mash ${n}`, ["Vegetables"], { tags: ["for Runi"] }));
+  const runi = (await week()).children[0]!;
+  await call(`/api/children/${runi.id}`, "PUT", { name: runi.name, birthday: null, sameAsDinnerByDefault: true });
+
+  const created = (await (await call(`/api/plan/weeks/${monday}/create`, "POST", {})).json()) as CreatedWeek;
+  expect(created.fills.filter((fill) => fill.childId !== null)).toEqual([]);
+  expect(created.note).not.toMatch(/still empty/);
+  const view = await week();
+  expect(view.days.every((day) => day.dinner !== null && day.children[0]!.kind === "same-as-dinner")).toBe(true);
+});

@@ -12,7 +12,8 @@ export type PlannerRecipe = Dish &
     ageFromMonths: number | null;
     ageToMonths: number | null;
   };
-export type PlannerChild = { id: string; name: string; ageMonths: number | null };
+/** sameAsDinnerByDefault: the child eats every planned dinner unless told otherwise, so Create week never fills their meals. */
+export type PlannerChild = { id: string; name: string; ageMonths: number | null; sameAsDinnerByDefault?: boolean };
 export type PlannerDay = PlanDay & { people: number };
 export type CreateWeekInput = {
   rules: Rule[];
@@ -59,7 +60,10 @@ export function createWeek({ rules, days, recipes, children, today, language = "
     .sort((a, b) => (a.lastMadeOn ?? "").localeCompare(b.lastMadeOn ?? "") || a.title.localeCompare(b.title) || a.id.localeCompare(b.id));
 
   const open = plan.filter((day) => day.date >= today);
-  const isEmpty = (day: PlannerDay, child: PlannerChild) => (day.children[child.id] ?? { kind: "empty" }).kind === "empty";
+  // A child who eats the dinner by default has nothing of their own to fill.
+  const isEmpty = (day: PlannerDay, child: PlannerChild) => !child.sameAsDinnerByDefault && (day.children[child.id] ?? { kind: "empty" }).kind === "empty";
+  const followsDinner = (day: PlannerDay, child: PlannerChild) =>
+    day.children[child.id]?.kind === "same-as-dinner" || (child.sameAsDinnerByDefault && day.children[child.id] === undefined);
   const slots: { day: PlannerDay; child: PlannerChild | null; mash: boolean }[] = [
     ...open.filter((day) => day.dinner === null && !day.away).map((day) => ({ day, child: null, mash: false })),
     ...children.flatMap((child) => {
@@ -74,7 +78,7 @@ export function createWeek({ rules, days, recipes, children, today, language = "
     if (child && !isEmpty(day, child)) continue;
     const counts = new Map(checkRules(rules, plan).map((status) => [status.id, status.count]));
     // A dinner also counts for each child eating "same as dinner" that day.
-    const eaters = child ? [child.id] : [null, ...children.filter((kid) => day.children[kid.id]?.kind === "same-as-dinner").map((kid) => kid.id)];
+    const eaters = child ? [child.id] : [null, ...children.filter((kid) => followsDinner(day, kid)).map((kid) => kid.id)];
     const touched = rules.filter((rule) => eaters.includes(rule.childId));
 
     if (mash) {
@@ -107,7 +111,11 @@ export function createWeek({ rules, days, recipes, children, today, language = "
     if (!best) continue;
     const { recipe } = best;
     if (child) day.children[child.id] = { kind: "recipe", dish: recipe };
-    else day.dinner = recipe;
+    else {
+      day.dinner = recipe;
+      // The rules see the new dinner as these children's meal too, as the week will show it.
+      for (const kid of children) if (kid.sameAsDinnerByDefault && day.children[kid.id] === undefined) day.children[kid.id] = { kind: "same-as-dinner" };
+    }
     used.add(recipe.id);
     fills.push({ date: day.date, childId: child?.id ?? null, recipeId: recipe.id });
   }

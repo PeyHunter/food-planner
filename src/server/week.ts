@@ -133,7 +133,8 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
         date,
         people: row?.people ?? defaultPeople,
         dinner,
-        sides: sideRows.filter((side) => side.date === date).flatMap((side) => {
+        // Side dishes belong to a dinner; left over from a dinner that went away (its recipe deleted), they don't count.
+        sides: (dinner ? sideRows.filter((side) => side.date === date) : []).flatMap((side) => {
           const recipe = byId.get(side.recipeId);
           return recipe ? [{ position: side.position, recipe }] : [];
         }),
@@ -142,12 +143,16 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
         extraPortions: meals.filter((meal) => meal.kind === "same-as-dinner").length * sameAsDinnerPortion, children: meals };
     });
 
+    // A child who eats the dinner by default, on a day with no dinner and nothing set for them, is left out of the plan,
+    // so Create week knows the dinner it adds is their meal too.
+    const followsLater = (childId: string, date: string) =>
+      kids.find((kid) => kid.id === childId)!.sameAsDinnerByDefault && !childRows.some((row) => row.childId === childId && row.date === date);
     const plan: PlanDay[] = days.map((day) => ({
       date: day.date,
       dinner: day.dinner,
       away: day.away !== null,
       children: Object.fromEntries(
-        day.children.map((meal): [string, ChildMeal] => [meal.childId, meal.kind === "recipe" ? { kind: "recipe", dish: meal.recipe! } : { kind: meal.kind as "empty" | "same-as-dinner" }]),
+        day.children.filter((meal) => !(meal.kind === "empty" && followsLater(meal.childId, day.date))).map((meal): [string, ChildMeal] => [meal.childId, meal.kind === "recipe" ? { kind: "recipe", dish: meal.recipe! } : { kind: meal.kind as "empty" | "same-as-dinner" }]),
       ),
     }));
     const ordered: Rule[] = ruleRows
@@ -217,8 +222,8 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
       }
       const away = change.dinnerRecipeId === null && change.awayKind ? { awayKind: change.awayKind, awayNote: change.awayNote ?? "" } : { awayKind: null, awayNote: "" };
       await upsertDay(tx, kitchenId, date, { ...change, fromFreezer, ...away });
-      // No dinner, or a dinner out, has no side dishes either.
-      if (change.dinnerRecipeId === null) await tx.delete(planSides).where(and(eq(planSides.kitchenId, kitchenId), eq(planSides.date, date)));
+      // No dinner, or a dinner out, has no side dishes either; and a day that had no dinner starts its new one without old ones.
+      if (change.dinnerRecipeId === null || !old?.dinnerRecipeId) await tx.delete(planSides).where(and(eq(planSides.kitchenId, kitchenId), eq(planSides.date, date)));
       return true;
     }).catch((error: unknown) => {
       if (error instanceof TransactionRollbackError) return false;
@@ -302,6 +307,11 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
     const { kitchenId } = c.get("member");
     const recipeId = await ownRecipeId(kitchenId, (await readBody(c.req)).recipeId);
     if (!recipeId) return c.json({ error: "No such recipe." }, 404);
+    const [day] = await db
+      .select({ dinner: planDays.dinnerRecipeId })
+      .from(planDays)
+      .where(and(eq(planDays.kitchenId, kitchenId), eq(planDays.date, date)));
+    if (!day?.dinner) return c.json({ error: "Pick a dinner first." }, 409);
     const sides = await db
       .select({ position: planSides.position })
       .from(planSides)
@@ -392,7 +402,12 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
           ingredient: { ...ingredient, shopSection: ingredient.shopSection as ShopSection, packUnit: ingredient.packUnit as Unit | null },
         })),
       })),
-      children: kids.map((kid) => ({ id: kid.id, name: kid.name, ageMonths: kid.birthday ? monthsOld(kid.birthday, today) : null })),
+      children: kids.map((kid) => ({
+        id: kid.id,
+        name: kid.name,
+        ageMonths: kid.birthday ? monthsOld(kid.birthday, today) : null,
+        sameAsDinnerByDefault: kid.sameAsDinnerByDefault,
+      })),
       today,
       language,
     };

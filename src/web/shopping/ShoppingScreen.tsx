@@ -12,7 +12,7 @@ import "./shopping.css";
 
 const pollMs = 3000;
 const dayLetter = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString(locale(), { weekday: "short", timeZone: "UTC" });
-const dayName = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", { weekday: "long", timeZone: "UTC" });
+const dayName = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString(locale(), { weekday: "long", timeZone: "UTC" });
 const amountText = (amount: number, unit: Unit) => (unit === "pcs" ? formatAmount(amount) : `${formatAmount(amount, unit)} ${t(unit)}`);
 
 /** A tick the server may not have seen yet. `doneAt` is when the save finished. */

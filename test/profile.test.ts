@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { expect, test } from "vitest";
 import type { Profile } from "../src/shared/profile.ts";
 import type { WeekView } from "../src/shared/week.ts";
@@ -30,11 +31,11 @@ test("language is your own; kids and nemlig.com are the kitchen's", async () => 
 test("a kitchen without kids can say it has a child, and keeps that after a restart", async () => {
   const app = await createTestApp();
   const people = [
-    { username: "isabel", password: "peapear" },
-    { username: "christopher", password: "limekale" },
+    { username: "isabel", password: randomUUID() },
+    { username: "christopher", password: randomUUID() },
   ];
   await ensureHousehold(app.database, people, { name: "Isabel's", kids: false });
-  const { call } = await loggedIn("isabel", "peapear", app);
+  const { call } = await loggedIn("isabel", people[0]!.password, app);
   expect(((await (await call("/api/profile", "PUT", { kids: true })).json()) as Profile).kids).toBe(true);
   await ensureHousehold(app.database, people, { name: "Isabel's", kids: false });
   const week = (await (await call("/api/plan/weeks/2026-03-02")).json()) as WeekView;

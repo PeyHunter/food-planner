@@ -62,7 +62,8 @@ export async function recipeImage(recipe: Recipe, words: { ingredients: string; 
   });
   const textHeight = laid.reduce((sum, block) => sum + block.lines.length * block.size * 1.3 + block.gap, 0);
   canvas.width = width;
-  canvas.height = Math.min(16000, photoHeight + pad * 2 + textHeight + 40);
+  // iOS Safari refuses a canvas over about 16.7 million pixels: 1080 × 15000 stays under it.
+  canvas.height = Math.min(15000, photoHeight + pad * 2 + textHeight + 40);
 
   context.fillStyle = paper;
   context.fillRect(0, 0, canvas.width, canvas.height);
