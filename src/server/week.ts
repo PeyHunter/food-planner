@@ -430,10 +430,13 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
             .values({ childId: fill.childId, date: fill.date, ...row })
             .onConflictDoNothing();
         } else {
-          await tx
+          const written = await tx
             .insert(planDays)
             .values({ kitchenId, date: fill.date, people: defaultPeople, dinnerRecipeId: fill.recipeId })
-            .onConflictDoUpdate({ target: [planDays.kitchenId, planDays.date], set: { dinnerRecipeId: fill.recipeId }, setWhere: and(isNull(planDays.dinnerRecipeId), isNull(planDays.awayKind)) });
+            .onConflictDoUpdate({ target: [planDays.kitchenId, planDays.date], set: { dinnerRecipeId: fill.recipeId }, setWhere: and(isNull(planDays.dinnerRecipeId), isNull(planDays.awayKind)) })
+            .returning({ date: planDays.date });
+          // A day that had no dinner starts its new one without side dishes left from an old one.
+          if (written.length) await tx.delete(planSides).where(and(eq(planSides.kitchenId, kitchenId), eq(planSides.date, fill.date)));
         }
       }
     });

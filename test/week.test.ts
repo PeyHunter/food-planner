@@ -316,6 +316,8 @@ test("side dishes go with their dinner: none without one, and a deleted dinner's
   const shopping = (await (await call(`/api/shopping/${monday}?days=${wednesday}`)).json()) as { sections: unknown[] };
   expect(shopping.sections).toEqual([]);
 
+  await call(`/api/plan/weeks/${monday}/create`, "POST", {});
+  expect((await week()).days[2]!.sides).toEqual([]);
   await call(`/api/plan/days/${wednesday}`, "PUT", { dinnerRecipeId: other });
   expect((await week()).days[2]!.sides).toEqual([]);
 });
