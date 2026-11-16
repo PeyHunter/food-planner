@@ -202,3 +202,12 @@ test("keys stay the same whichever days are picked, so ticks stick", () => {
   const b = recipe("B", 2, [[1, "kg", carrot]]);
   expect(line([day("2026-03-02", a)], "Carrots").key).toBe(line([day("2026-03-03", b)], "Carrots").key);
 });
+
+test("bags of the same thing add up as bags, next to any pieces", () => {
+  const spinach = { id: "spinach", name: "Spinach", shopSection: "Vegetables" as const, packAmount: null, packUnit: null, alwaysAtHome: false };
+  const recipe = (amount: number, unit: "bag" | "pcs") => ({ title: "Dish", feeds: 2, lines: [{ amount, unit, ingredient: spinach }] });
+  const day = (date: string, dinner: ReturnType<typeof recipe>) => ({ date, people: 2, sameAsDinner: 0, dinner, childMeals: [] });
+  const [section] = buildShoppingList([day("2026-11-16", recipe(1, "bag")), day("2026-11-17", recipe(0.5, "bag")), day("2026-11-18", recipe(2, "pcs"))]);
+  const lines = section!.lines.map((line) => [line.amount, line.unit, line.needsPackSize]);
+  expect(lines).toEqual(expect.arrayContaining([[2, "bag", false], [2, "pcs", false]]));
+});

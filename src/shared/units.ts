@@ -1,6 +1,7 @@
-export const units = ["g", "kg", "ml", "dl", "l", "pcs"] as const;
+export const units = ["g", "kg", "ml", "dl", "l", "pcs", "bag"] as const;
 export type Unit = (typeof units)[number];
-export type Kind = "mass" | "volume" | "pcs";
+/** Pieces and bags are counted, never converted. */
+export type Kind = "mass" | "volume" | "pcs" | "bag";
 
 // Size of each unit in its kind's base unit (g for mass, ml for volume).
 const table: Record<Unit, { kind: Kind; base: number }> = {
@@ -10,17 +11,21 @@ const table: Record<Unit, { kind: Kind; base: number }> = {
   dl: { kind: "volume", base: 100 },
   l: { kind: "volume", base: 1000 },
   pcs: { kind: "pcs", base: 1 },
+  bag: { kind: "bag", base: 1 },
 };
 
 export const isUnit = (value: unknown): value is Unit => typeof value === "string" && Object.hasOwn(table, value);
 
 export const kindOf = (unit: Unit) => table[unit].kind;
 
+/** Weights and volumes; pieces and bags are counted. */
+export const isMeasured = (kind: Kind) => kind === "mass" || kind === "volume";
+
 /** Mass converts to mass, volume to volume. Pieces never convert. */
 export function canConvert(from: Unit, to: Unit) {
   if (from === to) return true;
   const [a, b] = [kindOf(from), kindOf(to)];
-  return a !== "pcs" && a === b;
+  return isMeasured(a) && a === b;
 }
 
 export function convert(amount: number, from: Unit, to: Unit) {
@@ -39,11 +44,11 @@ function tidyStep(amount: number) {
   return 50;
 }
 
-/** Rounds a scaled amount up: pcs to whole, g/ml (and kg, dl, l through them) to a tidy step. */
+/** Rounds a scaled amount up: pcs and bags to whole, g/ml (and kg, dl, l through them) to a tidy step. */
 export function roundUp(amount: number, unit: Unit) {
   if (amount <= 0) return 0;
   const { kind, base } = table[unit];
-  if (kind === "pcs") return ceilTo(amount, 1);
+  if (!isMeasured(kind)) return ceilTo(amount, 1);
   const inBase = amount * base;
   // Avoid trailing float noise like 1.2500000000000002 kg.
   return Number((ceilTo(inBase, tidyStep(inBase)) / base).toFixed(6));

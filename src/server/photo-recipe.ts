@@ -80,7 +80,7 @@ const tool: Anthropic.Beta.Messages.BetaTool = {
 };
 
 const rules = `- Write the recipe in the language it is written in. Keep the cook's own words in the steps.
-- Use metric only. Units must be one of: ${units.join(", ")}. Convert US and imperial units: 1 cup = 2.4 dl (or 240 ml), 1 oz = 28 g, 1 lb = 450 g, 1 fl oz = 30 ml, 1 tsp = 5 ml, 1 tbsp = 15 ml. Use pcs for things you count (2 eggs = 2 pcs).
+- Use metric only. Units must be one of: ${units.join(", ")}. Convert US and imperial units: 1 cup = 2.4 dl (or 240 ml), 1 oz = 28 g, 1 lb = 450 g, 1 fl oz = 30 ml, 1 tsp = 5 ml, 1 tbsp = 15 ml. Use pcs for things you count (2 eggs = 2 pcs) and bag for things sold by the bag (1 bag spinach).
 - Convert in the steps too: °F to °C (350 °F = 175 °C), inches to cm (1 inch = 2.5 cm), and cups, ounces and spoons as above.
 - minutes is the total time the recipe says it takes (prep plus cooking), in whole minutes. Null if the recipe doesn't say.
 - Amounts are numbers (½ = 0.5). If there is no amount, like "salt to taste", set amount and unit to null and put the words in note.
@@ -124,6 +124,10 @@ const unitAliases: Record<string, { unit: Unit; factor: number }> = {
   tablespoons: { unit: "ml", factor: 15 },
   piece: { unit: "pcs", factor: 1 },
   pieces: { unit: "pcs", factor: 1 },
+  bags: { unit: "bag", factor: 1 },
+  pose: { unit: "bag", factor: 1 },
+  poser: { unit: "bag", factor: 1 },
+  stk: { unit: "pcs", factor: 1 },
 };
 
 const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");

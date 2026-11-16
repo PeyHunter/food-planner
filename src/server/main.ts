@@ -8,6 +8,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createApp } from "./app.ts";
 import { connectDatabase, migrate } from "./db.ts";
 import { ensureHousehold, type StartingUser } from "./household.ts";
+import { photoStore, shrinkOldPhotos } from "./photos.ts";
 import { fakeClient, type PhotoRecipeClient } from "./photo-recipe.ts";
 
 type Config = {
@@ -138,6 +139,9 @@ const cacheRules = (path: string, c: Context) =>
   c.header("cache-control", /\/assets\//.test(path) ? "public, max-age=31536000, immutable" : "no-cache");
 app.use("*", serveStatic({ root: "dist/web", onFound: cacheRules }));
 app.get("*", serveStatic({ path: "dist/web/index.html", onFound: cacheRules }));
+
+// Photos saved before the size limits came down are made smaller, one at a time, in the background.
+void shrinkOldPhotos(database, photoStore(photosDir)).catch((error: unknown) => console.error("Shrinking old photos stopped:", error));
 
 const server = serve({ fetch: app.fetch, port: config.port }, (info) => console.log(`food-planner listening on :${info.port}`));
 

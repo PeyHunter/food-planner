@@ -1,14 +1,18 @@
 import { randomUUID } from "node:crypto";
 import { copyFile, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { eq, gt, or } from "drizzle-orm";
 import sharp from "sharp";
+import type { Database } from "./db.ts";
+import { photos } from "./schema.ts";
 
 // The pod has 256 MiB: one photo at a time, no decoded-image cache.
 sharp.concurrency(1);
 sharp.cache(false);
 
-const maxSide = 1600;
-const maxBytes = 400 * 1024;
+// Small enough that the photo volume stays small, big enough for a phone screen.
+export const maxSide = 1280;
+export const maxBytes = 250 * 1024;
 const qualities = [75, 65, 55, 45];
 /** Width of the smaller copy share pages show on phones. */
 export const smallWidth = 800;
@@ -32,8 +36,8 @@ export function photoStore(dir: string) {
   const making = new Map<string, Promise<Buffer>>();
 
   return {
-    /** Turns the photo upright, shrinks it to at most 1600 px on its long side and saves it as JPEG of at most 400 kB without its metadata (no GPS). */
-    async save(input: Uint8Array): Promise<StoredPhoto> {
+    /** Turns the photo upright, shrinks it to at most 1280 px on its long side and saves it as JPEG of at most 250 kB without its metadata (no GPS). */
+    async save(input: Uint8Array, id: string = randomUUID()): Promise<StoredPhoto> {
       const { data: pixels, info } = await sharp(input, { failOn: "error" })
         .rotate()
         .resize({ width: maxSide, height: maxSide, fit: "inside", withoutEnlargement: true })
@@ -58,11 +62,19 @@ export function photoStore(dir: string) {
         photo = await encode(qualities.at(-1)!, Math.round(raw.width * scale), Math.round(raw.height * scale));
       }
 
-      const id = randomUUID();
-      await writeFile(pathOf(id), photo.data);
+      // Written under another name first, so a half-written file is never served.
+      const part = `${pathOf(id)}.${randomUUID()}.part`;
+      await writeFile(part, photo.data);
+      await rename(part, pathOf(id));
       return { id, width: photo.info.width, height: photo.info.height, bytes: photo.data.length };
     },
     read: (id: string) => readFile(pathOf(id)),
+    /** Saves a photo from before the size limits again, smaller, under the same id. Its small copy is made again too. */
+    async shrink(id: string): Promise<StoredPhoto> {
+      const stored = await this.save(await readFile(pathOf(id)), id);
+      await rm(smallPathOf(id), { force: true });
+      return stored;
+    },
     /** An 800 px wide copy, made the first time it is asked for and kept next to the photo. */
     async readSmall(id: string): Promise<Buffer> {
       const kept = await readFile(smallPathOf(id)).catch(() => undefined);
@@ -98,3 +110,23 @@ export function photoStore(dir: string) {
 }
 
 export type PhotoStore = ReturnType<typeof photoStore>;
+
+/** Makes every photo that is bigger than today's limits smaller, and updates its row. Returns how many it shrank. */
+export async function shrinkOldPhotos({ db }: Database, store: PhotoStore): Promise<number> {
+  const old = await db
+    .select({ id: photos.id })
+    .from(photos)
+    .where(or(gt(photos.bytes, maxBytes), gt(photos.width, maxSide), gt(photos.height, maxSide)));
+  let shrunk = 0;
+  for (const { id } of old) {
+    const stored = await store.shrink(id).catch((error: unknown) => {
+      console.error(`Could not shrink photo ${id}:`, error);
+      return undefined;
+    });
+    if (!stored) continue;
+    await db.update(photos).set({ width: stored.width, height: stored.height, bytes: stored.bytes }).where(eq(photos.id, id));
+    shrunk++;
+  }
+  if (shrunk) console.log(`Shrank ${shrunk} old photos.`);
+  return shrunk;
+}

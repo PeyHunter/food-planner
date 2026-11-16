@@ -1,6 +1,6 @@
 import { shopSections, type ShopSection } from "./recipes.ts";
 import { addDays, mondayOf, sameAsDinnerPortion } from "./week.ts";
-import { convert, formatAmount, kindOf, roundUp, type Unit } from "./units.ts";
+import { convert, formatAmount, isMeasured, kindOf, roundUp, type Kind, type Unit } from "./units.ts";
 
 export type ShoppingIngredient = {
   id: string;
@@ -57,12 +57,12 @@ export type ShoppingView = {
 /** A child recipe day is one serving of that recipe, as written for the child. Only "Same as dinner" counts as half. */
 export const childPortion = 1;
 
-type Measure = "mass" | "volume" | "pcs" | "none";
+type Measure = Kind | "none";
 const measureOf = (amount: number | null, unit: Unit | null): Measure => {
   if (amount === null || unit === null) return "none";
   return kindOf(unit);
 };
-const baseUnit: Record<Exclude<Measure, "none">, Unit> = { mass: "g", volume: "ml", pcs: "pcs" };
+const baseUnit: Record<Exclude<Measure, "none">, Unit> = { mass: "g", volume: "ml", pcs: "pcs", bag: "bag" };
 
 /** Default days: today through Sunday of today's week. */
 export const restOfWeek = (today: string) => {
@@ -106,7 +106,7 @@ function total(measure: Exclude<Measure, "none">, parts: Part[]): { amount: numb
   const base = baseUnit[measure];
   const sum = parts.reduce((all, part) => all + convert(part.amount, part.unit, base), 0);
   const rounded = roundUp(sum, base);
-  return measure === "pcs" ? { amount: rounded, unit: "pcs" } : tidy(rounded, base);
+  return isMeasured(measure) ? tidy(rounded, base) : { amount: rounded, unit: base };
 }
 
 function packsFor(amount: number, unit: Unit, ingredient: ShoppingIngredient) {
@@ -149,7 +149,7 @@ export function buildShoppingList(days: ShoppingDay[]): ShoppingSection[] {
     const { ingredient, measure, meals } = group;
     if (measure === "none") {
       // "Salt, to taste" next to "5 ml salt" is the same thing to buy.
-      const measured = ["mass", "volume", "pcs"].map((other) => groups.get(`${ingredient.id}:${other}`)).find(Boolean);
+      const measured = ["mass", "volume", "pcs", "bag"].map((other) => groups.get(`${ingredient.id}:${other}`)).find(Boolean);
       if (measured) {
         for (const meal of meals) if (!measured.meals.includes(meal)) measured.meals.push(meal);
         continue;
@@ -159,8 +159,8 @@ export function buildShoppingList(days: ShoppingDay[]): ShoppingSection[] {
     }
     const { amount, unit } = total(measure, group.parts);
     const { packs, leftover, spare } = packsFor(amount, unit, ingredient);
-    // Pieces are bought as counted ("3 onions"), so only weights and volumes ask for a pack size.
-    lines.push({ key, ingredient, amount, unit, packs, leftover, spare, needsPackSize: ingredient.packAmount === null && measure !== "pcs", meals });
+    // Pieces and bags are bought as counted ("3 onions"), so only weights and volumes ask for a pack size.
+    lines.push({ key, ingredient, amount, unit, packs, leftover, spare, needsPackSize: ingredient.packAmount === null && isMeasured(measure), meals });
   }
 
   return shopSections
