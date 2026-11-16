@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { locale, t } from "../i18n.ts";
+import { useSheet } from "../sheet.ts";
 import { formatMinutes, type RecipeSummary } from "../../shared/recipes.ts";
 import { weekdayName, type WeekView } from "../../shared/week.ts";
 import { getWeek, setDinner } from "../week/api.ts";
@@ -214,8 +215,8 @@ function DayPicker({ recipe, onClose, onAdded }: { recipe: RecipeSummary; onClos
   const [problem, setProblem] = useState<string>();
   const [busy, setBusy] = useState(false);
 
+  useSheet(ref);
   useEffect(() => {
-    if (ref.current && !ref.current.open) ref.current.showModal();
     Promise.all([getWeek(days.thisWeek.monday), getWeek(days.nextWeek.monday)]).then(
       ([thisWeek, nextWeek]) => setWeeks({ thisWeek, nextWeek }),
       (error: Error) => setProblem(error.message),
@@ -256,7 +257,7 @@ function DayPicker({ recipe, onClose, onAdded }: { recipe: RecipeSummary; onClos
     );
 
   return (
-    <dialog ref={ref} className="sheet" aria-label={`Add ${recipe.title} to the week`} onClose={onClose}>
+    <dialog ref={ref} className="sheet bottom-sheet" aria-label={`Add ${recipe.title} to the week`} onClose={onClose}>
       <div className="sheet-head">
         <h2>{t("Which day?")}</h2>
         <button type="button" className="btn small white" onClick={onClose}>

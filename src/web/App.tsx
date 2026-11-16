@@ -160,10 +160,10 @@ function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
               <span className="caret" aria-hidden="true" />
             </summary>
             <div className="menu">
-              <a className="btn white small" href="#/profile">
-                {t("Profile")}
+              <a className="btn white" href="#/profile">
+                <span aria-hidden="true">⚙</span> {t("Profile")}
               </a>
-              <button type="button" className="btn white small" onClick={logOut}>
+              <button type="button" className="btn white" onClick={logOut}>
                 {t("Log out")}
               </button>
             </div>
