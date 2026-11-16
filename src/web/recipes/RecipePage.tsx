@@ -78,7 +78,8 @@ export function StepsPanel({ steps }: { steps: string[] }) {
   );
 }
 
-export function RecipePage({ id }: { id: string }) {
+/** week: the Monday of the week plan this was opened from, so the back arrow returns there. */
+export function RecipePage({ id, week = null }: { id: string; week?: string | null }) {
   const [recipe, setRecipe] = useState<Recipe>();
   const [problem, setProblem] = useState<string>();
   const [busy, setBusy] = useState(false);
@@ -115,7 +116,7 @@ export function RecipePage({ id }: { id: string }) {
   return (
     <article className="recipe-page">
       <nav className="bar">
-        <a className="back" href="#/recipes" aria-label="Back to recipes">
+        <a className="back" href={week ? `#/week?monday=${week}` : "#/recipes"} aria-label={week ? "Back to the week" : "Back to recipes"}>
           ←
         </a>
         <a className="ink-button white small" href={`#/recipes/${id}/edit`}>

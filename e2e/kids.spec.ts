@@ -50,14 +50,21 @@ test("set Runi's birthday, add a 6-12 month recipe and see it fit her age", asyn
   await expect(page.getByText("For 6–12 months")).toBeVisible();
 
   await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Runi & kids" }).click();
-  const fits = page.getByRole("list", { name: "Fits Runi Lee's age now" });
+  // Tagged "for Runi" and fits her age: in her own list, which comes first.
+  const fits = page.getByRole("list", { name: "Runi Lee's recipes" });
   await expect(fits.getByRole("link", { name: new RegExp(title) })).toContainText("For 6–12 months");
-  await expect(page.getByRole("list", { name: "All Runi Lee's recipes" }).getByRole("link", { name: new RegExp(title) })).toBeVisible();
+  await expect(page.locator(".kid-recipes h2").first()).toHaveText("Runi Lee's recipes");
+  await expect(page.getByRole("list", { name: "Also fits Runi Lee's age" }).getByRole("link", { name: new RegExp(title) })).toHaveCount(0);
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: process.env.KIDS_SHOT ?? "test-results/kids.png", fullPage: true });
 
   await fits.getByRole("link", { name: new RegExp(title) }).click();
   await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
+
+  // Her recipes stay on her tab: the grown-ups' recipe list doesn't show them.
+  await page.goto("/#/recipes/list");
+  await page.getByLabel("Search recipes").fill(title);
+  await expect(page.getByText('No recipe matches')).toBeVisible();
 });
 
 test("add a child with a birthday", async ({ page }) => {

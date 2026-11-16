@@ -19,7 +19,7 @@ type Route =
   | { screen: "from-photo" }
   | { screen: "from-link" }
   | { screen: "freezer" }
-  | { screen: "recipe"; id: string }
+  | { screen: "recipe"; id: string; week: string | null }
   | { screen: "edit"; id: string }
   | { screen: "vegetarian"; id: string }
   | { screen: "save"; token: string };
@@ -36,7 +36,7 @@ function readRoute(hash: string): Route {
   if (id === "save" && action) return { screen: "save", token: action };
   if (id === "list" || id === "ingredients" || id === "from-photo" || id === "from-link" || id === "freezer") return { screen: id };
   if (action === "edit" || action === "vegetarian") return { screen: action, id };
-  return { screen: "recipe", id };
+  return { screen: "recipe", id, week: new URLSearchParams(query).get("week") };
 }
 
 /** The Recipes tab: the book, list, recipe page and edit form, picked by the URL hash so reload and back work. */
@@ -63,7 +63,7 @@ export function RecipesScreen() {
       {route.screen === "freezer" && <FreezerScreen />}
       {route.screen === "edit" && <RecipeForm key={route.id} id={route.id} />}
       {route.screen === "vegetarian" && <VegetarianDraftForm key={route.id} id={route.id} />}
-      {route.screen === "recipe" && <RecipePage key={route.id} id={route.id} />}
+      {route.screen === "recipe" && <RecipePage key={route.id} id={route.id} week={route.week} />}
       {route.screen === "save" && <SaveShared key={route.token} token={route.token} />}
     </div>
   );

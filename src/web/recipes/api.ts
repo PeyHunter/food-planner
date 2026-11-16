@@ -1,5 +1,5 @@
 import type { Ingredient, IngredientRow, IngredientSettings, IngredientSuggestion, PhotoRecipeDraft, Recipe, RecipeInput, RecipeSummary, ShareLink, SharedRecipe } from "../../shared/recipes.ts";
-import type { FreezerItem } from "../../shared/week.ts";
+import { childRecipeTag, type FreezerItem } from "../../shared/week.ts";
 import { locale, t } from "../i18n.ts";
 
 export async function call<T>(path: string, init?: RequestInit): Promise<T> {
@@ -20,6 +20,8 @@ export async function call<T>(path: string, init?: RequestInit): Promise<T> {
 export const json = (method: string, body: unknown): RequestInit => ({ method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 
 export const listRecipes = (q: string) => call<RecipeSummary[]>(`/api/recipes?q=${encodeURIComponent(q)}`);
+/** The grown-ups' recipe book: Runi's own recipes (tagged "for Runi") live on the Runi & kids tab instead. */
+export const listBookRecipes = async (q: string) => (await listRecipes(q)).filter((recipe) => !recipe.tags.includes(childRecipeTag));
 export const getRecipe = (id: string) => call<Recipe>(`/api/recipes/${id}`);
 export const createRecipe = (input: RecipeInput) => call<{ id: string }>("/api/recipes", json("POST", input));
 export const updateRecipe = (id: string, input: RecipeInput) => call<{ id: string }>(`/api/recipes/${id}`, json("PUT", input));

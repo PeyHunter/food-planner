@@ -3,7 +3,7 @@ import { locale, t } from "../i18n.ts";
 import { formatMinutes, type RecipeSummary } from "../../shared/recipes.ts";
 import { weekdayName, type WeekView } from "../../shared/week.ts";
 import { getWeek, setDinner } from "../week/api.ts";
-import { listRecipes, showDate, today } from "./api.ts";
+import { listBookRecipes, showDate, today } from "./api.ts";
 import { chipsFor, daysToPick, filterBook, sameChip, type Chip } from "./book.ts";
 import { TypeStickers, typeColour } from "./RecipePage.tsx";
 import "./browse.css";
@@ -29,7 +29,7 @@ export function BrowseScreen() {
   const restored = useRef(false);
 
   useEffect(() => {
-    listRecipes("").then(setRecipes, (error: Error) => setProblem(error.message));
+    listBookRecipes("").then(setRecipes, (error: Error) => setProblem(error.message));
   }, []);
 
   const chips = useMemo(() => chipsFor(recipes ?? []), [recipes]);

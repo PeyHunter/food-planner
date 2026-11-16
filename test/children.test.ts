@@ -77,21 +77,30 @@ test("a child from another kitchen is not found", async () => {
   expect((await call("/api/children/nope/recipes")).status).toBe(404);
 });
 
-test("recipes that fit her age now, and all her recipes", async () => {
+test("her own recipes first, then other recipes that fit her age; nothing outside her age", async () => {
   const { call, kids, create, recipesFor } = await loggedIn();
   await create(recipe("Carrot mash", { ageFromMonths: 6, ageToMonths: 12 }));
   await create(recipe("Toddler pasta", { ageFromMonths: 12, ageToMonths: 36 }));
   await create(recipe("Fish fingers", { tags: ["for Runi"] }));
+  await create(recipe("Baby porridge", { tags: ["for Runi"], ageFromMonths: 4, ageToMonths: 9 }));
   await create(recipe("Lasagne"));
   const [runi] = await kids();
+  const titles = (list: { title: string }[]) => list.map((item) => item.title);
 
+  // No birthday: all her tagged recipes, and nothing else since no age is known.
   const before = await recipesFor(runi!.id);
-  expect(before.fitsNow).toEqual([]);
-  expect(before.all.map((item) => item.title)).toEqual(["Carrot mash", "Fish fingers", "Toddler pasta"]);
-  expect(before.all[0]).toMatchObject({ ageFromMonths: 6, ageToMonths: 12 });
+  expect(titles(before.hers)).toEqual(["Baby porridge", "Fish fingers"]);
+  expect(before.fitsAge).toEqual([]);
+  expect(before.hers[0]).toMatchObject({ ageFromMonths: 4, ageToMonths: 9 });
 
   await call(`/api/children/${runi!.id}`, "PUT", { name: "Runi Lee", birthday: "2025-08-01" });
-  expect((await recipesFor(runi!.id)).fitsNow.map((item) => item.title)).toEqual(["Carrot mash"]);
-  expect((await recipesFor(runi!.id, "2026-08-01")).fitsNow.map((item) => item.title)).toEqual(["Carrot mash", "Toddler pasta"]);
-  expect((await recipesFor(runi!.id, "2027-08-01")).fitsNow.map((item) => item.title)).toEqual(["Toddler pasta"]);
+  // 7 months: the porridge still fits her.
+  const now = await recipesFor(runi!.id);
+  expect(titles(now.hers)).toEqual(["Baby porridge", "Fish fingers"]);
+  expect(titles(now.fitsAge)).toEqual(["Carrot mash"]);
+  // 12 months: the porridge is too young for her; Lasagne never shows.
+  const later = await recipesFor(runi!.id, "2026-08-01");
+  expect(titles(later.hers)).toEqual(["Fish fingers"]);
+  expect(titles(later.fitsAge)).toEqual(["Carrot mash", "Toddler pasta"]);
+  expect(titles((await recipesFor(runi!.id, "2027-08-01")).fitsAge)).toEqual(["Toddler pasta"]);
 });

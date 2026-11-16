@@ -33,7 +33,13 @@ function weekRange(monday: string) {
 }
 
 export function WeekScreen() {
-  const [monday, setMonday] = useState(() => mondayOf(today()));
+  // A recipe opened from the week links back with #/week?monday=..., so you land on the week you left.
+  const [monday, setMonday] = useState(() => {
+    const asked = new URLSearchParams(window.location.hash.split("?")[1] ?? "").get("monday");
+    // Read once, then dropped from the address so a later reload opens this week as usual.
+    if (asked) history.replaceState(null, "", "#/week");
+    return asked && /^\d{4}-\d{2}-\d{2}$/.test(asked) ? mondayOf(asked) : mondayOf(today());
+  });
   const [view, setView] = useState<WeekView>();
   const [problem, setProblem] = useState<string>();
   const [picking, setPicking] = useState<Picking>();
@@ -424,17 +430,19 @@ function DayCard({ day, index, people, kids, onPick, onPeople, onAddSide, onRemo
       <div className="day-body">
         <div className="dinner">
           {isToday && <span className="sticker sun tilt-l next">{t("Next up")}</span>}
-          <button type="button" className={`dish${day.dinner ? "" : " empty"}`} onClick={() => onPick(null)}>
-            {day.dinner ? (
-              <>
-                <Plate recipe={day.dinner} big />
-                <span className="dish-text">
-                  <strong>{day.dinner.title}</strong>
-                  {day.fromFreezer && <span className="sticker sky tilt-r from-freezer">{t("❄ From the freezer")}</span>}
-                  <Stickers recipe={day.dinner} />
-                </span>
-              </>
-            ) : day.away ? (
+          {/* A planned dinner opens its recipe (steps, "I made this"); Change opens the picker. */}
+          {day.dinner ? (
+            <a className="dish" href={`#/recipes/${day.dinner.id}?week=${mondayOf(day.date)}`}>
+              <Plate recipe={day.dinner} big />
+              <span className="dish-text">
+                <strong>{day.dinner.title}</strong>
+                {day.fromFreezer && <span className="sticker sky tilt-r from-freezer">{t("❄ From the freezer")}</span>}
+                <Stickers recipe={day.dinner} />
+              </span>
+            </a>
+          ) : (
+          <button type="button" className={`dish${day.away ? "" : " empty"}`} onClick={() => onPick(null)}>
+            {day.away ? (
               <span className="dish-text away">
                 <span className="away-icon" aria-hidden="true">
                   {awayIcon[day.away.kind]}
@@ -446,6 +454,12 @@ function DayCard({ day, index, people, kids, onPick, onPeople, onAddSide, onRemo
               <span className="pick">{t("+ Pick a dinner")}</span>
             )}
           </button>
+          )}
+          {day.dinner && (
+            <button type="button" className="btn small white change" aria-label={`Change dinner on ${weekday}`} onClick={() => onPick(null)}>
+              {t("Change")}
+            </button>
+          )}
           <div className="ppl" role="group" aria-label={`People on ${weekday}`}>
             <button type="button" aria-label={`One less person on ${weekday}`} disabled={people <= 1} onClick={() => onPeople(-1)}>
               −

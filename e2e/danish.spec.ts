@@ -42,8 +42,8 @@ test("in Danish: a dinner out, a salad next to the main dish, nemlig.com list, b
   await expect(monday.getByText(`Salat ${stamp}`)).toBeVisible();
 
   const tuesday = page.getByRole("listitem", { name: /tirsdag/i });
-  // Earlier tests may have planned this day already; the dinner button opens the picker either way.
-  await tuesday.locator("button.dish").click();
+  // Earlier tests may have planned this day already: then Change opens the picker, else the empty dinner button does.
+  await tuesday.locator("button.dish, button.change").first().click();
   await page.getByRole("dialog").getByLabel("Note, like where you eat").fill("Hos Isabel");
   await page.getByRole("dialog").getByRole("button", { name: /På besøg/ }).click();
   await expect(tuesday.getByText("Hos Isabel")).toBeVisible();

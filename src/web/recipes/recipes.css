@@ -689,3 +689,7 @@
 
 .save-shared { display: grid; gap: 0.8rem; justify-items: start; }
 .save-shared .save-photo { inline-size: 100%; max-block-size: 16rem; object-fit: cover; border: var(--line) solid var(--ink); border-radius: 1.2rem; }
+
+/* Two share buttons don't fit next to the heading on a phone: heading on its own row, buttons below. */
+.recipes .share .bar { flex-wrap: wrap; justify-content: flex-start; }
+.recipes .share .bar h2 { flex-basis: 100%; }
