@@ -133,9 +133,12 @@ export function WeekScreen() {
                     <li key={suggestion.id} className={suggestion.childId ? "kid-idea" : undefined}>
                       <p>{suggestion.text}</p>
                       {suggestion.kind !== "note" && (
-                        <button type="button" className="btn small mint" aria-label={`Do it: ${suggestion.text}`} onClick={() => act(() => acceptSuggestion(suggestion.id))}>
-                          {t("Do it")}
-                        </button>
+                        <div className="take-idea">
+                          <small>{t("I love it")}</small>
+                          <button type="button" className="btn small mint" aria-label={`Let's do it: ${suggestion.text}`} onClick={() => act(() => acceptSuggestion(suggestion.id))}>
+                            {t("Let's do it")}
+                          </button>
+                        </div>
                       )}
                     </li>
                   ))}
