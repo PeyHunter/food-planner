@@ -18,15 +18,12 @@ type Config = {
   photosDir: string | undefined;
   peytonPassword: string;
   ronjaPassword: string;
-  /** Kitchens without kids whose two passwords are both set. */
+  /** Kitchens without kids whose passwords are all set. */
   kidFreeKitchens: { name: string; people: StartingUser[] }[];
 };
 
-/** Kitchens without kids, two logins each. A pair is made once both `<NAME>_PASSWORD` env vars are set. */
-const kidFreePairs = [
-  ["isabel", "christopher"],
-  ["magnus", "mads"],
-] as const;
+/** Kitchens without kids, one or two logins each. A kitchen is made once every `<NAME>_PASSWORD` env var in it is set. */
+const kidFreeKitchenLogins: readonly (readonly string[])[] = [["isabel", "christopher"], ["magnus", "mads"], ["marieke"]];
 
 const capitalise = (name: string) => name.charAt(0).toUpperCase() + name.slice(1);
 
@@ -41,18 +38,16 @@ function readConfig(env: NodeJS.ProcessEnv): Config | { error: string } {
   const photosDir = env.PHOTOS_DIR || undefined;
   if (!photosDir && production) return { error: "PHOTOS_DIR is not set. Set it to a writable directory on a persistent volume." };
   const kidFreeKitchens: Config["kidFreeKitchens"] = [];
-  for (const [one, two] of kidFreePairs) {
-    const [keyOne, keyTwo] = [`${one.toUpperCase()}_PASSWORD`, `${two.toUpperCase()}_PASSWORD`];
-    const [passwordOne, passwordTwo] = [env[keyOne], env[keyTwo]];
-    if (!passwordOne !== !passwordTwo) return { error: `Set both ${keyOne} and ${keyTwo}, or neither.` };
-    if (passwordOne && passwordTwo)
-      kidFreeKitchens.push({
-        name: `${capitalise(one)} and ${capitalise(two)}'s kitchen`,
-        people: [
-          { username: one, password: passwordOne },
-          { username: two, password: passwordTwo },
-        ],
-      });
+  for (const names of kidFreeKitchenLogins) {
+    const keys = names.map((name) => `${name.toUpperCase()}_PASSWORD`);
+    const passwords = keys.map((key) => env[key]);
+    const setCount = passwords.filter(Boolean).length;
+    if (setCount === 0) continue;
+    if (setCount < names.length) return { error: `Set all of ${keys.join(", ")}, or none.` };
+    kidFreeKitchens.push({
+      name: `${names.map(capitalise).join(" and ")}'s kitchen`,
+      people: names.map((username, index) => ({ username, password: passwords[index]! })),
+    });
   }
   return {
     databaseUrl: DATABASE_URL,
