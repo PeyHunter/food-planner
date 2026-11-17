@@ -77,7 +77,7 @@ test("plan a fish dinner, set Wednesday to 5, mash it for Runi and take a swap",
   await expect(page.getByLabel("Runi Lee: Fish at least 2 a week: 1 so far, not met yet")).toBeVisible();
   await expect(page.getByRole("button", { name: /^Suggestions/ }).getByLabel(/ideas to meet the rules$/)).toBeVisible();
 
-  const swap = page.getByRole("button", { name: /^Do it: Add .* on Runi Lee's Monday to get fish 2\/2$/ });
+  const swap = page.getByRole("button", { name: /^Let's do it: Add .* on Runi Lee's Monday to get fish 2\/2$/ });
   await swap.click();
   await expect(page.getByLabel(/^Runi Lee: Fish at least 2 a week: \d so far, met$/)).toBeVisible();
 

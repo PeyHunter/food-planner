@@ -31,6 +31,8 @@
 .week .swaps ul{list-style:none;margin:0;padding:0;display:grid;gap:.6rem}
 .week .swaps li{display:flex;align-items:center;gap:.75rem;padding:.7rem .8rem;border:var(--line) solid var(--ink);border-radius:1.2rem;background:var(--sun-soft);box-shadow:var(--pop-sm)}
 .week .swaps p{flex:1;font-weight:700;line-height:1.25}
+.week .take-idea{display:grid;justify-items:center;gap:.2rem;flex:none}
+.week .take-idea small{font-size:.75rem;font-weight:700}
 
 /* day cards */
 .week .days{list-style:none;margin:0;padding:0;display:grid;gap:.9rem}
