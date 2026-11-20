@@ -1,4 +1,5 @@
-import { packOf, type Pack } from "./grocery-packs.ts";
+import { moreGroceries, moreNames } from "./groceries-more.ts";
+import { packFrom, packOf, type Pack } from "./grocery-packs.ts";
 import type { ShopSection } from "./recipes.ts";
 
 /**
@@ -431,13 +432,20 @@ const table: Record<ShopSection, [string, string][]> = {
 
 const list = (names: string) => names.split(",").map((name) => name.trim()).filter(Boolean);
 
-export const groceries: Grocery[] = Object.entries(table).flatMap(([section, rows]) =>
-  rows.map(([en, da]) => {
-    const grocery: Grocery = { en: list(en), da: list(da), section: section as ShopSection };
-    const pack = packOf(grocery.en[0]!);
-    return pack ? { ...grocery, pack } : grocery;
-  }),
-);
+export const groceries: Grocery[] = [
+  ...Object.entries(table).flatMap(([section, rows]) =>
+    rows.map(([en, da]) => {
+      const first = list(en)[0]!;
+      const [moreEn, moreDa] = moreNames[first] ?? ["", ""];
+      const grocery: Grocery = { en: [...list(en), ...list(moreEn)], da: [...list(da), ...list(moreDa)], section: section as ShopSection };
+      const pack = packOf(first);
+      return pack ? { ...grocery, pack } : grocery;
+    }),
+  ),
+  ...Object.entries(moreGroceries).flatMap(([section, rows]) =>
+    rows.map(([en, da, row]): Grocery => ({ en: list(en), da: list(da), section: section as ShopSection, ...(row ? { pack: packFrom(row) } : {}) })),
+  ),
+];
 
 /** Lower case, æ/ø/å written ae/oe/aa and other accents dropped, so "oksekød" and "oksekoed" are the same. */
 function fold(text: string) {
@@ -464,8 +472,10 @@ const descriptors = new Set(
 const frozenWords = new Set(["frozen", "frost", "frosne", "frossen", "frosset", "dybfrost", "dybfrosne", "dybfrossen"]);
 
 const byName = new Map<string, Grocery>();
-for (const grocery of groceries) for (const name of [...grocery.en, ...grocery.da]) if (!byName.has(fold(name))) byName.set(fold(name), grocery);
-const display = [...new Set(groceries.flatMap((grocery) => [...grocery.en, ...grocery.da]))].map((name) => ({ name, key: fold(name) }));
+// Keyed the way a typed name is read, without punctuation or digits: "sun-dried tomato" is found as "sun dried tomato".
+const nameKey = (name: string) => fold(name).replace(/[^a-z\s]/g, " ").split(/\s+/).filter(Boolean).join(" ");
+for (const grocery of groceries) for (const name of [...grocery.en, ...grocery.da]) if (!byName.has(nameKey(name))) byName.set(nameKey(name), grocery);
+const display = [...new Set(groceries.flatMap((grocery) => [...grocery.en, ...grocery.da]))].map((name) => ({ name, key: nameKey(name) }));
 
 /** Bare words of a name: no amounts, units, brackets or punctuation. */
 function wordsOf(name: string) {

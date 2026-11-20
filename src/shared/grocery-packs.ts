@@ -10,7 +10,7 @@ export type Pack = { amount: number; unit: Unit; pieceGrams?: number; nemlig?: s
 export const packsVersion = 1;
 
 // nemligId is the number in nemlig.com/produkt/<id>: the product the pack size was read from.
-type Row = [amount: number, unit: Unit, pieceGrams?: number | null, nemlig?: string, nemligId?: string];
+export type Row = [amount: number, unit: Unit, pieceGrams?: number | null, nemlig?: string, nemligId?: string];
 
 // Keyed by the grocery's first English name in groceries.ts.
 const rows: Record<string, Row> = {
@@ -236,6 +236,8 @@ const rows: Record<string, Row> = {
   "sesame oil": [250, "ml", null, "sesamolie"],
   "coconut oil": [250, "ml", null, "kokosolie"],
   "lemon juice": [200, "ml", null, "citronsaft"],
+  wine: [750, "ml", null, "rødvin"],
+  marzipan: [200, "g", null, "ren rå marcipan"],
   // Bread. Counted bread carries a piece weight so "4 burger buns" buys one bag.
   "rye bread": [500, "g", null, "rugbrød"],
   "white bread": [600, "g", null, "toastbrød"],
@@ -323,7 +325,10 @@ const rows: Record<string, Row> = {
 
 export function packOf(name: string): Pack | undefined {
   const row = rows[name];
-  if (!row) return undefined;
+  return row ? packFrom(row) : undefined;
+}
+
+export function packFrom(row: Row): Pack {
   const [amount, unit, pieceGrams, nemlig, nemligId] = row;
   return { amount, unit, ...(pieceGrams ? { pieceGrams } : {}), ...(nemlig ? { nemlig } : {}), ...(nemligId ? { nemligId } : {}) };
 }
