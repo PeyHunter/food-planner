@@ -2,3 +2,13 @@
 .profile .card{display:grid;gap:.75rem}
 .profile h3{margin:0}
 .profile label:not(.toggle){display:grid;gap:.3rem;font-weight:700}
+.profile .back{justify-self:start}
+.profile .log-out{justify-self:start;margin-block-start:.5rem}
+/* English | Dansk: two halves of one pill, the chosen half filled. */
+.profile .segmented{display:grid;grid-template-columns:1fr 1fr;inline-size:min(100%,20rem);border:var(--line) solid var(--ink);border-radius:999px;background:var(--paper);box-shadow:var(--pop-sm);overflow:hidden}
+.profile .segmented label{display:block;position:relative;cursor:pointer}
+.profile .segmented label+label{border-inline-start:var(--line) solid var(--ink)}
+.profile .segmented input{position:absolute;inset:0;margin:0;opacity:0;cursor:pointer}
+.profile .segmented span{display:grid;place-items:center;min-block-size:3rem;padding-inline:.75rem;font-weight:800}
+.profile .segmented input:checked+span{background:var(--ink);color:var(--paper)}
+.profile .segmented input:focus-visible+span{outline:3px solid var(--tomato);outline-offset:-5px}
