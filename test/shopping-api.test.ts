@@ -123,12 +123,23 @@ test("ticks are shared, set rather than flipped, and Clear ticked hides them", a
 
 test("a pack size set on the ingredient rounds the list up to packs", async () => {
   const { call, create, list } = await loggedIn();
-  const soup = await create(recipe("Soup", [line(800, "g", "Carrots")]));
+  // Quinces aren't in the shop catalog, so they start with no pack size.
+  const soup = await create(recipe("Soup", [line(800, "g", "Quinces")]));
   await call("/api/plan/days/2026-03-02", "PUT", { dinnerRecipeId: soup });
   const before = (await list()).sections[0]!.lines[0]!;
   expect(before).toMatchObject({ amount: 400, needsPackSize: true, packs: null });
   await call(`/api/ingredients/${before.ingredient.id}`, "PUT", { shopSection: "Vegetables", packAmount: 1, packUnit: "kg", alwaysAtHome: false });
-  expect((await list()).sections[0]!.lines[0]).toMatchObject({ packs: 1, leftover: "600 g carrots left", needsPackSize: false });
+  expect((await list()).sections[0]!.lines[0]).toMatchObject({ packs: 1, leftover: "600 g quinces left", needsPackSize: false });
+});
+
+test("known groceries come with the shop's pack: 3 onions and 600 g carrots fill a 1 kg net and a 2 kg bag", async () => {
+  const { call, create, list } = await loggedIn();
+  const stew = await create(recipe("Stew", [line(3, "pcs", "Onions"), line(600, "g", "Gulerødder")]));
+  await call("/api/plan/days/2026-03-02", "PUT", { dinnerRecipeId: stew, people: 4 });
+  const lines = (await list()).sections.flatMap((section) => section.lines);
+  // 3 × 160 g is 480 g, shown rounded up to 500 g.
+  expect(lines.find((one) => one.ingredient.name === "Onions")).toMatchObject({ amount: 500, unit: "g", packs: 1, needsPackSize: false });
+  expect(lines.find((one) => one.ingredient.name === "Gulerødder")).toMatchObject({ amount: 600, unit: "g", packs: 1 });
 });
 
 test("perf: the list for 7 planned days builds in 200 ms or less", async () => {

@@ -396,6 +396,8 @@ const table: Record<ShopSection, [string, string][]> = {
   Frozen: [
     ["pea, garden pea, petit pois", "ært, ærter, grønne ærter"],
     ["frozen vegetable, mixed vegetable", "frostgrøntsager, wokgrøntsager"],
+    ["frozen spinach", "frossen spinat, frosne spinat, bladspinat frost"],
+    ["frozen berry, frozen raspberry, frozen blueberry, frozen strawberry", "frosne bær, frosne hindbær, frosne blåbær, frosne jordbær, bærmix"],
     ["ice cream", "is, flødeis"],
     ["ice lolly", "ispind"],
     ["fish finger", "fiskepind, fiskepinde"],
