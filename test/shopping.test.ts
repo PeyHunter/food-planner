@@ -211,3 +211,41 @@ test("bags of the same thing add up as bags, next to any pieces", () => {
   const lines = section!.lines.map((line) => [line.amount, line.unit, line.needsPackSize]);
   expect(lines).toEqual(expect.arrayContaining([[2, "bag", false], [2, "pcs", false]]));
 });
+
+describe("several days combine into one list", () => {
+  const tomatoes = ingredient("Chopped tomatoes", "Dry goods", { packAmount: 400, packUnit: "g" });
+  const pasta = ingredient("Pasta", "Dry goods", { packAmount: 500, packUnit: "g" });
+
+  test("a can on Wednesday and a can on Thursday is one line of 2 cans", () => {
+    const bolognese = recipe("Bolognese", 4, [[400, "g", tomatoes], [400, "g", pasta]]);
+    const chili = recipe("Chili", 4, [[400, "g", tomatoes], [1, "pcs", onion]]);
+    const list = lines([day("2026-11-25", bolognese, { people: 4 }), day("2026-11-26", chili, { people: 4 })]);
+    const can = list.filter((one) => one.ingredient.name === "Chopped tomatoes");
+    expect(can).toHaveLength(1);
+    expect(can[0]).toMatchObject({ amount: 800, unit: "g", packs: 2, leftover: null, meals: ["Wed: Bolognese", "Thu: Chili"] });
+  });
+
+  test("small amounts on two days share a pack instead of buying two", () => {
+    const soup = recipe("Soup", 4, [[200, "g", tomatoes]]);
+    const stew = recipe("Stew", 4, [[150, "g", tomatoes]]);
+    expect(line([day("2026-11-25", soup, { people: 4 }), day("2026-11-26", stew, { people: 4 })], "Chopped tomatoes")).toMatchObject({ amount: 350, packs: 1 });
+  });
+
+  test("three days in a row add up and round up once", () => {
+    const meal = recipe("Pasta night", 4, [[300, "g", pasta]]);
+    const list = [day("2026-11-24", meal, { people: 4 }), day("2026-11-25", meal, { people: 4 }), day("2026-11-26", meal, { people: 4 })];
+    expect(line(list, "Pasta")).toMatchObject({ amount: 900, packs: 2, meals: ["Tue: Pasta night", "Wed: Pasta night", "Thu: Pasta night"] });
+  });
+
+  test("a dinner, a side and a child meal on different days all land on one line", () => {
+    const dinner = recipe("Bolognese", 4, [[400, "g", tomatoes]]);
+    const side = recipe("Tomato salsa", 4, [[200, "g", tomatoes]]);
+    const mash = recipe("Tomato mash", 1, [[100, "g", tomatoes]]);
+    const view = line(
+      [day("2026-11-25", dinner, { people: 4, sides: [side] }), day("2026-11-26", null, { childMeals: [{ childName: "Runi Lee", recipe: mash }] })],
+      "Chopped tomatoes",
+    );
+    expect(view).toMatchObject({ amount: 700, packs: 2 });
+    expect(view.meals).toHaveLength(3);
+  });
+});
