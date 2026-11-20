@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import type { Ingredient, IngredientRow, Recipe } from "../src/shared/recipes.ts";
 import { createTestApp, startingUsers } from "./support/test-app.ts";
+import { reguessOtherShopSections } from "../src/server/recipes.ts";
 
 async function kitchenWithIngredients() {
   const app = await createTestApp();
@@ -69,16 +70,16 @@ test("new ingredients get a guessed shop section, and a user's choice is never o
     feeds: 2,
     types: ["Fish"],
     tags: [],
-    lines: ["cream", "Salmon", "Sweet potatoes", "Frozen peas", "Saffron"].map((ingredient) => ({ amount: 1, unit: "pcs", ingredient, note: "" })),
+    lines: ["cream", "Salmon", "Sweet potatoes", "Frozen peas", "Sumac"].map((ingredient) => ({ amount: 1, unit: "pcs", ingredient, note: "" })),
     steps: [],
   });
   expect((await list()).map((ingredient) => [ingredient.name, ingredient.shopSection])).toEqual([
     ["Cream", "Other"],
     ["Frozen peas", "Frozen"],
-    ["Saffron", "Other"],
     ["Salmon", "Meat & fish"],
-    ["salt", "Dry goods"],
+    ["salt", "Spices & sauces"],
     ["Spaghetti", "Dry goods"],
+    ["Sumac", "Other"],
     ["Sweet potatoes", "Vegetables"],
   ]);
 });
@@ -161,4 +162,15 @@ test("ingredients need a login and stay in their kitchen", async () => {
   expect((await list()).map((ingredient) => ingredient.name)).not.toContain("Cream");
   expect((await call(`/api/ingredients/${cream!.id}`, "PUT", settings)).status).toBe(404);
   expect((await call("/api/ingredients/not-an-id", "PUT", settings)).status).toBe(404);
+});
+
+test("at start, ingredients still in Other get a fresh guess, and ones the user moved stay put", async () => {
+  const { app, call, list } = await kitchenWithIngredients();
+  const cream = (await list()).find((ingredient) => ingredient.name === "Cream")!;
+  await app.query(`update ingredients set shop_section = 'Other' where name in ('Spaghetti', 'salt')`);
+  await call(`/api/ingredients/${cream.id}`, "PUT", { shopSection: "Frozen", packAmount: null, packUnit: null, alwaysAtHome: false });
+
+  expect(await reguessOtherShopSections(app.database)).toBe(2);
+  expect(await reguessOtherShopSections(app.database)).toBe(0);
+  expect(Object.fromEntries((await list()).map((ingredient) => [ingredient.name, ingredient.shopSection]))).toEqual({ Cream: "Frozen", salt: "Spices & sauces", Spaghetti: "Dry goods" });
 });

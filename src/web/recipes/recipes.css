@@ -163,6 +163,18 @@
 .recipes .sticker.white {
   background: var(--r-paper);
 }
+.recipes .sticker.sun-soft {
+  background: var(--sun-soft);
+}
+.recipes .sticker.sky-soft {
+  background: var(--sky-soft);
+}
+.recipes .sticker.tomato-soft {
+  background: var(--tomato-soft);
+}
+.recipes .sticker.mint-soft {
+  background: var(--mint-soft);
+}
 .recipes .tilt-l {
   rotate: -3deg;
 }
@@ -435,7 +447,8 @@
   grid-template-columns: 4rem 4.75rem minmax(0, 1fr) 2.5rem;
   grid-template-areas:
     "name name name remove"
-    "amount unit note note";
+    "amount unit note note"
+    "hint hint hint hint";
   gap: 0.4rem;
   padding: 0.6rem;
   border: var(--r-line);
@@ -471,6 +484,28 @@
 .recipes .line-row .note {
   grid-area: note;
   color: var(--r-ink);
+}
+
+/* The guessed shop section, and "Did you mean" fixes for a name the guesser doesn't know. */
+.recipes .line-row .line-hint {
+  grid-area: hint;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  min-inline-size: 0;
+}
+
+.recipes .line-row .did-you-mean {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.recipes .line-row .line-hint .chip {
+  min-block-size: 2rem;
+  padding: 0 0.7rem;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
 }
 
 .recipes .line-row .remove {

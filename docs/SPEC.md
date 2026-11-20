@@ -21,7 +21,7 @@ A meal planner and recipe book for Peyton and Ronja (and their baby, Runi Lee). 
 ## Ingredients
 
 - One shared ingredient list per kitchen, so "carrot" and "carrots" are the same thing. Typing suggests existing ones; new ones get added.
-- Each ingredient has a **shop section**: Vegetables, Dairy, Meat & fish, Dry goods, Frozen, Other (list order).
+- Each ingredient has a **shop section**: Vegetables, Bread, Dairy, Meat & fish, Dry goods, Tins & jars, Spices & sauces, Frozen, Drinks, Other (list order). A new ingredient gets a guess from a table of common Danish and English groceries (src/shared/groceries.ts); the recipe form shows the guess and offers "Did you mean" fixes for names it does not know.
 - Optional **pack size** (amount + unit, e.g. 1 kg, 1 l, 5 pcs), filled in the first time it matters.
 - Optional **always at home** flag (salt, oil, pepper): never on the shopping list.
 
