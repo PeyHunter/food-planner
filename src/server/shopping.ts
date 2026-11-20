@@ -7,6 +7,7 @@ import type { Unit } from "../shared/units.ts";
 import { defaultPeople, isDate, mondayOf, weekDates } from "../shared/week.ts";
 import type { AppDependencies } from "./app.ts";
 import { kitchenMember, type MemberEnv } from "./recipes.ts";
+import { sameGroceryAs } from "./same-grocery.ts";
 import { childDays, children, ingredients, planDays, planSides, recipeLines, recipes, shoppingExtras, shoppingTicks } from "./schema.ts";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -78,11 +79,12 @@ export function createShoppingRoutes({ database, now }: AppDependencies) {
         ])
       : [[], []];
     const byId = new Map<string, ShoppingRecipe>(recipeRows.map((row) => [row.id, { title: row.title, feeds: row.feeds, lines: [] }]));
+    const aliases = lineRows.length ? await sameGroceryAs(database, kitchenId) : new Map();
     for (const { recipeId, amount, unit, ingredient } of lineRows) {
       byId.get(recipeId)?.lines.push({
         amount,
         unit: unit as Unit | null,
-        ingredient: { ...ingredient, shopSection: ingredient.shopSection as ShopSection, packUnit: ingredient.packUnit as Unit | null },
+        ingredient: aliases.get(ingredient.id) ?? { ...ingredient, shopSection: ingredient.shopSection as ShopSection, packUnit: ingredient.packUnit as Unit | null },
       });
     }
     return dates.map((date) => {

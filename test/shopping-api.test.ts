@@ -164,3 +164,26 @@ test("Bought it all clears every item at once, and Bring back shows them again",
   await call(`/api/shopping/${monday}/bring-back`, "POST");
   expect(names(await list())).toEqual(["Carrots", "Onion"]);
 });
+
+test("one thing under a Danish and an English name is one line: løg on Wednesday, onions on Thursday", async () => {
+  const { call, create, list } = await loggedIn();
+  const danish = await create(recipe("Frikadeller", [line(1, "pcs", "Løg"), line(500, "g", "Hakket svinekød")]));
+  const english = await create(recipe("Chili", [line(2, "pcs", "Onions"), line(400, "g", "Chopped tomatoes")]));
+  await call("/api/plan/days/2026-03-04", "PUT", { dinnerRecipeId: danish, people: 4 });
+  await call("/api/plan/days/2026-03-05", "PUT", { dinnerRecipeId: english, people: 4 });
+
+  const shopping = await list();
+  const onions = shopping.sections.flatMap((section) => section.lines).filter((one) => /løg|onion/i.test(one.ingredient.name));
+  expect(onions).toHaveLength(1);
+  expect(onions[0]!.meals).toEqual(["Wed: Frikadeller", "Thu: Chili"]);
+  // The key is the first name's, so a tick stays put when only Thursday is picked.
+  const thursdayOnly = await list("?days=2026-03-05");
+  expect(thursdayOnly.sections.flatMap((section) => section.lines).find((one) => /løg|onion/i.test(one.ingredient.name))!.key).toBe(onions[0]!.key);
+});
+
+test("red onion and onion stay two lines", async () => {
+  const { call, create, list } = await loggedIn();
+  const salad = await create(recipe("Salad", [line(1, "pcs", "Red onion"), line(1, "pcs", "Onion")]));
+  await call("/api/plan/days/2026-03-04", "PUT", { dinnerRecipeId: salad, people: 4 });
+  expect(names(await list()).filter((name) => /onion/i.test(name)).sort()).toEqual(["Onion", "Red onion"]);
+});
