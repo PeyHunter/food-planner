@@ -1,4 +1,4 @@
-# Recipe photos. local-path keeps them on the disk of the node that first mounts the volume (k3s-2, see web.yaml).
+# Recipe photos. local-path keeps them on the disk of the node that first mounts the volume; the web pod follows it.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
