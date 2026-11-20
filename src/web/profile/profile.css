@@ -5,7 +5,9 @@
 .profile .back{justify-self:start}
 .profile .log-out{justify-self:start;margin-block-start:.5rem}
 /* English | Dansk: two halves of one pill, the chosen half filled. */
-.profile .segmented{display:grid;grid-template-columns:1fr 1fr;inline-size:min(100%,20rem);border:var(--line) solid var(--ink);border-radius:999px;background:var(--paper);box-shadow:var(--pop-sm);overflow:hidden}
+.profile .segmented{position:relative;display:grid;grid-template-columns:1fr 1fr;inline-size:min(100%,20rem);border-radius:999px;background:var(--paper);box-shadow:var(--pop-sm);overflow:hidden}
+/* The rim is drawn over the segments, so the dark fill has no light seam where the clip and the border meet. */
+.profile .segmented::after{content:"";position:absolute;inset:0;border:var(--line) solid var(--ink);border-radius:inherit;pointer-events:none}
 .profile .segmented label{display:block;position:relative;cursor:pointer}
 .profile .segmented label+label{border-inline-start:var(--line) solid var(--ink)}
 .profile .segmented input{position:absolute;inset:0;margin:0;opacity:0;cursor:pointer}
