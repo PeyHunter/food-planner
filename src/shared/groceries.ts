@@ -1,7 +1,11 @@
+import { packOf, type Pack } from "./grocery-packs.ts";
 import type { ShopSection } from "./recipes.ts";
 
-/** One thing you can buy. Names are singular; the first Danish name is the one a Danish shop search uses. */
-export type Grocery = { en: string[]; da: string[]; section: ShopSection };
+/**
+ * One thing you can buy. Names are singular; the first Danish name is the one a Danish shop search uses.
+ * `pack` is how Danish shops sell it, when known (see docs/research/danish-pack-sizes.md).
+ */
+export type Grocery = { en: string[]; da: string[]; section: ShopSection; pack?: Pack };
 
 // [English names, Danish names], comma separated. Irregular Danish plurals are listed as names of their own.
 const table: Record<ShopSection, [string, string][]> = {
@@ -426,7 +430,11 @@ const table: Record<ShopSection, [string, string][]> = {
 const list = (names: string) => names.split(",").map((name) => name.trim()).filter(Boolean);
 
 export const groceries: Grocery[] = Object.entries(table).flatMap(([section, rows]) =>
-  rows.map(([en, da]) => ({ en: list(en), da: list(da), section: section as ShopSection })),
+  rows.map(([en, da]) => {
+    const grocery: Grocery = { en: list(en), da: list(da), section: section as ShopSection };
+    const pack = packOf(grocery.en[0]!);
+    return pack ? { ...grocery, pack } : grocery;
+  }),
 );
 
 /** Lower case, æ/ø/å written ae/oe/aa and other accents dropped, so "oksekød" and "oksekoed" are the same. */
@@ -601,4 +609,24 @@ export function didYouMean(name: string): string[] {
 /** The main Danish name for a known English or Danish name ("chicken breasts" -> kyllingebryst), for a Danish shop search. */
 export function danishName(name: string): string | undefined {
   return recognise(name)?.grocery.da[0];
+}
+
+/**
+ * The grocery a whole name is, with nothing guessed: "løg", "onions" and "Chopped tomatoes" yes; "garlic powder" (garlic + powder),
+ * "hvidløgspulver" (a compound) or a spelling slip no. Pack sizes and merging two names into one shopping line use this, since
+ * a wrong guess there buys the wrong thing.
+ */
+export function groceryOf(name: string): Grocery | undefined {
+  const words = wordsOf(name);
+  const frozen = words.some((word) => frozenWords.has(word));
+  for (const phrase of [words, words.filter((word) => !descriptors.has(word) && !frozenWords.has(word))]) {
+    if (!phrase.length) continue;
+    const head = phrase.slice(0, -1).join(" ");
+    const found = inflections(phrase.at(-1)!)
+      .map((form) => byName.get(head ? `${head} ${form}` : form))
+      .find(Boolean);
+    // "Frozen peas" is not a bag of fresh peas.
+    if (found) return frozen && found.section !== "Frozen" ? undefined : found;
+  }
+  return undefined;
 }

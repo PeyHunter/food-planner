@@ -249,3 +249,27 @@ describe("several days combine into one list", () => {
     expect(view.meals).toHaveLength(3);
   });
 });
+
+describe("piece weights", () => {
+  const tomato = ingredient("Tomato", "Vegetables", { packAmount: 500, packUnit: "g", pieceGrams: 100 });
+  const lemon = ingredient("Lemon", "Vegetables", { packAmount: 1, packUnit: "pcs", pieceGrams: 120 });
+
+  test("counted tomatoes fill bags sold by weight, and add to tomatoes in grams", () => {
+    const salad = recipe("Salad", 4, [[3, "pcs", tomato]]);
+    const sauce = recipe("Sauce", 4, [[400, "g", tomato]]);
+    const list = lines([day("2026-11-25", salad, { people: 4 }), day("2026-11-26", sauce, { people: 4 })]).filter((one) => one.ingredient.name === "Tomato");
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({ amount: 700, unit: "g", packs: 2 });
+  });
+
+  test("grams of a thing sold by the piece become whole pieces", () => {
+    const fish = recipe("Fish", 4, [[200, "g", lemon]]);
+    expect(line([day("2026-11-25", fish, { people: 4 })], "Lemon")).toMatchObject({ amount: 2, unit: "pcs", packs: 2 });
+  });
+
+  test("without a piece weight, pieces and grams stay apart", () => {
+    const plain = ingredient("Tomato", "Vegetables", { packAmount: 500, packUnit: "g" });
+    const list = lines([day("2026-11-25", recipe("Salad", 4, [[3, "pcs", plain], [100, "g", plain]]), { people: 4 })]);
+    expect(list.filter((one) => one.ingredient.name === "Tomato")).toHaveLength(2);
+  });
+});

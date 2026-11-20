@@ -65,6 +65,10 @@ export const ingredients = pgTable(
     shopSection: text("shop_section").notNull().default("Other"),
     packAmount: doublePrecision("pack_amount"),
     packUnit: text("pack_unit"),
+    /** Grams in one piece ("1 onion" is about 150 g), so counted lines can fill packs sold by weight and back. */
+    pieceGrams: doublePrecision("piece_grams"),
+    /** Who set the pack size: "catalog:<version>" from the shop catalog, "user" once a person edits it, null before either. */
+    packSource: text("pack_source"),
     alwaysAtHome: boolean("always_at_home").notNull().default(false),
     createdBy: createdBy(),
     createdAt: at("created_at").notNull().defaultNow(),
