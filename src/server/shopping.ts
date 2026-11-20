@@ -67,6 +67,7 @@ export function createShoppingRoutes({ database, now }: AppDependencies) {
                 shopSection: ingredients.shopSection,
                 packAmount: ingredients.packAmount,
                 packUnit: ingredients.packUnit,
+                pieceGrams: ingredients.pieceGrams,
                 alwaysAtHome: ingredients.alwaysAtHome,
               },
             })
