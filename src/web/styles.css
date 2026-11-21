@@ -19,9 +19,13 @@
   --muted:color-mix(in oklch,var(--ink) 62%,white);
   /* Day tiles, Monday to Sunday. */
   --day-1:var(--tomato);--day-2:var(--mint);--day-3:var(--lilac);--day-4:var(--sky);--day-5:var(--sun);--day-6:var(--tomato-soft);--day-7:var(--mint-soft);
-  --line:2px;
-  --pop:3px 3px 0 var(--ink);
-  --pop-sm:2px 2px 0 var(--ink);
+  /* Line widths: every border, outline and divider uses one of these. */
+  --line-bold:2px;
+  --line:1.5px;
+  --line-thin:1px;
+  --pop:2px 2px 0 var(--ink);
+  --pop-sm:1.5px 1.5px 0 var(--ink);
+  --pop-lg:4px 4px 0 var(--ink);
   --step-0:clamp(1rem,0.95rem + 0.25vw,1.125rem);
   --step-1:clamp(1.25rem,1.1rem + 0.7vw,1.6rem);
   --step-2:clamp(1.6rem,1.4rem + 1vw,2.1rem);
@@ -38,7 +42,7 @@ svg,img{display:block;max-width:100%;height:auto}
 button,a{touch-action:manipulation;font:inherit;color:inherit}
 button{user-select:none;-webkit-user-select:none;cursor:pointer}
 input{font:inherit;font-size:max(16px,1rem)}
-:focus-visible{outline:3px solid var(--tomato);outline-offset:3px}
+:focus-visible{outline:var(--line-bold) solid var(--tomato);outline-offset:3px}
 
 /* page shell */
 .app{display:grid;grid-template-columns:[full-start] minmax(var(--gutter),1fr) [content-start] min(100% - var(--gutter)*2,34rem) [content-end] minmax(var(--gutter),1fr) [full-end];
@@ -53,8 +57,10 @@ input{font:inherit;font-size:max(16px,1rem)}
 .top .profile-link .avatar{display:grid;place-items:center;inline-size:2.1rem;block-size:2.1rem;border:var(--line) solid var(--ink);border-radius:50%;background:var(--lilac);font-size:1rem;line-height:1}
 .top .profile-link .word{display:none;padding-inline-end:.6rem}
 .top .profile-link[aria-current=page]{background:var(--sun)}
-.top .profile-link:active{translate:2px 2px;box-shadow:none}
+.top .profile-link:active{translate:1.5px 1.5px;box-shadow:none}
 @media (min-width:22rem){.top .profile-link .word{display:inline}}
+/* The logo and "Hi name" take you to the front page (Week). */
+.top .home{display:flex;align-items:center;gap:.75rem;min-block-size:2.75rem;color:inherit;text-decoration:none;border-radius:1rem}
 .logo{flex:none;inline-size:3rem;block-size:3rem;border:var(--line) solid var(--ink);border-radius:50%;background:var(--sun);box-shadow:var(--pop-sm);object-fit:cover}
 
 /* sticker */
@@ -68,16 +74,16 @@ input{font:inherit;font-size:max(16px,1rem)}
   background:var(--tomato);color:var(--ink);box-shadow:var(--pop);font-weight:800;font-size:1.05rem;text-decoration:none;letter-spacing:-.01em}
 .btn.sun{background:var(--sun)}.btn.mint{background:var(--mint)}.btn.white{background:var(--paper)}.btn.lilac{background:var(--lilac)}
 .btn.small{min-block-size:2.75rem;padding-inline:.9rem;font-size:.9rem;border-radius:999px;box-shadow:var(--pop-sm)}
-.btn:active{transform:translate(3px,3px) scale(.98);box-shadow:1px 1px 0 var(--ink)}
+.btn:active{transform:translate(2px,2px) scale(.98);box-shadow:none}
 .btn:disabled{opacity:.6;cursor:progress}
 @media (prefers-reduced-motion:no-preference){.btn,.chip,.tab{transition:transform 120ms ease-out,box-shadow 120ms ease-out,scale 120ms ease-out}}
-@media (hover:hover) and (pointer:fine){.btn:hover:not(:disabled){transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--ink)}}
+@media (hover:hover) and (pointer:fine){.btn:hover:not(:disabled){transform:translate(-1px,-1px);box-shadow:var(--pop-lg)}}
 
 /* chips */
 .chips{display:flex;gap:.6rem;overflow-x:auto;padding:.3rem .3rem .7rem;margin-inline:-.3rem;scrollbar-width:none;scroll-snap-type:x proximity}
 .chip{flex:none;scroll-snap-align:start;min-block-size:2.75rem;padding-inline:1rem;border:var(--line) solid var(--ink);border-radius:999px;background:var(--paper);font-weight:800;box-shadow:var(--pop-sm)}
-.chip[aria-pressed=true]{background:var(--ink);color:var(--paper);box-shadow:none;translate:2px 2px}
-.chip:active{translate:2px 2px;box-shadow:none}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--paper);box-shadow:none;translate:1.5px 1.5px}
+.chip:active{translate:1.5px 1.5px;box-shadow:none}
 
 /* card */
 .card{display:grid;gap:.75rem;padding:1.25rem;border:var(--line) solid var(--ink);border-radius:1.5rem;background:var(--c,var(--paper));box-shadow:var(--pop)}
@@ -90,7 +96,7 @@ input{font:inherit;font-size:max(16px,1rem)}
 .login form{inline-size:100%;text-align:start}
 label{display:grid;gap:.35rem;font-weight:800}
 input{inline-size:100%;padding:.75rem .9rem;border:var(--line) solid var(--ink);border-radius:1rem;background:var(--paper);color:var(--ink)}
-[role=alert]{padding:.6rem .8rem;border:1.5px solid var(--ink);border-radius:.9rem;background:var(--tomato-soft);font-weight:700}
+[role=alert]{padding:.6rem .8rem;border:var(--line-thin) solid var(--ink);border-radius:.9rem;background:var(--tomato-soft);font-weight:700}
 
 /* tab bar */
 .tabbar{position:fixed;inset-inline:0;inset-block-end:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:.4rem;
@@ -107,17 +113,23 @@ input{inline-size:100%;padding:.75rem .9rem;border:var(--line) solid var(--ink);
   .app{grid-template-columns:[full-start] minmax(var(--gutter),1fr) [content-start] min(100% - var(--gutter)*2,90rem) [content-end] minmax(var(--gutter),1fr) [full-end]}
   .recipes .book,.recipes .recipe-page,.recipes .recipe-form,.recipes .ingredient-form,.shopping,.kids,.profile{inline-size:100%;max-inline-size:56rem;justify-self:center;margin-inline:auto}
   .recipes .cards{grid-template-columns:repeat(auto-fill,minmax(20rem,1fr))}
-  .week .days{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
   /* the tabs sit under the page, not spread across the whole screen */
   .tabbar{padding-inline:max(var(--gutter),(100% - 48rem)/2)}
 }
-@media (min-width:84rem){
-  .week .days{grid-template-columns:repeat(3,minmax(0,1fr))}
-}
-@media (min-width:110rem){
-  .week .days{grid-template-columns:repeat(4,minmax(0,1fr))}
-}
 /* An on/off switch, outside the recipe screens (Profile, Runi & kids). */
 .toggle{display:flex;align-items:center;gap:.6rem;font-weight:800}
-.toggle input{appearance:none;flex:none;inline-size:3.4rem;block-size:2rem;margin:0;padding:0;border:var(--line) solid var(--ink);border-radius:999px;background:radial-gradient(circle at .85rem 50%,var(--paper) 0 .6rem,transparent .65rem),color-mix(in srgb,var(--ink) 25%,white);box-shadow:2px 2px 0 var(--ink);cursor:pointer}
+.toggle input{appearance:none;flex:none;inline-size:3.4rem;block-size:2rem;margin:0;padding:0;border:var(--line) solid var(--ink);border-radius:999px;background:radial-gradient(circle at .85rem 50%,var(--paper) 0 .6rem,transparent .65rem),color-mix(in srgb,var(--ink) 25%,white);box-shadow:var(--pop-sm);cursor:pointer}
 .toggle input:checked{background:radial-gradient(circle at calc(100% - .85rem) 50%,var(--paper) 0 .6rem,transparent .65rem),var(--mint)}
+
+/* Only an open sheet scrolls, never the page behind it. */
+html:has(dialog[open]){overflow:hidden}
+
+/* Every control is at least 40px tall, so it is easy to tap on a phone. */
+/* :root lifts these over screen rules that shrink a select (like the shopping "Move to…" one). */
+:root select:not([multiple]),.quiet,button.link{min-block-size:2.5rem}
+/* A plain text link standing on its own line, like "Back to the book". */
+.save-shared>a{display:inline-flex;align-items:center;min-block-size:2.5rem}
+
+/* A round ✕ that removes one thing (a rule, a side dish, an extra item). */
+button.remove{display:grid;place-items:center;flex:none;inline-size:2.75rem;block-size:2.75rem;padding:0;border:var(--line) solid var(--ink);border-radius:50%;background:var(--paper);font-weight:800;font-size:1.1rem;line-height:1}
+button.remove:active{background:var(--tomato-soft)}

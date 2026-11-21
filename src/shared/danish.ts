@@ -316,6 +316,13 @@ export const danish: Record<string, string> = {
   "Nothing to swap. This week wastes very little.": "Intet at bytte. Denne uge giver meget lidt spild.",
 
   // Runi & kids
+  "Each rule counts {name}'s meals in one week. Progress is for this week.": "Hver regel tæller {name}s måltider i en uge. Fremskridt gælder denne uge.",
+  "No rules yet.": "Ingen regler endnu.",
+  "We're still building this part. Check back soon!": "Vi bygger stadig på den her del. Kig forbi igen snart!",
+  "Flip through your recipe book and add new dishes.": "Bladr i din opskriftsbog og tilføj nye retter.",
+  "Plan dinners for the week and check the rules.": "Planlæg ugens aftensmad og tjek reglerne.",
+  "One list with everything the week needs.": "Én liste med alt, hvad ugen skal bruge.",
+  "Runi Lee's own recipes and rules, by age.": "Runi Lees egne opskrifter og regler efter alder.",
   "+ Add a child": "+ Tilføj et barn",
   "Add a child": "Tilføj et barn",
   Birthday: "Fødselsdag",

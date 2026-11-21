@@ -146,8 +146,10 @@ function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
     <KidsContext.Provider value={kids}>
       <main className="app">
         <header className="top">
-          <img className="logo" src="/icons/icon-192.png" alt="" width={48} height={48} />
-          <h1>{t("Hi {name}", { name })}</h1>
+          <a className="home" href="#/week">
+            <img className="logo" src="/icons/icon-192.png" alt="" width={48} height={48} />
+            <h1>{t("Hi {name}", { name })}</h1>
+          </a>
           <a className="profile-link" href="#/profile" aria-label={t("Profile")} aria-current={onProfile ? "page" : undefined}>
             <span className="avatar" aria-hidden="true">
               {name.charAt(0)}
@@ -187,8 +189,8 @@ function ComingSoon({ tab }: { tab: Tab }) {
     <section className="card" style={{ "--c": tab.colour } as CSSProperties}>
       <span className="sticker white tilt-l">{t("Coming soon")}</span>
       <h2>{t(tab.label)}</h2>
-      <p className="note">{tab.soon}</p>
-      <p className="note">We're still building this part. Check back soon!</p>
+      <p className="note">{t(tab.soon)}</p>
+      <p className="note">{t("We're still building this part. Check back soon!")}</p>
     </section>
   );
 }

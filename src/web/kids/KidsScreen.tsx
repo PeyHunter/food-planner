@@ -39,7 +39,7 @@ export function KidsScreen() {
 
   return (
     <section className="kids">
-      <h2 className="kids-title">Runi &amp; kids</h2>
+      <h2 className="kids-title">{t("Runi & kids")}</h2>
       <div className="chips" role="group" aria-label="Pick a child">
         {kids?.map((entry) => (
           <button key={entry.id} type="button" className="chip" aria-pressed={!adding && entry.id === kid?.id} onClick={() => (setChosen(entry.id), setAdding(false))}>
@@ -258,9 +258,9 @@ function RulesCard({ kid }: { kid: ChildView }) {
           {editing ? t("Done") : t("Change rules")}
         </button>
       </div>
-      <p className="hint">Each rule counts {kid.name}'s meals in one week. Progress is for this week.</p>
+      <p className="hint">{t("Each rule counts {name}'s meals in one week. Progress is for this week.", { name: kid.name })}</p>
       {problem && <p role="alert">{problem}</p>}
-      {rules && !rules.length && <p className="hint">No rules yet.</p>}
+      {rules && !rules.length && <p className="hint">{t("No rules yet.")}</p>}
       <ul className="big-rules">
         {rules?.map((rule) => (editing ? <RuleEditor key={rule.id} rule={rule} onChange={act} /> : <BigRule key={rule.id} rule={rule} />))}
       </ul>
