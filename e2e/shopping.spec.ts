@@ -15,7 +15,8 @@ async function logIn(browser: Browser, name: "peyton" | "ronja") {
 const openShopping = (page: Page) => page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Shopping" }).click();
 
 test("two phones share one list: packs, leftovers, pack size, ticks and extras", async ({ browser }) => {
-  const stamp = Date.now();
+  // Letters only: the shop catalog reads past digits, so "Onions 1795…" would be the kitchen's onions, not a new ingredient.
+  const stamp = Date.now().toString(4).replace(/[0-3]/g, (digit) => "qwxz"[Number(digit)]!);
   const carrots = `Parsnips ${stamp}`;
   const leeks = `Leeks ${stamp}`;
   const milk = `Milk ${stamp}`;

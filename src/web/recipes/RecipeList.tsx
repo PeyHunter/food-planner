@@ -1,19 +1,33 @@
 import { useEffect, useState } from "react";
 import { t } from "../i18n.ts";
+import { kidsTabLabel } from "../kids/labels.ts";
+import { useKidNames } from "../kitchen.ts";
 import { formatMinutes, type RecipeSummary } from "../../shared/recipes.ts";
-import { listBookRecipes } from "./api.ts";
+import { childRecipeTag } from "../../shared/week.ts";
+import { listRecipes } from "./api.ts";
 import { TypeStickers } from "./RecipePage.tsx";
+import { StarterRecipesButton } from "./StarterRecipesButton.tsx";
 
 export function RecipeList() {
   const [q, setQ] = useState("");
   const [recipes, setRecipes] = useState<RecipeSummary[]>();
   const [problem, setProblem] = useState<string>();
+  // The kids' own recipes live on the kids tab; the list only says how many it leaves out.
+  const [hidden, setHidden] = useState(0);
+  const [loads, setLoads] = useState(0);
+  const kidNames = useKidNames();
 
   useEffect(() => {
     let current = true;
     const timer = setTimeout(() => {
-      listBookRecipes(q).then(
-        (found) => current && (setRecipes(found), setProblem(undefined)),
+      listRecipes(q).then(
+        (found) => {
+          if (!current) return;
+          const book = found.filter((recipe) => !recipe.tags.includes(childRecipeTag));
+          setRecipes(book);
+          setHidden(found.length - book.length);
+          setProblem(undefined);
+        },
         (error: Error) => current && setProblem(error.message),
       );
     }, 150);
@@ -21,7 +35,7 @@ export function RecipeList() {
       current = false;
       clearTimeout(timer);
     };
-  }, [q]);
+  }, [q, loads]);
 
   return (
     <section className="recipe-list">
@@ -45,15 +59,21 @@ export function RecipeList() {
           </a>
         </span>
       </div>
-      <input type="search" className="search" placeholder={t("Search by name or ingredient")} aria-label="Search recipes" value={q} onChange={(event) => setQ(event.target.value)} />
+      <input type="search" className="search" placeholder={t("Search by name or ingredient")} aria-label={t("Search recipes")} value={q} onChange={(event) => setQ(event.target.value)} />
       {problem && <p role="alert">{problem}</p>}
       {recipes && recipes.length === 0 && !q && (
         <div className="empty">
           <p className="big">{t("Nothing here yet.")}</p>
           <p>{t("Add your first recipe.")}</p>
+          <StarterRecipesButton onAdded={() => setLoads((count) => count + 1)} />
         </div>
       )}
       {recipes && recipes.length === 0 && q && <p className="hint">{t('No recipe matches "{q}".', { q })}</p>}
+      {hidden > 0 && (
+        <p className="hint kids-hint">
+          <a href="#/kids">{t("Kids' recipes are on the {tab} tab →", { tab: kidsTabLabel(kidNames) })}</a>
+        </p>
+      )}
       <ul className="cards">
         {recipes?.map((recipe) => (
           <li key={recipe.id}>

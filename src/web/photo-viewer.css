@@ -1,0 +1,15 @@
+/* Full-screen photo viewer (PhotoViewer.tsx): dark stage, chunky Sticker pop buttons on top. */
+.photo-viewer { position: fixed; inset: 0; inline-size: 100%; max-inline-size: none; block-size: 100%; max-block-size: none; margin: 0; padding: 0; border: 0; background: #16141d; color: var(--paper, #fff); overscroll-behavior: contain; }
+.photo-viewer[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
+.photo-viewer::backdrop { background: #16141d; }
+.photo-viewer .viewer-top { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: calc(.75rem + env(safe-area-inset-top, 0px)) var(--gutter, 1rem) .75rem; }
+.photo-viewer button { display: inline-grid; place-items: center; border: var(--line, 3px) solid var(--ink, #23202f); background: var(--paper, #fff); color: var(--ink, #23202f); box-shadow: 3px 3px 0 var(--sun, #ffd84d); font: inherit; font-weight: 800; cursor: pointer; }
+.photo-viewer button:active:not(:disabled) { translate: 2px 2px; box-shadow: none; }
+.photo-viewer button:disabled { opacity: .35; }
+.photo-viewer .viewer-back { min-block-size: 3rem; padding-inline: 1.1rem; border-radius: 999px; font-size: 1.05rem; }
+.photo-viewer .viewer-close { inline-size: 3.25rem; block-size: 3.25rem; border-radius: 50%; font-size: 1.5rem; }
+.photo-viewer .viewer-count { font-weight: 800; font-variant-numeric: tabular-nums; }
+.photo-viewer .viewer-stage { display: grid; place-items: center; min-block-size: 0; padding: 0 var(--gutter, 1rem); touch-action: pan-y pinch-zoom; }
+.photo-viewer .viewer-stage img { max-inline-size: 100%; max-block-size: 100%; object-fit: contain; border-radius: .8rem; }
+.photo-viewer .viewer-turn { display: flex; justify-content: center; gap: 1.5rem; padding: .75rem var(--gutter, 1rem) calc(1rem + env(safe-area-inset-bottom, 0px)); }
+.photo-viewer .viewer-turn button { inline-size: 3.5rem; block-size: 3.5rem; border-radius: 50%; font-size: 1.4rem; }

@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { loggingClient } from "./ai-calls.ts";
 import { eq } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -302,6 +303,7 @@ export function fakeClient(output: unknown, calls: CreateParams[] = []): PhotoRe
             role: "assistant",
             model,
             stop_reason: "tool_use",
+            usage: { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
             content: [{ type: "tool_use", id: "toolu_fake", name: toolName, input: output }],
           } as unknown as Anthropic.Beta.Messages.BetaMessage;
         },
@@ -349,8 +351,10 @@ export function createPhotoRecipeRoutes({ database, now, photoRecipeClient, open
     }
     const signal = AbortSignal.timeout(timeoutMs);
     try {
-      const tags = await kitchenTags(c.get("member").kitchenId);
-      const [output, dishPhoto] = await Promise.all([readRecipeFromPage(photoRecipeClient, page, signal, tags), fetchDishPhoto(page.imageUrl, AbortSignal.timeout(pageTimeoutMs), openUrl)]);
+      const { kitchenId, userId } = c.get("member");
+      const tags = await kitchenTags(kitchenId);
+      const client = loggingClient(photoRecipeClient, database, { kitchenId, userId, feature: "link" });
+      const [output, dishPhoto] = await Promise.all([readRecipeFromPage(client, page, signal, tags), fetchDishPhoto(page.imageUrl, AbortSignal.timeout(pageTimeoutMs), openUrl)]);
       const noRecipeHere = "We couldn't find a recipe on that page. If it needs a login, take a screenshot and use Photo to recipe instead.";
       if (output === undefined) return c.json({ error: noRecipeHere }, 422);
       const draft = toDraft(output, tags);
@@ -377,8 +381,9 @@ export function createPhotoRecipeRoutes({ database, now, photoRecipeClient, open
       // One at a time: the pod has little memory.
       const images: string[] = [];
       for (const photo of photos) images.push(await shrink(photo));
-      const tags = await kitchenTags(c.get("member").kitchenId);
-      const output = await readRecipe(photoRecipeClient, images, signal, tags);
+      const { kitchenId, userId } = c.get("member");
+      const tags = await kitchenTags(kitchenId);
+      const output = await readRecipe(loggingClient(photoRecipeClient, database, { kitchenId, userId, feature: "photo" }), images, signal, tags);
       if (output === undefined) return c.json({ error: noRecipe }, 422);
       const draft = toDraft(output, tags);
       if (!draft.recipe.title && !draft.recipe.lines.length && !draft.recipe.steps.length) return c.json({ error: noRecipe }, 422);

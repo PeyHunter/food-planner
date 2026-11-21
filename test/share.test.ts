@@ -202,7 +202,7 @@ test("someone in another kitchen saves a shared recipe, with its photos, as thei
   await upload(recipeId, "main");
   await upload(recipeId, "gallery");
   const token = pathOf((await share(recipeId, "POST"))!).split("/")[2]!;
-  await ensureHousehold(app.database, [{ username: "isabel", password: "peapear" }, { username: "christopher", password: "limekale" }], { name: "Isabel's", kids: false });
+  await ensureHousehold(app.database, [{ username: "isabel", password: "peapear" }, { username: "christopher", password: "limekale" }], { name: "Isabel's", kids: [], language: "en" });
   const isabel = { cookie: (await app.logIn("isabel", "peapear")).cookie! };
 
   expect((await app.request(`/api/share/${token}/save`, { method: "POST" })).status).toBe(401);

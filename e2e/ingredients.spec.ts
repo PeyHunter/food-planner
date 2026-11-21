@@ -55,7 +55,7 @@ test("set an ingredient's shop section, pack size and always-at-home from the Re
 
   await page.reload();
   await page.getByLabel("Search ingredients").fill(String(tag));
-  await expect(page.getByRole("button", { name: /^Edit / })).toHaveText([/Oil .*Dry goods.*Always at home/, /Rice .*Frozen.*Pack 1 kg/]);
+  await expect(page.getByRole("button", { name: /^Edit / })).toHaveText([/Oil .*Spices & sauces.*Always at home/, /Rice .*Frozen.*Pack 1 kg/]);
 
   // Once no recipe uses it, an ingredient can be deleted.
   expect((await page.request.delete(`/api/recipes/${((await made.json()) as { id: string }).id}`)).status()).toBe(204);

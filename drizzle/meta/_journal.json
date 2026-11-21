@@ -71,6 +71,27 @@
       "when": 1794835831130,
       "tag": "0009_notes_1116",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795212671220,
+      "tag": "0010_kitchens_starter_ai_calls",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795272150051,
+      "tag": "0011_nemlig_send",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795278869120,
+      "tag": "0012_ingredient_packs",
+      "breakpoints": true
     }
   ]
 }

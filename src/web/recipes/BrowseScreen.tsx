@@ -6,6 +6,7 @@ import { getWeek, setDinner } from "../week/api.ts";
 import { listBookRecipes, showDate, today } from "./api.ts";
 import { chipsFor, daysToPick, filterBook, sameChip, type Chip } from "./book.ts";
 import { TypeStickers, typeColour } from "./RecipePage.tsx";
+import { StarterRecipesButton } from "./StarterRecipesButton.tsx";
 import "./browse.css";
 
 /** Photos this many pages either side of the open one are loaded, so the next page is ready before the swipe. */
@@ -28,8 +29,9 @@ export function BrowseScreen() {
   const crate = useRef<HTMLOListElement>(null);
   const restored = useRef(false);
 
+  const load = () => listBookRecipes("").then(setRecipes, (error: Error) => setProblem(error.message));
   useEffect(() => {
-    listBookRecipes("").then(setRecipes, (error: Error) => setProblem(error.message));
+    void load();
   }, []);
 
   const chips = useMemo(() => chipsFor(recipes ?? []), [recipes]);
@@ -68,13 +70,13 @@ export function BrowseScreen() {
       <div className="book-head">
         <p className="kicker">{t("What's for dinner?")}</p>
         <div className="book-actions">
-          <a className="btn small white" href="#/recipes/list" aria-label="List and search">
+          <a className="btn small white" href="#/recipes/list" aria-label={t("List and search")}>
             {t("☰ List")}
           </a>
           <a className="btn small white" href="#/recipes/freezer">
             {t("❄ Freezer")}
           </a>
-          <a className="btn small sun" href="#/recipes/new" aria-label="+ Add recipe">
+          <a className="btn small sun" href="#/recipes/new" aria-label={t("+ Add recipe")}>
             {t("+ Add")}
           </a>
         </div>
@@ -105,6 +107,7 @@ export function BrowseScreen() {
         <div className="empty">
           <p className="big">{t("The book is empty.")}</p>
           <p>{t("Add your first recipe.")}</p>
+          <StarterRecipesButton onAdded={load} />
         </div>
       )}
       {recipes && recipes.length > 0 && pages.length === 0 && (
@@ -171,10 +174,8 @@ function BookPage({ recipe, number, total, showPhoto }: { recipe: RecipeSummary;
     <article className="page">
       <a className={`photo ${colour}`} href={`#/recipes/${recipe.id}`} tabIndex={-1} aria-hidden="true">
         {recipe.mainPhoto && showPhoto ? <img src={recipe.mainPhoto.url} alt="" decoding="async" /> : !recipe.mainPhoto && <Plate />}
-        {recipe.tags.includes("freezable") && <span className="stamp">freez-<br />able!</span>}
-        <span className="page-no">
-          p. {number} / {total}
-        </span>
+        {recipe.tags.includes("freezable") && <span className="stamp">{t("freez-\nable!")}</span>}
+        <span className="page-no">{t("p. {n} / {total}", { n: number, total })}</span>
       </a>
       <div className="page-body">
         <h3>
@@ -244,9 +245,17 @@ function DayPicker({ recipe, onClose, onAdded }: { recipe: RecipeSummary; onClos
             return (
               <li key={date}>
                 <button type="button" disabled={busy || !view} onClick={() => choose(date, nextWeek)}>
-                  <b>{weekdayName(date, locale())}</b>
-                  <span className="date">{showDate(date).replace(/^\w+ /, "")}</span>
-                  <span className={dinner ? "planned" : "free"}>{!view ? "…" : dinner ? dinner.title : t("Free")}</span>
+                  <span className="when">
+                    <b>{weekdayName(date, locale())}</b>
+                    <span className="date">{showDate(date).replace(/^\S+ /, "")}</span>
+                  </span>
+                  {dinner ? (
+                    <span className="planned">
+                      <span className="now">{t("Now:")}</span> {dinner.title}
+                    </span>
+                  ) : (
+                    <span className="free">{!view ? "…" : t("Free")}</span>
+                  )}
                 </button>
               </li>
             );

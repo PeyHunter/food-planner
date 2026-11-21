@@ -1,12 +1,14 @@
 import type { Language } from "../shared/profile.ts";
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
+import { maxWord, nemligLink, type Remembered } from "../shared/nemlig.ts";
 import type { ShopSection } from "../shared/recipes.ts";
 import { buildShoppingList, restOfWeek, type ShoppingDay, type ShoppingRecipe, type ShoppingView } from "../shared/shopping.ts";
 import type { Unit } from "../shared/units.ts";
 import { defaultPeople, isDate, mondayOf, weekDates } from "../shared/week.ts";
 import type { AppDependencies } from "./app.ts";
 import { kitchenMember, type MemberEnv } from "./recipes.ts";
+import { sameGroceryAs } from "./same-grocery.ts";
 import { childDays, children, ingredients, planDays, planSides, recipeLines, recipes, shoppingExtras, shoppingTicks } from "./schema.ts";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -67,6 +69,7 @@ export function createShoppingRoutes({ database, now }: AppDependencies) {
                 shopSection: ingredients.shopSection,
                 packAmount: ingredients.packAmount,
                 packUnit: ingredients.packUnit,
+                pieceGrams: ingredients.pieceGrams,
                 alwaysAtHome: ingredients.alwaysAtHome,
               },
             })
@@ -77,11 +80,12 @@ export function createShoppingRoutes({ database, now }: AppDependencies) {
         ])
       : [[], []];
     const byId = new Map<string, ShoppingRecipe>(recipeRows.map((row) => [row.id, { title: row.title, feeds: row.feeds, lines: [] }]));
+    const aliases = lineRows.length ? await sameGroceryAs(database, kitchenId) : new Map();
     for (const { recipeId, amount, unit, ingredient } of lineRows) {
       byId.get(recipeId)?.lines.push({
         amount,
         unit: unit as Unit | null,
-        ingredient: { ...ingredient, shopSection: ingredient.shopSection as ShopSection, packUnit: ingredient.packUnit as Unit | null },
+        ingredient: aliases.get(ingredient.id) ?? { ...ingredient, shopSection: ingredient.shopSection as ShopSection, packUnit: ingredient.packUnit as Unit | null },
       });
     }
     return dates.map((date) => {
@@ -248,6 +252,41 @@ export function createShoppingRoutes({ database, now }: AppDependencies) {
     const { kitchenId } = c.get("member");
     await db.delete(shoppingTicks).where(and(eq(shoppingTicks.kitchenId, kitchenId), eq(shoppingTicks.monday, monday), eq(shoppingTicks.cleared, true)));
     return c.body(null, 204);
+  });
+
+  // The nemlig.com words and product links the kitchen picked, by ingredient id. The app never calls nemlig.com itself.
+  routes.get("/api/nemlig/remembered", member, async (c) => {
+    const rows = await db
+      .select({ id: ingredients.id, word: ingredients.nemligWord, link: ingredients.nemligLink })
+      .from(ingredients)
+      .where(and(eq(ingredients.kitchenId, c.get("member").kitchenId), or(isNotNull(ingredients.nemligWord), isNotNull(ingredients.nemligLink))));
+    return c.json(Object.fromEntries(rows.map(({ id, word, link }) => [id, { word, link } satisfies Remembered])));
+  });
+
+  // Null forgets the word or link, so the next send uses the usual search word again.
+  routes.put("/api/nemlig/ingredients/:id", member, async (c) => {
+    const id = c.req.param("id");
+    if (!uuidPattern.test(id)) return c.json({ error: "No such ingredient." }, 404);
+    const body = await readBody(c.req);
+    const change: { nemligWord?: string | null; nemligLink?: string | null } = {};
+    if ("word" in body) {
+      const word = typeof body.word === "string" ? body.word.trim() : body.word;
+      if (word !== null && (typeof word !== "string" || word.length > maxWord)) return c.json({ error: "Write a short search word." }, 400);
+      change.nemligWord = word || null;
+    }
+    if ("link" in body) {
+      const link = body.link === null || body.link === "" ? null : typeof body.link === "string" ? nemligLink(body.link) : undefined;
+      if (link === undefined) return c.json({ error: "Paste a link to a nemlig.com page." }, 400);
+      change.nemligLink = link;
+    }
+    if (!Object.keys(change).length) return c.json({ error: "Send a word or a link." }, 400);
+    const [row] = await db
+      .update(ingredients)
+      .set(change)
+      .where(and(eq(ingredients.id, id), eq(ingredients.kitchenId, c.get("member").kitchenId)))
+      .returning({ word: ingredients.nemligWord, link: ingredients.nemligLink });
+    if (!row) return c.json({ error: "No such ingredient." }, 404);
+    return c.json(row satisfies Remembered);
   });
 
   return routes;

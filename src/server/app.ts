@@ -8,6 +8,7 @@ import { createProfileRoutes } from "./profile.ts";
 import { createPhotoRecipeRoutes, type PhotoRecipeClient } from "./photo-recipe.ts";
 import { createRecipeRoutes } from "./recipes.ts";
 import { createShoppingRoutes } from "./shopping.ts";
+import { createStarterRoutes } from "./starter-recipes.ts";
 import { createVeggieRecipeRoutes } from "./veggie-recipe.ts";
 import type { OpenUrl } from "./link-recipe.ts";
 import { createWeekRoutes } from "./week.ts";
@@ -37,6 +38,7 @@ export function createApp(dependencies: AppDependencies) {
   });
 
   app.route("/", createAccessRoutes(dependencies));
+  app.route("/", createStarterRoutes(dependencies));
   app.route("/", createRecipeRoutes(dependencies));
   app.route("/", createPhotoRecipeRoutes(dependencies));
   app.route("/", createVeggieRecipeRoutes(dependencies));
