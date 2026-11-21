@@ -4,7 +4,8 @@ import { useSheet } from "../sheet.ts";
 import { kidTags, mainTypes, type MainType, type RecipeSummary } from "../../shared/recipes.ts";
 import type { ReduceWaste as WasteIdea } from "../../shared/reduce-waste.ts";
 import type { RuleOp } from "../../shared/rules.ts";
-import { addDays, awayKinds, maxAwayNote, maxPeople, maxSides, mondayOf, weekdayName, type AwayKind, type Child, type CreatedWeek, type WeekDay, type WeekRule, type WeekView } from "../../shared/week.ts";
+import { addDays, awayKinds, childRecipeTag, maxAwayNote, maxPeople, maxSides, mondayOf, weekdayName, type AwayKind, type Child, type CreatedWeek, type WeekDay, type WeekRule, type WeekView } from "../../shared/week.ts";
+import { tagLabel } from "../kids/labels.ts";
 import { useKids } from "../kitchen.ts";
 import { listBookRecipes, today } from "../recipes/api.ts";
 import { acceptSuggestion, addRule, addSide, createWeek, deleteRule, getWeek, reduceWaste, removeSide, setAway, setChildDay, setDinner, setPeople, undoCreateWeek, updateRule, type RuleInput } from "./api.ts";
@@ -64,6 +65,8 @@ export function WeekScreen() {
   useEffect(() => {
     void load();
   }, [load]);
+  // A sheet opened for a day of the week you just left closes with it.
+  useEffect(() => setPicking(undefined), [monday]);
 
   const act = async (change: () => Promise<unknown>) => {
     try {
@@ -151,7 +154,7 @@ export function WeekScreen() {
               />
             ))}
           </ol>
-          {picking && (
+          {picking && shown.days.some((day) => day.date === picking.date) && (
             <Picker
               picking={picking}
               view={shown}
@@ -400,7 +403,7 @@ function RuleLine({ rule }: { rule: WeekRule }) {
   );
 }
 
-function Stickers({ recipe }: { recipe: Pick<RecipeSummary, "types" | "tags"> }) {
+function Stickers({ recipe, kids }: { recipe: Pick<RecipeSummary, "types" | "tags">; kids: string[] }) {
   return (
     <span className="stickers">
       {recipe.types.map((type, index) => (
@@ -410,7 +413,7 @@ function Stickers({ recipe }: { recipe: Pick<RecipeSummary, "types" | "tags"> })
       ))}
       {recipe.tags.map((tag) => (
         <span key={tag} className="sticker white">
-          {t(tag)}
+          {tagLabel(tag, kids)}
         </span>
       ))}
     </span>
@@ -452,7 +455,7 @@ function DayCard({ day, index, people, kids, onPick, onPeople, onAddSide, onRemo
               <span className="dish-text">
                 <strong>{day.dinner.title}</strong>
                 {day.fromFreezer && <span className="sticker sky tilt-r from-freezer">{t("❄ From the freezer")}</span>}
-                <Stickers recipe={day.dinner} />
+                <Stickers recipe={day.dinner} kids={kids.map((kid) => kid.name)} />
               </span>
             </a>
           ) : (
@@ -672,7 +675,7 @@ function Picker({ picking, view, who, onClose, onChoose }: PickerProps) {
         </section>
       )}
       {recipes && recipes.length === 0 && (
-        <p className="hint">{childId === null || type ? t("No recipe matches.") : t('No recipes for {who} yet. Tag a recipe "for Runi" or give it an age range.', { who })}</p>
+        <p className="hint">{childId === null || type ? t("No recipe matches.") : t('No recipes for {who} yet. Tag a recipe "{tag}" or give it an age range.', { who, tag: tagLabel(childRecipeTag, view.children.map((kid) => kid.name)) })}</p>
       )}
       <ul className="pick-list">
         {recipes?.map((recipe) => (
@@ -681,7 +684,7 @@ function Picker({ picking, view, who, onClose, onChoose }: PickerProps) {
               <Plate recipe={recipe} />
               <span className="dish-text">
                 <strong>{recipe.title}</strong>
-                <Stickers recipe={recipe} />
+                <Stickers recipe={recipe} kids={view.children.map((kid) => kid.name)} />
               </span>
               <Tick />
             </button>

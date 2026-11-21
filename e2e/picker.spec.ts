@@ -20,8 +20,8 @@ test("tapping what is already chosen in the dinner sheet takes it away again", a
   await page.request.post("/api/recipes", { data: recipe(dinner, ["Fish"]) });
   await page.request.post("/api/recipes", { data: recipe(salad, ["Vegetables"]) });
 
-  // A week far ahead, so no other test plans the same day.
-  const monday = addDays(mondayOf(new Date().toISOString().slice(0, 10)), 7 * 20);
+  // A week far ahead and its own, so no other test (or a repeat of this one) plans the same day.
+  const monday = addDays(mondayOf(new Date().toISOString().slice(0, 10)), 7 * (30 + (stamp % 200)));
   await page.goto(`/#/week?monday=${monday}`);
   const tuesday = page.getByRole("listitem", { name: "Tuesday" });
 

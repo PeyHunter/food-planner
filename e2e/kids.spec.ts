@@ -16,7 +16,7 @@ test("set Runi's birthday, add a 6-12 month recipe and see it fit her age", asyn
   await page.getByLabel("Name").fill("peyton");
   await page.getByLabel("Password").fill(e2ePasswords.peyton);
   await page.getByRole("button", { name: "Log in" }).click();
-  await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Runi & kids" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: /^(Runi Lee|Kids)$/ }).click();
 
   await expect(page.getByRole("group", { name: "Pick a child" }).getByRole("button").first()).toHaveText(/Runi Lee/);
   const about = page.getByRole("region", { name: "About Runi Lee" });
@@ -49,7 +49,7 @@ test("set Runi's birthday, add a 6-12 month recipe and see it fit her age", asyn
   await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
   await expect(page.getByText("For 6–12 months")).toBeVisible();
 
-  await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Runi & kids" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: /^(Runi Lee|Kids)$/ }).click();
   // Tagged "for Runi" and fits her age: in her own list, which comes first.
   const fits = page.getByRole("list", { name: "Runi Lee's recipes" });
   await expect(fits.getByRole("link", { name: new RegExp(title) })).toContainText("For 6–12 months");
@@ -73,7 +73,7 @@ test("add a child with a birthday", async ({ page }) => {
   await page.getByLabel("Name").fill("peyton");
   await page.getByLabel("Password").fill(e2ePasswords.peyton);
   await page.getByRole("button", { name: "Log in" }).click();
-  await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Runi & kids" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: /^(Runi Lee|Kids)$/ }).click();
 
   await page.getByRole("button", { name: "+ Add a child" }).click();
   const form = page.getByRole("form", { name: "Add a child" });

@@ -8,6 +8,7 @@ import { childRecipeTag, mondayOf, type WeekRule } from "../../shared/week.ts";
 import { today } from "../recipes/api.ts";
 import { addRule, deleteRule, getWeek, updateRule, type RuleInput } from "../week/api.ts";
 import { addChild, getChildRecipes, getChildren, updateChild } from "./api.ts";
+import { kidsTabLabel, tagLabel } from "./labels.ts";
 import "./kids.css";
 
 const ruleWhats = [...mainTypes, "Freezable", "kid-friendly"];
@@ -15,7 +16,7 @@ const longDate = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString
 const ruleText = (rule: Pick<RuleInput, "op" | "n" | "what">) =>
   t(rule.op === "at-least" ? "{what} at least {n} a week" : "{what} at most {n} a week", { what: t(rule.what), n: rule.n });
 
-/** The "Runi & kids" tab: one child at a time, with age, birthday, rules and the recipes that fit. */
+/** The kids tab: one child at a time, with age, birthday, rules and the recipes that fit. */
 export function KidsScreen() {
   const [kids, setKids] = useState<ChildView[]>();
   const [chosen, setChosen] = useState<string>();
@@ -39,7 +40,7 @@ export function KidsScreen() {
 
   return (
     <section className="kids">
-      <h2 className="kids-title">{t("Runi & kids")}</h2>
+      <h2 className="kids-title">{kidsTabLabel(kids?.map((entry) => entry.name) ?? [])}</h2>
       <div className="chips" role="group" aria-label="Pick a child">
         {kids?.map((entry) => (
           <button key={entry.id} type="button" className="chip" aria-pressed={!adding && entry.id === kid?.id} onClick={() => (setChosen(entry.id), setAdding(false))}>
@@ -61,7 +62,7 @@ export function KidsScreen() {
           onCancel={() => setAdding(false)}
         />
       ) : (
-        kid && <ChildPage key={kid.id} kid={kid} onChanged={load} />
+        kid && <ChildPage key={kid.id} kid={kid} kidNames={kids?.map((entry) => entry.name) ?? []} onChanged={load} />
       )}
     </section>
   );
@@ -103,7 +104,7 @@ function AddChild({ onAdded, onCancel }: { onAdded: (id: string) => Promise<void
   );
 }
 
-function ChildPage({ kid, onChanged }: { kid: ChildView; onChanged: () => Promise<void> }) {
+function ChildPage({ kid, kidNames, onChanged }: { kid: ChildView; kidNames: string[]; onChanged: () => Promise<void> }) {
   const [recipes, setRecipes] = useState<ChildRecipes>();
   const [problem, setProblem] = useState<string>();
 
@@ -126,7 +127,7 @@ function ChildPage({ kid, onChanged }: { kid: ChildView; onChanged: () => Promis
             {recipes.hers.length ? (
               <RecipeCards recipes={recipes.hers} label={`${kid.name}'s recipes`} />
             ) : (
-              <p className="hint">{t('None for her age yet. Tag a recipe "{tag}" and it shows here.', { tag: childRecipeTag })}</p>
+              <p className="hint">{t('None for {name}\'s age yet. Tag a recipe "{tag}" and it shows here.', { name: kid.name, tag: tagLabel(childRecipeTag, kidNames) })}</p>
             )}
           </section>
           <section className="kid-recipes" aria-labelledby="fits-title">

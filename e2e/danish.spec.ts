@@ -94,7 +94,7 @@ test("Profile is in the header on every tab, English | Dansk switches at once, B
   await expect(page.getByRole("button", { name: "Log out" })).toBeVisible();
 
   await language.getByRole("radio", { name: "Dansk" }).click();
-  await expect(nav.getByRole("button")).toHaveText([/Opskrifter$/, /Uge$/, /Indkøb$/, /Runi & børn$/]);
+  await expect(nav.getByRole("button")).toHaveText([/Opskrifter$/, /Uge$/, /Indkøb$/, /(Runi Lee|Børn)$/]);
   await expect(header.getByRole("link", { name: "Profil" })).toBeVisible();
   await expect(page.getByRole("radiogroup", { name: "Sprog" }).getByRole("radio", { name: "Dansk" })).toBeChecked();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

@@ -28,6 +28,7 @@ test("the dinner sheet keeps every button reachable on a small phone", async ({ 
   await page.getByLabel("Name").fill("peyton");
   await page.getByLabel("Password").fill(e2ePasswords.peyton);
   await page.getByRole("button", { name: "Log in" }).click();
+  await expect(page.getByRole("heading", { name: "Hi Peyton" })).toBeVisible();
 
   const stamp = Date.now();
   for (let n = 0; n < 8; n++) await page.request.post("/api/recipes", { data: recipe(`Reach test dish ${n} ${stamp} with plenty of extra words`) });
@@ -36,8 +37,8 @@ test("the dinner sheet keeps every button reachable on a small phone", async ({ 
   const friday = page.getByRole("listitem", { name: "Friday" });
   await friday.getByRole("button", { name: "+ Pick a dinner" }).click();
   const sheet = page.getByRole("dialog", { name: "Dinner for Friday" });
-  await sheet.getByLabel("Search recipes").fill(`Reach test dish`);
-  await expect(sheet.getByRole("button", { name: /Reach test dish 7/ })).toBeVisible();
+  await sheet.getByLabel("Search recipes").fill(`${stamp} with plenty`);
+  await expect(sheet.getByRole("button", { name: new RegExp(`Reach test dish 7 ${stamp}`) })).toBeVisible();
 
   // Every type is on screen without sliding the row sideways.
   for (const type of ["All", "Fish", "Meat", "Chicken", "Vegetarian", "Vegetables"]) await expect(sheet.getByRole("button", { name: type, exact: true })).toBeInViewport();
@@ -45,7 +46,7 @@ test("the dinner sheet keeps every button reachable on a small phone", async ({ 
 
   // At the bottom of the list, the page behind has not moved and Close is still there.
   const before = await page.evaluate(() => window.scrollY);
-  await sheet.getByRole("button", { name: /Reach test dish 7/ }).scrollIntoViewIfNeeded();
+  await sheet.getByRole("button", { name: new RegExp(`Reach test dish 7 ${stamp}`) }).scrollIntoViewIfNeeded();
   await page.mouse.wheel(0, 2000);
   expect(await page.evaluate(() => window.scrollY)).toBe(before);
   await expect(sheet.getByRole("button", { name: "Close" })).toBeInViewport();
