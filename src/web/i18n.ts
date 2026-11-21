@@ -13,6 +13,12 @@ let language: Language = (() => {
   }
 })();
 
+// So the browser spellchecks, and screen readers speak, in the user's language.
+const markPage = () => {
+  if (typeof document !== "undefined") document.documentElement.lang = language;
+};
+markPage();
+
 export const t = (text: string, values?: Record<string, string | number>) => translate(language, text, values);
 export const currentLanguage = () => language;
 export const locale = () => localeOf(language);
@@ -21,6 +27,7 @@ export const locale = () => localeOf(language);
 export function switchLanguage(next: Language) {
   if (next === language) return false;
   language = next;
+  markPage();
   try {
     localStorage.setItem(key, next);
   } catch {

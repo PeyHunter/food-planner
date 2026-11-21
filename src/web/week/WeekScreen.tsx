@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { locale, t } from "../i18n.ts";
+import { useSheet } from "../sheet.ts";
 import { kidTags, mainTypes, type MainType, type RecipeSummary } from "../../shared/recipes.ts";
 import type { ReduceWaste as WasteIdea } from "../../shared/reduce-waste.ts";
 import type { RuleOp } from "../../shared/rules.ts";
-import { addDays, awayKinds, maxAwayNote, maxPeople, maxSides, mondayOf, weekdayName, type AwayKind, type Child, type CreatedWeek, type WeekDay, type WeekRule, type WeekView } from "../../shared/week.ts";
+import { addDays, awayKinds, childRecipeTag, maxAwayNote, maxPeople, maxSides, mondayOf, weekdayName, type AwayKind, type Child, type CreatedWeek, type WeekDay, type WeekRule, type WeekView } from "../../shared/week.ts";
+import { tagLabel } from "../kids/labels.ts";
 import { useKids } from "../kitchen.ts";
 import { listBookRecipes, today } from "../recipes/api.ts";
 import { acceptSuggestion, addRule, addSide, createWeek, deleteRule, getWeek, reduceWaste, removeSide, setAway, setChildDay, setDinner, setPeople, undoCreateWeek, updateRule, type RuleInput } from "./api.ts";
@@ -63,6 +65,8 @@ export function WeekScreen() {
   useEffect(() => {
     void load();
   }, [load]);
+  // A sheet opened for a day of the week you just left closes with it.
+  useEffect(() => setPicking(undefined), [monday]);
 
   const act = async (change: () => Promise<unknown>) => {
     try {
@@ -93,21 +97,6 @@ export function WeekScreen() {
       {problem && <p role="alert">{problem}</p>}
       {shown && (
         <>
-          <ol className="days">
-            {shown.days.map((day, index) => (
-              <DayCard
-                key={day.date}
-                day={day}
-                index={index}
-                people={people.count(day)}
-                kids={shown.children}
-                onPick={(childId) => setPicking({ date: day.date, childId })}
-                onAddSide={() => setPicking({ date: day.date, childId: null, side: true })}
-                onRemoveSide={(position) => void act(() => removeSide(day.date, position))}
-                onPeople={(step) => people.change(day, step)}
-              />
-            ))}
-          </ol>
           <div className="week-bar">
             <button type="button" className="btn small sun" aria-expanded={open} aria-controls="week-suggestions" onClick={() => toggle(!open)}>
               {t("Suggestions")}
@@ -150,7 +139,22 @@ export function WeekScreen() {
               <ReduceWaste monday={monday} onDone={load} setProblem={setProblem} />
             </div>
           </div>
-          {picking && (
+          <ol className="days">
+            {shown.days.map((day, index) => (
+              <DayCard
+                key={day.date}
+                day={day}
+                index={index}
+                people={people.count(day)}
+                kids={shown.children}
+                onPick={(childId) => setPicking({ date: day.date, childId })}
+                onAddSide={() => setPicking({ date: day.date, childId: null, side: true })}
+                onRemoveSide={(position) => void act(() => removeSide(day.date, position))}
+                onPeople={(step) => people.change(day, step)}
+              />
+            ))}
+          </ol>
+          {picking && shown.days.some((day) => day.date === picking.date) && (
             <Picker
               picking={picking}
               view={shown}
@@ -235,11 +239,21 @@ function usePeople(load: () => Promise<void>, setProblem: (problem: string) => v
   return { count, change };
 }
 
+/** An answer shows up below its button; on a phone that can be under the tab bar, so bring it into view. */
+function useShowAnswer(answer: unknown) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (answer) ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [answer]);
+  return ref;
+}
+
 /** Fills the empty days in one go, then says how the rules came out, with an undo for just that. */
 function CreateWeek({ monday, onDone, setProblem }: { monday: string; onDone: () => Promise<void>; setProblem: (problem: string) => void }) {
   const [made, setMade] = useState<{ monday: string } & CreatedWeek>();
   const [busy, setBusy] = useState(false);
   const shown = made?.monday === monday ? made : undefined;
+  const answer = useShowAnswer(shown);
 
   const run = async (change: () => Promise<void>) => {
     setBusy(true);
@@ -263,7 +277,7 @@ function CreateWeek({ monday, onDone, setProblem }: { monday: string; onDone: ()
       <button type="button" className="btn sun" disabled={busy} onClick={create}>
         {t("Create week")}
       </button>
-      <div role="status">
+      <div role="status" ref={answer}>
         {shown && (
           <div className="created">
             <p>{shown.note}</p>
@@ -284,6 +298,7 @@ function ReduceWaste({ monday, onDone, setProblem }: { monday: string; onDone: (
   const [idea, setIdea] = useState<{ monday: string; accepted: boolean } & WasteIdea>();
   const [busy, setBusy] = useState(false);
   const shown = idea?.monday === monday ? idea : undefined;
+  const answer = useShowAnswer(shown);
 
   const run = async (change: () => Promise<void>, reload: boolean) => {
     setBusy(true);
@@ -312,7 +327,7 @@ function ReduceWaste({ monday, onDone, setProblem }: { monday: string; onDone: (
       <button type="button" className="btn lilac" disabled={busy} onClick={ask}>
         {t("Reduce waste")}
       </button>
-      <div role="status">
+      <div role="status" ref={answer}>
         {shown && (
           <div className="waste-idea">
             <p>{shown.accepted ? t("Done. The week is updated.") : shown.text}</p>
@@ -388,7 +403,7 @@ function RuleLine({ rule }: { rule: WeekRule }) {
   );
 }
 
-function Stickers({ recipe }: { recipe: Pick<RecipeSummary, "types" | "tags"> }) {
+function Stickers({ recipe, kids }: { recipe: Pick<RecipeSummary, "types" | "tags">; kids: string[] }) {
   return (
     <span className="stickers">
       {recipe.types.map((type, index) => (
@@ -398,7 +413,7 @@ function Stickers({ recipe }: { recipe: Pick<RecipeSummary, "types" | "tags"> })
       ))}
       {recipe.tags.map((tag) => (
         <span key={tag} className="sticker white">
-          {t(tag)}
+          {tagLabel(tag, kids)}
         </span>
       ))}
     </span>
@@ -431,8 +446,8 @@ function DayCard({ day, index, people, kids, onPick, onPeople, onAddSide, onRemo
         <b>{short(day.date, { day: "numeric" })}</b>
       </div>
       <div className="day-body">
+        {isToday && <span className="sticker sun tilt-l next">{t("Next up")}</span>}
         <div className="dinner">
-          {isToday && <span className="sticker sun tilt-l next">{t("Next up")}</span>}
           {/* A planned dinner opens its recipe (steps, "I made this"); Change opens the picker. */}
           {day.dinner ? (
             <a className="dish" href={`#/recipes/${day.dinner.id}?week=${mondayOf(day.date)}`}>
@@ -440,7 +455,7 @@ function DayCard({ day, index, people, kids, onPick, onPeople, onAddSide, onRemo
               <span className="dish-text">
                 <strong>{day.dinner.title}</strong>
                 {day.fromFreezer && <span className="sticker sky tilt-r from-freezer">{t("❄ From the freezer")}</span>}
-                <Stickers recipe={day.dinner} />
+                <Stickers recipe={day.dinner} kids={kids.map((kid) => kid.name)} />
               </span>
             </a>
           ) : (
@@ -514,20 +529,19 @@ function DayCard({ day, index, people, kids, onPick, onPeople, onAddSide, onRemo
   );
 }
 
-function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+/** The title and Close stay put; only the body scrolls. A tall sheet keeps one height, so it never jumps while its list filters. */
+function Sheet({ title, tall = false, onClose, children }: { title: string; tall?: boolean; onClose: () => void; children: ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    if (ref.current && !ref.current.open) ref.current.showModal();
-  }, []);
+  useSheet(ref);
   return (
-    <dialog ref={ref} className="sheet" aria-label={title} onClose={onClose}>
+    <dialog ref={ref} className={`sheet${tall ? " tall" : ""}`} aria-label={title} tabIndex={-1} onClose={onClose}>
       <div className="sheet-head">
         <h2>{title}</h2>
         <button type="button" className="btn small white" onClick={onClose}>
           {t("Close")}
         </button>
       </div>
-      {children}
+      <div className="sheet-body">{children}</div>
     </dialog>
   );
 }
@@ -536,12 +550,12 @@ type PickerProps = { picking: Picking; view: WeekView; who: string; onClose: () 
 
 function Picker({ picking, view, who, onClose, onChoose }: PickerProps) {
   const { date, childId, side } = picking;
-  const [awayNote, setAwayNote] = useState("");
+  const day = view.days.find((entry) => entry.date === date)!;
+  const [awayNote, setAwayNote] = useState(day.away?.note ?? "");
   const [q, setQ] = useState("");
   const [found, setFound] = useState<RecipeSummary[]>();
   const [type, setType] = useState<MainType>();
-  const day = view.days.find((entry) => entry.date === date)!;
-  const weekday = weekdayName(date, locale());
+  const meal = childId === null ? undefined : day.children.find((entry) => entry.childId === childId);
 
   useEffect(() => {
     if (childId !== null) return;
@@ -555,17 +569,32 @@ function Picker({ picking, view, who, onClose, onChoose }: PickerProps) {
 
   const searched = childId === null ? found : view.childRecipes.filter((recipe) => recipe.title.toLowerCase().includes(q.trim().toLowerCase()));
   const recipes = type ? searched?.filter((recipe) => recipe.types.includes(type)) : searched;
-  const choose = (recipeId: string) =>
-    onChoose(() => (side ? addSide(date, recipeId) : childId === null ? setDinner(date, recipeId) : setChildDay(date, childId, "recipe", recipeId)));
+  // Tapping what is already chosen takes it away again.
+  const chosenId = (recipeId: string) =>
+    side ? day.sides.some((entry) => entry.recipe.id === recipeId) : childId === null ? !day.fromFreezer && day.dinner?.id === recipeId : meal?.kind === "recipe" && meal.recipe?.id === recipeId;
+  const choose = (recipeId: string) => {
+    if (side) {
+      const chosen = day.sides.find((entry) => entry.recipe.id === recipeId);
+      return onChoose(() => (chosen ? removeSide(date, chosen.position) : addSide(date, recipeId)));
+    }
+    if (childId !== null) return onChoose(() => (chosenId(recipeId) ? setChildDay(date, childId, "empty") : setChildDay(date, childId, "recipe", recipeId)));
+    onChoose(() => setDinner(date, chosenId(recipeId) ? null : recipeId));
+  };
   const title = t(side ? "Another dish for {day}" : childId === null ? "Dinner for {day}" : "{who} on {day}", { day: weekdayName(date, locale()), who });
 
   return (
-    <Sheet title={title} onClose={onClose}>
+    <Sheet title={title} tall onClose={onClose}>
       {childId === null && !side && (
         <section className="away-pick" aria-label="No cooking">
           <div className="sheet-actions">
             {awayKinds.map((kind) => (
-              <button key={kind} type="button" className="btn small white" onClick={() => onChoose(() => setAway(date, { kind, note: awayNote.trim() }))}>
+              <button
+                key={kind}
+                type="button"
+                className="btn small white"
+                aria-pressed={day.away?.kind === kind}
+                onClick={() => onChoose(() => (day.away?.kind === kind ? setDinner(date, null) : setAway(date, { kind, note: awayNote.trim() })))}
+              >
                 <span aria-hidden="true">{awayIcon[kind]}</span> {t(awayLabel[kind])}
               </button>
             ))}
@@ -583,7 +612,7 @@ function Picker({ picking, view, who, onClose, onChoose }: PickerProps) {
       <input type="search" className="search" placeholder={t("Search recipes")} aria-label="Search recipes" value={q} onChange={(event) => setQ(event.target.value)} />
       <div className="chips" role="group" aria-label="Filter by type">
         {[undefined, ...mainTypes].map((option) => (
-          <button key={option ?? "all"} type="button" className="chip" aria-pressed={type === option} onClick={() => setType(option)}>
+          <button key={option ?? "all"} type="button" className="chip" aria-pressed={type === option} onClick={() => setType(type === option ? undefined : option)}>
             {option ? t(option) : t("All")}
           </button>
         ))}
@@ -595,12 +624,13 @@ function Picker({ picking, view, who, onClose, onChoose }: PickerProps) {
               type="button"
               className="btn small lilac"
               disabled={!day.dinner}
+              aria-pressed={meal?.kind === "same-as-dinner"}
               aria-describedby={day.dinner ? undefined : "no-dinner-hint"}
-              onClick={() => onChoose(() => setChildDay(date, childId, "same-as-dinner"))}
+              onClick={() => onChoose(() => setChildDay(date, childId, meal?.kind === "same-as-dinner" ? "empty" : "same-as-dinner"))}
             >
               {t("Same as dinner, mashed")}
             </button>
-            <button type="button" className="btn small white" onClick={() => onChoose(() => setChildDay(date, childId, "empty"))}>
+            <button type="button" className="btn small white" aria-pressed={!meal || meal.kind === "empty"} onClick={() => onChoose(() => setChildDay(date, childId, "empty"))}>
               {t("Nothing yet")}
             </button>
             {!day.dinner && (
@@ -621,37 +651,56 @@ function Picker({ picking, view, who, onClose, onChoose }: PickerProps) {
           <h3>{t("❄ From the freezer")}</h3>
           <p className="hint">{t("Takes one portion out. Nothing goes on the shopping list.")}</p>
           <ul className="pick-list">
-            {view.freezer.map(({ recipe, count }) => (
-              <li key={recipe.id}>
-                <button type="button" aria-label={`From the freezer: ${recipe.title}`} onClick={() => onChoose(() => setDinner(date, recipe.id, true))}>
-                  <Plate recipe={recipe} />
-                  <span className="dish-text">
-                    <strong>{recipe.title}</strong>
-                    <span className="sticker sky">{t("{n} left", { n: count })}</span>
-                  </span>
-                </button>
-              </li>
-            ))}
+            {view.freezer.map(({ recipe, count }) => {
+              const chosen = day.fromFreezer && day.dinner?.id === recipe.id;
+              return (
+                <li key={recipe.id}>
+                  <button
+                    type="button"
+                    aria-label={`From the freezer: ${recipe.title}`}
+                    aria-pressed={chosen}
+                    onClick={() => onChoose(() => (chosen ? setDinner(date, null) : setDinner(date, recipe.id, true)))}
+                  >
+                    <Plate recipe={recipe} />
+                    <span className="dish-text">
+                      <strong>{recipe.title}</strong>
+                      <span className="sticker sky">{t("{n} left", { n: count })}</span>
+                    </span>
+                    <Tick />
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}
       {recipes && recipes.length === 0 && (
-        <p className="hint">{childId === null || type ? t("No recipe matches.") : t('No recipes for {who} yet. Tag a recipe "for Runi" or give it an age range.', { who })}</p>
+        <p className="hint">{childId === null || type ? t("No recipe matches.") : t('No recipes for {who} yet. Tag a recipe "{tag}" or give it an age range.', { who, tag: tagLabel(childRecipeTag, view.children.map((kid) => kid.name)) })}</p>
       )}
       <ul className="pick-list">
         {recipes?.map((recipe) => (
           <li key={recipe.id}>
-            <button type="button" onClick={() => choose(recipe.id)}>
+            <button type="button" aria-pressed={chosenId(recipe.id)} onClick={() => choose(recipe.id)}>
               <Plate recipe={recipe} />
               <span className="dish-text">
                 <strong>{recipe.title}</strong>
-                <Stickers recipe={recipe} />
+                <Stickers recipe={recipe} kids={view.children.map((kid) => kid.name)} />
               </span>
+              <Tick />
             </button>
           </li>
         ))}
       </ul>
     </Sheet>
+  );
+}
+
+/** A round tick, shown on the chosen row; CSS hides it on the others. */
+function Tick() {
+  return (
+    <span className="tick" aria-hidden="true">
+      ✓
+    </span>
   );
 }
 

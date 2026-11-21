@@ -7,56 +7,40 @@ import type { Context } from "hono";
 import Anthropic from "@anthropic-ai/sdk";
 import { createApp } from "./app.ts";
 import { connectDatabase, migrate } from "./db.ts";
-import { ensureHousehold, type StartingUser } from "./household.ts";
+import { ensureHousehold } from "./household.ts";
+import { readKitchens, type ReadyKitchen } from "./kitchens-config.ts";
 import { photoStore, shrinkOldPhotos } from "./photos.ts";
+import { applyCatalogPacks, reguessOtherShopSections } from "./recipes.ts";
+import { readSecretKey, secretStore } from "./secrets.ts";
 import { fakeClient, type PhotoRecipeClient } from "./photo-recipe.ts";
+import { addStarterRecipesOnce } from "./starter-recipes.ts";
 
 type Config = {
   databaseUrl: string;
   port: number;
   publicUrl: URL;
   photosDir: string | undefined;
-  peytonPassword: string;
-  ronjaPassword: string;
-  /** Kitchens without kids whose passwords are all set. */
-  kidFreeKitchens: { name: string; people: StartingUser[] }[];
+  /** Kitchens whose passwords are all set (see kitchenConfigs in kitchens-config.ts). */
+  kitchens: ReadyKitchen[];
 };
-
-/** Kitchens without kids, one or two logins each. A kitchen is made once every `<NAME>_PASSWORD` env var in it is set. */
-const kidFreeKitchenLogins: readonly (readonly string[])[] = [["isabel", "christopher"], ["magnus", "mads"], ["marieke"]];
-
-const capitalise = (name: string) => name.charAt(0).toUpperCase() + name.slice(1);
 
 function readConfig(env: NodeJS.ProcessEnv): Config | { error: string } {
   const production = env.NODE_ENV === "production";
-  const { DATABASE_URL, PEYTON_PASSWORD, RONJA_PASSWORD } = env;
+  const { DATABASE_URL } = env;
   if (!DATABASE_URL) return { error: "DATABASE_URL is not set." };
-  if (!PEYTON_PASSWORD || !RONJA_PASSWORD) return { error: "PEYTON_PASSWORD and RONJA_PASSWORD must both be set. They are the starting passwords for the two logins." };
+  const kitchens = readKitchens(env);
+  if ("error" in kitchens) return kitchens;
   const port = Number(env.PORT ?? 3000);
   const publicUrl = readPublicUrl(env, port);
   if ("error" in publicUrl) return publicUrl;
   const photosDir = env.PHOTOS_DIR || undefined;
   if (!photosDir && production) return { error: "PHOTOS_DIR is not set. Set it to a writable directory on a persistent volume." };
-  const kidFreeKitchens: Config["kidFreeKitchens"] = [];
-  for (const names of kidFreeKitchenLogins) {
-    const keys = names.map((name) => `${name.toUpperCase()}_PASSWORD`);
-    const passwords = keys.map((key) => env[key]);
-    const setCount = passwords.filter(Boolean).length;
-    if (setCount === 0) continue;
-    if (setCount < names.length) return { error: `Set all of ${keys.join(", ")}, or none.` };
-    kidFreeKitchens.push({
-      name: `${names.map(capitalise).join(" and ")}'s kitchen`,
-      people: names.map((username, index) => ({ username, password: passwords[index]! })),
-    });
-  }
   return {
     databaseUrl: DATABASE_URL,
     port,
     publicUrl,
     photosDir,
-    peytonPassword: PEYTON_PASSWORD,
-    ronjaPassword: RONJA_PASSWORD,
-    kidFreeKitchens,
+    kitchens,
   };
 }
 
@@ -120,13 +104,19 @@ if (!writable) {
 
 const database = connectDatabase(config.databaseUrl);
 await migrate(database);
-await ensureHousehold(database, [
-  { username: "peyton", password: config.peytonPassword },
-  { username: "ronja", password: config.ronjaPassword },
-]);
-for (const { name, people } of config.kidFreeKitchens) await ensureHousehold(database, people, { name, kids: false });
+for (const { people, starter, ...kitchen } of config.kitchens) {
+  const kitchenId = await ensureHousehold(database, people, kitchen);
+  if (starter) await addStarterRecipesOnce(database, kitchenId, kitchen.language);
+}
+await reguessOtherShopSections(database);
+await applyCatalogPacks(database);
 
-const app = createApp({ database, now: () => new Date(), publicUrl: config.publicUrl, photosDir, webDir: "dist/web", photoRecipeClient: photoRecipeClient(process.env) });
+// Without the key the app runs; only the features that keep a sealed login (nemlig.com) stay off.
+const secretKey = readSecretKey(process.env.APP_SECRET_KEY);
+if (!Buffer.isBuffer(secretKey)) console.log(`${secretKey.error} The nemlig.com login stays off until it is set.`);
+const secrets = Buffer.isBuffer(secretKey) ? secretStore(database, () => new Date(), secretKey) : undefined;
+
+const app = createApp({ database, now: () => new Date(), publicUrl: config.publicUrl, photosDir, webDir: "dist/web", photoRecipeClient: photoRecipeClient(process.env), secrets });
 // The built phone UI; any path the API doesn't own falls back to the single page.
 // Built files carry a hash in their name, so they never change; the page and the service worker must be asked for
 // again each time, or a phone keeps showing last week's app after an update.

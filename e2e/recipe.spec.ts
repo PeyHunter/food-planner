@@ -97,6 +97,29 @@ test("typing an ingredient suggests ones the kitchen already has", async ({ page
   await expect(page.getByRole("list", { name: "Suggestions for ingredient 1" })).toBeHidden();
 });
 
+test("each ingredient shows its guessed shop section, and offers a fix for a name it doesn't know", async ({ page }) => {
+  await logIn(page);
+  await page.getByRole("link", { name: "+ Add recipe" }).click();
+  const hint = page.getByLabel("Shop section, line 1");
+
+  await page.getByLabel("Ingredient 1").fill("2 dl piskefløde");
+  await expect(hint).toContainText("Dairy");
+  await expect(hint.getByRole("button")).toHaveCount(0);
+
+  await page.getByLabel("Ingredient 1").fill("brocoli");
+  await expect(hint).toContainText("Did you mean:");
+  await hint.getByRole("button", { name: "broccoli?" }).click();
+  await expect(page.getByLabel("Ingredient 1")).toHaveValue("broccoli");
+  await expect(hint).toHaveText("Vegetables");
+
+  await page.getByLabel("Ingredient 1").fill("hvidløgsfed");
+  await expect(hint).toHaveText("Vegetables");
+  await page.getByLabel("Ingredient 1").fill("mozarella");
+  await expect(hint.getByRole("button", { name: "mozzarella?" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT });
+});
+
 test("saving with a big photo on a slow line shows how much of the photo is sent", async ({ page }) => {
   await logIn(page);
   await page.getByRole("link", { name: "+ Add recipe" }).click();
@@ -137,8 +160,8 @@ test("a link to a recipe opened while logged out lands on that recipe after logg
   await expect(recipesTab).toHaveAttribute("aria-current", "page");
 
   // Logged out on a page that is already open, then the link, then logging in.
-  await fresh.locator(".top .me summary").click();
-  await fresh.getByRole("button", { name: "Log out" }).click();
+  await fresh.getByRole("link", { name: "Profile" }).click();
+  await fresh.getByRole("button", { name: "Log out", exact: true }).click();
   await fresh.goto("/#/week");
   await fresh.goto(`/#/recipes/${id}`);
   await fresh.getByLabel("Name").fill("peyton");
@@ -146,4 +169,21 @@ test("a link to a recipe opened while logged out lands on that recipe after logg
   await fresh.getByRole("button", { name: "Log in" }).click();
   await expect(fresh.getByRole("heading", { name: "Deep link stew" })).toBeVisible();
   await fresh.close();
+});
+
+test("an amount never picks a unit by itself: 1 dild asks for one instead of becoming 1 g", async ({ page }) => {
+  await logIn(page);
+  const title = `Dild ${Date.now()}`;
+  await page.getByRole("link", { name: "+ Add recipe" }).click();
+  await page.getByLabel("Name").fill(title);
+  await page.getByRole("button", { name: "Fish" }).click();
+  await page.getByLabel("Amount 1").fill("1");
+  await expect(page.getByLabel("Unit 1")).toHaveValue("");
+  await page.getByLabel("Ingredient 1").fill("dild");
+  await page.getByRole("button", { name: "Save recipe" }).click();
+  await expect(page.getByRole("alert")).toHaveText("Pick a unit for dild.");
+  await page.getByLabel("Unit 1").selectOption("pcs");
+  await page.getByRole("button", { name: "Save recipe" }).click();
+  await expect(page.getByRole("heading", { name: title })).toBeVisible();
+  await expect(page.locator(".lines .amount")).toHaveText(["1 pcs"]);
 });

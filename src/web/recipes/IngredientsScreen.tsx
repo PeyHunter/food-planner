@@ -3,15 +3,7 @@ import { t } from "../i18n.ts";
 import { shopSections, type Ingredient, type IngredientRow, type ShopSection } from "../../shared/recipes.ts";
 import { units } from "../../shared/units.ts";
 import { deleteIngredient, listIngredients, saveIngredient } from "./api.ts";
-
-const sectionColour: Record<ShopSection, string> = {
-  Vegetables: "mint",
-  Dairy: "sky",
-  "Meat & fish": "tomato",
-  "Dry goods": "",
-  Frozen: "lilac",
-  Other: "white",
-};
+import { sectionColour } from "./section-colour.ts";
 
 /** The kitchen's ingredient list: shop section, pack size and "always at home" for each one. */
 export function IngredientsScreen() {

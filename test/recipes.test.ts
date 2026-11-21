@@ -67,7 +67,7 @@ test("a new recipe saves with its lines, steps, types and tags", async () => {
     [130, "g", "Butter", ""],
     [null, null, "Salt", "to taste"],
   ]);
-  expect(recipe.lines.map((line) => line.ingredient.shopSection)).toEqual(["Vegetables", "Dairy", "Dry goods"]);
+  expect(recipe.lines.map((line) => line.ingredient.shopSection)).toEqual(["Vegetables", "Dairy", "Spices & sauces"]);
 });
 
 test("the child age range is stored and can be changed", async () => {

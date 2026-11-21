@@ -7,8 +7,8 @@ export const builtInTags = ["freezable", "kid-friendly", "for Runi"] as const;
 /** Tags that only make sense in a kitchen with children. */
 export const kidTags: readonly string[] = ["kid-friendly", "for Runi"];
 
-/** In the order the shop walk goes. */
-export const shopSections = ["Vegetables", "Dairy", "Meat & fish", "Dry goods", "Frozen", "Other"] as const;
+/** In the order the shop walk goes. Keys are stored in ingredients.shop_section, so never rename one; only add. */
+export const shopSections = ["Vegetables", "Bread", "Dairy", "Meat & fish", "Dry goods", "Tins & jars", "Spices & sauces", "Frozen", "Drinks", "Other"] as const;
 export type ShopSection = (typeof shopSections)[number];
 
 export type Photo = { id: string; url: string; role: "main" | "gallery"; cookId: string | null };

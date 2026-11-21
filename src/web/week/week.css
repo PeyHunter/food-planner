@@ -17,12 +17,12 @@
 .week .rules-card .end{margin-inline-start:auto}
 /* Two groups side by side only when each has room for a line like "Vegetables 0/5"; on a phone they stack. */
 .week .rule-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:.6rem}
-.week .rule-groups>div{display:grid;gap:.45rem;align-content:start;padding:.6rem;border:1.5px solid var(--ink);border-radius:1rem;background:var(--sky-soft)}
+.week .rule-groups>div{display:grid;gap:.45rem;align-content:start;padding:.6rem;border:var(--line-thin) solid var(--ink);border-radius:1rem;background:var(--sky-soft)}
 .week .rule-groups>.kid-rules{background:var(--lilac-soft)}
 .week .rule-groups ul{list-style:none;margin:0;padding:0;display:grid;gap:.35rem}
 .week .rule-groups li{display:flex;align-items:center;gap:.4rem;font-weight:800;font-size:.9rem}
 .week .rule-groups .what{flex:1;overflow-wrap:normal}
-.week .rule-groups .box{display:grid;place-items:center;flex:none;inline-size:1.5rem;block-size:1.5rem;border:1.5px solid var(--ink);border-radius:50%;background:var(--mint);font-size:.8rem}
+.week .rule-groups .box{display:grid;place-items:center;flex:none;inline-size:1.5rem;block-size:1.5rem;border:var(--line-thin) solid var(--ink);border-radius:50%;background:var(--mint);font-size:.8rem}
 .week .rule-groups .warn .box{background:var(--tomato)}
 .week .rule-groups .warn .count{color:color-mix(in oklch,var(--tomato) 70%,var(--ink))}
 
@@ -36,14 +36,14 @@
 
 /* day cards */
 .week .days{list-style:none;margin:0;padding:0;display:grid;gap:.9rem}
-.week .day{display:grid;grid-template-columns:3.4rem 1fr;gap:.8rem;padding:.8rem;border:var(--line) solid var(--ink);border-radius:1.4rem;background:var(--paper);box-shadow:2px 2px 0 var(--ink)}
-.week .day.today{box-shadow:var(--pop);outline:2px solid var(--sun);outline-offset:2px}
+.week .day{display:grid;grid-template-columns:3.4rem 1fr;gap:.8rem;padding:.8rem;border:var(--line) solid var(--ink);border-radius:1.4rem;background:var(--paper);box-shadow:var(--pop-sm)}
+.week .day.today{box-shadow:var(--pop);outline:var(--line) solid var(--sun);outline-offset:2px}
 .week .dn{display:grid;align-content:center;justify-items:center;border:var(--line) solid var(--ink);border-radius:1rem;background:var(--c,var(--sun));font-weight:800;line-height:1;min-block-size:4.5rem}
 .week .dn small{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em}
 .week .dn b{font-size:1.5rem;margin-block-start:.2rem}
 .week .day-body{display:grid;gap:.6rem;align-content:center}
 .week .dinner{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
-.week .next{flex-basis:100%;inline-size:fit-content}
+.week .next{justify-self:start}
 .week .dish{display:flex;align-items:center;gap:.65rem;flex:1 1 13rem;padding:0;border:0;background:none;text-align:start}
 .week a.dish{color:inherit;text-decoration:none}
 .week .change{flex:none}
@@ -57,35 +57,54 @@
 .week .plate.none{background:radial-gradient(circle,var(--paper) 45%,var(--sun-soft) 46%)}
 .week .stickers{display:flex;flex-wrap:wrap;gap:.3rem}
 /* Day-card stickers keep their own width; a pill only wraps its text when it is wider than the whole column. */
-.week .stickers .sticker{flex:none;max-inline-size:100%;font-size:.62rem;letter-spacing:.02em;padding:.15em .5em;border-width:1.5px;white-space:normal;text-align:center}
-.week .ppl{display:inline-flex;align-items:center;margin-inline-start:auto;border:1.5px solid var(--ink);border-radius:99px;background:var(--sky);font-weight:800;font-size:.9rem}
-.week .ppl button{inline-size:2.4rem;block-size:2.4rem;border:0;background:none;font-weight:800;font-size:1.15rem}
+.week .stickers .sticker{flex:none;max-inline-size:100%;font-size:.62rem;letter-spacing:.02em;padding:.15em .5em;border-width:var(--line-thin);white-space:normal;text-align:center}
+.week .ppl{display:inline-flex;align-items:center;margin-inline-start:auto;border:var(--line-thin) solid var(--ink);border-radius:99px;background:var(--sky);font-weight:800;font-size:.9rem}
+.week .ppl button{inline-size:2.75rem;block-size:2.75rem;border:0;background:none;font-weight:800;font-size:1.15rem}
 .week .ppl button:disabled{opacity:.35}
 .week .ppl .n{white-space:nowrap}
-.week .kid{display:flex;align-items:center;gap:.5rem;min-block-size:2.75rem;padding:.4rem .7rem;border:1.5px solid var(--ink);border-radius:.9rem;background:var(--lilac-soft);font-size:.92rem;font-weight:700;text-align:start}
+.week .kid{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;min-block-size:2.75rem;padding:.4rem .7rem;border:var(--line-thin) solid var(--ink);border-radius:.9rem;background:var(--lilac-soft);font-size:.92rem;font-weight:700;text-align:start}
 .week .kid b{font-weight:800;white-space:nowrap}
-.week .kid .meal{flex:1}
+/* On the smallest phones the meal goes under the name instead of breaking mid-word. */
+.week .kid .meal{flex:1 1 6rem}
 .week .kid.nothing .meal{color:var(--muted)}
 .week .kid .plus{font-weight:800}
 
-/* bottom sheets */
-.week .sheet{inline-size:min(100%,36rem);max-inline-size:100%;max-block-size:85svh;margin:auto auto 0;padding:1rem var(--gutter) calc(1.25rem + env(safe-area-inset-bottom,0px));border:var(--line) solid var(--ink);border-block-end:0;border-radius:1.5rem 1.5rem 0 0;background:var(--paper);color:var(--ink)}
-.week .sheet[open]{display:grid;gap:.8rem;align-content:start}
+/* Sheets: on a phone a full-width sheet from the bottom, above the keyboard (--room and --keyboard come from useSheet);
+   on a computer a centred dialog. The head stays put and only the body scrolls. A tall sheet keeps one height. */
+.week .sheet{inline-size:100%;max-inline-size:100%;max-block-size:min(85svh,calc(var(--room,100svh) - 1rem));margin:auto 0 var(--keyboard,0px);padding:0;overflow:hidden;
+  border:var(--line) solid var(--ink);border-block-end:0;border-radius:1.5rem 1.5rem 0 0;background:var(--paper);color:var(--ink)}
+.week .sheet.tall{block-size:min(85svh,calc(var(--room,100svh) - 1rem))}
+.week .sheet[open]{display:flex;flex-direction:column}
+.week .sheet:focus{outline:none}
 .week .sheet::backdrop{background:color-mix(in oklch,var(--ink) 45%,transparent)}
-.week .sheet-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem}
+.week .sheet-head{flex:none;display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:1rem var(--gutter) .75rem;border-block-end:var(--line-thin) solid color-mix(in oklch,var(--ink) 25%,white)}
+.week .sheet-body{flex:1;min-block-size:0;display:grid;gap:.8rem;align-content:start;padding:.9rem var(--gutter) calc(1.25rem + env(safe-area-inset-bottom,0px));
+  overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;-webkit-overflow-scrolling:touch}
+/* Chips wrap inside a sheet: every type is visible without sliding the row. */
+.week .sheet .chips{flex-wrap:wrap;overflow:visible;margin-inline:0;padding:.1rem 0 .3rem}
+.week .sheet .btn[aria-pressed=true]{background:var(--ink);color:var(--paper);box-shadow:none;translate:1.5px 1.5px}
+@media (min-width:48rem){
+  .week .sheet{inline-size:min(40rem,100% - 2rem);max-block-size:min(48rem,calc(var(--room,100svh) - 4rem));margin:auto;border-block-end:var(--line) solid var(--ink);border-radius:1.5rem;box-shadow:var(--pop)}
+  .week .sheet.tall{block-size:min(48rem,calc(var(--room,100svh) - 4rem))}
+}
 .week .sheet-actions{display:flex;flex-wrap:wrap;gap:.5rem}
 .week .sheet-actions:empty{display:none}
 .week .sheet-actions .no-dinner{flex-basis:100%;margin:0;font-weight:700;font-size:.9rem}
 .week .search,.week select{inline-size:100%;min-block-size:2.75rem;padding:.5rem .75rem;border:var(--line) solid var(--ink);border-radius:.9rem;background:var(--paper);color:var(--ink);font:inherit;font-size:max(16px,1rem)}
 .week .pick-list{list-style:none;margin:0;padding:0;display:grid;gap:.5rem}
-.week .pick-list button{display:flex;align-items:center;gap:.7rem;inline-size:100%;padding:.45rem;border:1.5px solid var(--ink);border-radius:1rem;background:var(--paper);text-align:start}
+.week .pick-list button{display:flex;align-items:center;gap:.7rem;inline-size:100%;min-block-size:3.5rem;padding:.45rem;border:var(--line-thin) solid var(--ink);border-radius:1rem;background:var(--paper);text-align:start}
 .week .pick-list button:active{background:var(--sun-soft)}
+@media (hover:hover) and (pointer:fine){.week .pick-list button:hover{background:var(--sun-soft)}}
+.week .pick-list .dish-text{flex:1}
+.week .pick-list button[aria-pressed=true]{border:var(--line-bold) solid var(--ink);background:var(--sun-soft)}
+.week .pick-list .tick{display:grid;place-items:center;flex:none;inline-size:1.8rem;block-size:1.8rem;border:var(--line) solid var(--ink);border-radius:50%;background:var(--mint);font-weight:800;font-size:.9rem;visibility:hidden}
+.week .pick-list button[aria-pressed=true] .tick{visibility:visible}
 .week .rule-rows{list-style:none;margin:0;padding:0;display:grid;gap:.6rem}
-.week .rule-rows li{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;padding:.6rem;border:1.5px solid var(--ink);border-radius:1rem;background:var(--sky-soft);font-weight:800}
+.week .rule-rows li{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;padding:.6rem;border:var(--line-thin) solid var(--ink);border-radius:1rem;background:var(--sky-soft);font-weight:800}
 .week .rule-rows select{inline-size:auto;min-block-size:2.5rem;padding-block:.3rem}
-.week .rule-rows .remove{margin-inline-start:auto;inline-size:2.5rem;block-size:2.5rem;border:1.5px solid var(--ink);border-radius:50%;background:var(--paper);font-weight:800}
+.week .rule-rows .remove{margin-inline-start:auto}
 
-/* Suggestions: one toggle below the days; rules, swap ideas and the two helpers live inside */
+/* Suggestions: one toggle above the days; rules, swap ideas and the two helpers live inside */
 .week .week-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.6rem}
 .week .week-bar .badge{padding:.05em .55em;font-size:.8rem;box-shadow:none}
 .week .suggestions{display:grid;gap:1rem}
@@ -95,7 +114,7 @@
 .week .week-tools{display:grid;grid-template-columns:auto auto 1fr;column-gap:1rem;align-items:center;justify-items:start}
 .week .week-tools>section{display:contents}
 .week .week-tools .btn:not(.small){grid-row:1}
-.week .week-tools>section>[role=status]{grid-column:1/-1;justify-self:stretch}
+.week .week-tools>section>[role=status]{grid-column:1/-1;justify-self:stretch;scroll-margin-block:1rem 7rem}
 .week .create-week>.btn{rotate:-1.5deg}
 .week .reduce-waste>.btn{rotate:1.5deg}
 .week .waste-idea{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem .75rem;margin-block-start:.75rem;padding:.7rem .8rem;border:var(--line) solid var(--ink);border-radius:1.2rem;background:var(--lilac-soft);box-shadow:var(--pop-sm)}
@@ -108,7 +127,7 @@
 .week .freezer-link{gap:.4rem}
 .week .freezer-link .sticker{padding:.05em .55em;font-size:.8rem}
 .week .from-freezer{justify-self:start;font-size:.8rem}
-.week .freezer-pick{display:grid;gap:.5rem;padding:.8rem;border:1.5px dashed var(--ink);border-radius:1.2rem;background:color-mix(in oklab,var(--sky) 25%,var(--paper))}
+.week .freezer-pick{display:grid;gap:.5rem;padding:.8rem;border:var(--line-thin) dashed var(--ink);border-radius:1.2rem;background:color-mix(in oklab,var(--sky) 25%,var(--paper))}
 .week .freezer-pick .hint{margin:0}
 .week .freezer-pick .sticker{justify-self:start;font-size:.8rem}
 /* Ideas for a child stand out from the adults' ideas, in the kids' colour. */
@@ -118,8 +137,15 @@
 .week .sides li{display:flex;align-items:center;gap:.6rem;font-weight:700}
 .week .sides li>span{flex:1}
 .week .sides .plate{display:block;flex:none;inline-size:2.4rem;block-size:2.4rem}
-.week .sides .remove{inline-size:2.25rem;block-size:2.25rem;border:1.5px solid var(--ink);border-radius:50%;background:var(--paper);font-weight:800}
-.week .add-side{min-block-size:2.5rem;padding:.3rem .8rem;border:1.5px dashed var(--ink);border-radius:.9rem;background:var(--paper);font-weight:700}
+.week .add-side{min-block-size:2.75rem;padding:.3rem .9rem;border:var(--line) dashed var(--ink);border-radius:999px;background:var(--paper);font-weight:800;font-size:.9rem}
 .week .dish-text.away{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem}
 .week .away-icon{font-size:2rem}
 .week .away-pick{display:grid;gap:.5rem;margin-block-end:.75rem}
+
+/* Computers: day cards flow down columns, so a short day never leaves a hole next to a tall one. */
+@media (min-width:60rem){
+  .week .days{display:block;columns:2;column-gap:.9rem}
+  .week .days>.day{break-inside:avoid;margin-block-end:.9rem}
+}
+@media (min-width:84rem){.week .days{columns:3}}
+@media (min-width:110rem){.week .days{columns:4}}

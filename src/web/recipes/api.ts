@@ -25,6 +25,8 @@ export const listBookRecipes = async (q: string) => (await listRecipes(q)).filte
 export const getRecipe = (id: string) => call<Recipe>(`/api/recipes/${id}`);
 export const createRecipe = (input: RecipeInput) => call<{ id: string }>("/api/recipes", json("POST", input));
 export const updateRecipe = (id: string, input: RecipeInput) => call<{ id: string }>(`/api/recipes/${id}`, json("PUT", input));
+/** Fifteen everyday dinners in your language; only for a kitchen with no recipes yet. */
+export const addStarterRecipes = () => call<{ added: number }>("/api/recipes/starter", { method: "POST" });
 export const deleteRecipe = (id: string) => call<void>(`/api/recipes/${id}`, { method: "DELETE" });
 export const listIngredients = (q: string) => call<IngredientRow[]>(`/api/ingredients?all=1&q=${encodeURIComponent(q)}`);
 export const saveIngredient = (id: string, settings: IngredientSettings) => call<Ingredient>(`/api/ingredients/${id}`, json("PUT", settings));

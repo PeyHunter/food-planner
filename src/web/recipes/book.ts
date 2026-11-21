@@ -23,6 +23,12 @@ export function filterBook<T extends Pick<RecipeSummary, "types" | "tags">>(reci
   );
 }
 
+/** A random page to open the book on, never the one it opened on last time (when there is another). */
+export function pickFirstPage(recipes: { id: string }[], lastFirstId: string | null, random = Math.random): number {
+  const choices = recipes.flatMap((recipe, index) => (recipe.id === lastFirstId && recipes.length > 1 ? [] : [index]));
+  return choices[Math.floor(random() * choices.length)] ?? 0;
+}
+
 /** The days "Add to week" offers: today to Sunday, then all of next week. */
 export function daysToPick(today: string) {
   const monday = mondayOf(today);

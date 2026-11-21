@@ -5,17 +5,27 @@ import "./e2e/passwords.ts";
 const port = Number(process.env.E2E_PORT ?? 4173);
 // iPhone screen size and touch; Chromium stands in for Safari so it runs without system packages.
 const iPhone = { ...devices["iPhone 15"], defaultBrowserType: "chromium" as const };
+// Real Safari engine; kids.spec.ts adds Runi Lee, whom week.spec.ts needs. Needs WebKit's system libraries, so it runs only with WEBKIT=1, alone, on a fresh database.
+// Headed when there is a display (this machine's headless WebKit lacks libraries): WEBKIT=1 DISPLAY=:99 npx playwright test
+const webkit = process.env.WEBKIT === "1";
+const iPhoneWebKit = { ...devices["iPhone 15"], headless: !process.env.DISPLAY };
 
 export default defineConfig({
   testDir: "e2e",
   use: { baseURL: `http://localhost:${port}`, trace: "retain-on-failure" },
-  projects: [
-    { name: "iphone", use: iPhone, testIgnore: ["browse.spec.ts", "danish.spec.ts"] },
-    // Browse plans next week's Wednesday in the same kitchen as week.spec.ts, so it runs after the rest.
-    { name: "iphone-browse", use: iPhone, testMatch: "browse.spec.ts", dependencies: ["iphone"] },
-    // Switches peyton to Danish and turns on nemlig.com for the kitchen, so it runs last, alone.
-    { name: "iphone-danish", use: iPhone, testMatch: "danish.spec.ts", dependencies: ["iphone-browse"] },
-  ],
+  projects: webkit
+    ? [{ name: "iphone-webkit", use: iPhoneWebKit, timeout: 60_000, testMatch: ["csp.spec.ts", "kids.spec.ts", "picker.spec.ts", "reach.spec.ts", "sheet.spec.ts", "week.spec.ts"] }]
+    : [
+        { name: "iphone", use: iPhone, testIgnore: ["browse.spec.ts", "danish.spec.ts", "nemlig.spec.ts", "security.spec.ts"] },
+        // "Log out everywhere else" ends peyton's logins in every other test running at the same time, so it runs alone.
+        { name: "iphone-security", use: iPhone, testMatch: "security.spec.ts", dependencies: ["iphone"] },
+        // Browse plans next week's Wednesday in the same kitchen as week.spec.ts, so it runs after the rest.
+        { name: "iphone-browse", use: iPhone, testMatch: "browse.spec.ts", dependencies: ["iphone-security"] },
+        // Sets up nemlig.com for the kitchen from scratch, so it runs alone.
+        { name: "iphone-nemlig", use: iPhone, testMatch: "nemlig.spec.ts", dependencies: ["iphone-browse"] },
+        // Switches peyton to Danish and turns on nemlig.com for the kitchen, so it runs last, alone.
+        { name: "iphone-danish", use: iPhone, testMatch: "danish.spec.ts", dependencies: ["iphone-nemlig"] },
+      ],
   webServer: {
     command: "npm run build && node e2e/serve.ts",
     url: `http://localhost:${port}/api/health`,

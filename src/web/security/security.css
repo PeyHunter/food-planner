@@ -1,0 +1,24 @@
+.security .rows{display:grid;gap:0;margin:0;padding:0;list-style:none}
+.security .rows li{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding-block:.65rem;border-block-start:var(--line-thin) solid color-mix(in oklch,var(--ink) 20%,white)}
+.security .rows li:first-child{border-block-start:0;padding-block-start:0}
+.security .rows span{display:grid;gap:.15rem;min-inline-size:0}
+.security .rows strong{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;overflow-wrap:anywhere}
+.security .rows small{color:var(--muted)}
+.security .rows .btn{flex:none}
+.security .sticker{font-size:.75rem;padding:.1rem .5rem}
+.security > .btn{justify-self:start}
+.security .hint{margin:0;color:var(--muted)}
+
+/* "Confirm it's you": a sheet from the bottom on a phone, a card in the middle on a wide screen. */
+.step-up{inline-size:100%;max-inline-size:100%;margin:auto 0 var(--keyboard,0px);padding:1.25rem var(--gutter,1rem) calc(1.25rem + env(safe-area-inset-bottom,0px));
+  border:var(--line) solid var(--ink);border-block-end:0;border-radius:1.5rem 1.5rem 0 0;background:var(--paper);color:var(--ink)}
+.step-up::backdrop{background:color-mix(in oklch,var(--ink) 45%,transparent)}
+.step-up form{display:grid;gap:.9rem}
+.step-up h2{margin:0}
+.step-up .hint{margin:0;color:var(--muted)}
+.step-up .actions{display:flex;flex-wrap:wrap;gap:.5rem}
+@media (min-width:48rem){
+  .step-up{inline-size:min(28rem,100% - 2rem);margin:auto;border-block-end:var(--line) solid var(--ink);border-radius:1.5rem;box-shadow:var(--pop)}
+}
+.login .passkey{inline-size:100%}
+.login .or{margin:0;text-align:center;color:var(--muted);font-weight:700}
