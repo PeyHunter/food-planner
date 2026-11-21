@@ -62,9 +62,10 @@
 .week .ppl button{inline-size:2.75rem;block-size:2.75rem;border:0;background:none;font-weight:800;font-size:1.15rem}
 .week .ppl button:disabled{opacity:.35}
 .week .ppl .n{white-space:nowrap}
-.week .kid{display:flex;align-items:center;gap:.5rem;min-block-size:2.75rem;padding:.4rem .7rem;border:var(--line-thin) solid var(--ink);border-radius:.9rem;background:var(--lilac-soft);font-size:.92rem;font-weight:700;text-align:start}
+.week .kid{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;min-block-size:2.75rem;padding:.4rem .7rem;border:var(--line-thin) solid var(--ink);border-radius:.9rem;background:var(--lilac-soft);font-size:.92rem;font-weight:700;text-align:start}
 .week .kid b{font-weight:800;white-space:nowrap}
-.week .kid .meal{flex:1}
+/* On the smallest phones the meal goes under the name instead of breaking mid-word. */
+.week .kid .meal{flex:1 1 6rem}
 .week .kid.nothing .meal{color:var(--muted)}
 .week .kid .plus{font-weight:800}
 
@@ -74,6 +75,7 @@
   border:var(--line) solid var(--ink);border-block-end:0;border-radius:1.5rem 1.5rem 0 0;background:var(--paper);color:var(--ink)}
 .week .sheet.tall{block-size:min(85svh,calc(var(--room,100svh) - 1rem))}
 .week .sheet[open]{display:flex;flex-direction:column}
+.week .sheet:focus{outline:none}
 .week .sheet::backdrop{background:color-mix(in oklch,var(--ink) 45%,transparent)}
 .week .sheet-head{flex:none;display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:1rem var(--gutter) .75rem;border-block-end:var(--line-thin) solid color-mix(in oklch,var(--ink) 25%,white)}
 .week .sheet-body{flex:1;min-block-size:0;display:grid;gap:.8rem;align-content:start;padding:.9rem var(--gutter) calc(1.25rem + env(safe-area-inset-bottom,0px));

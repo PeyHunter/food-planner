@@ -23,7 +23,7 @@ async function unreachable(page: Page) {
   });
 }
 
-test("the dinner sheet keeps every button reachable on a small phone", async ({ page }) => {
+test("the dinner sheet keeps every button reachable on a small phone", async ({ page, browserName }) => {
   await page.goto("/");
   await page.getByLabel("Name").fill("peyton");
   await page.getByLabel("Password").fill(e2ePasswords.peyton);
@@ -47,7 +47,9 @@ test("the dinner sheet keeps every button reachable on a small phone", async ({ 
   // At the bottom of the list, the page behind has not moved and Close is still there.
   const before = await page.evaluate(() => window.scrollY);
   await sheet.getByRole("button", { name: new RegExp(`Reach test dish 7 ${stamp}`) }).scrollIntoViewIfNeeded();
-  await page.mouse.wheel(0, 2000);
+  // Mobile WebKit has no mouse wheel; a script scroll is what iOS does to show a focused field.
+  if (browserName === "chromium") await page.mouse.wheel(0, 2000);
+  await page.evaluate(() => window.scrollBy(0, 2000));
   expect(await page.evaluate(() => window.scrollY)).toBe(before);
   await expect(sheet.getByRole("button", { name: "Close" })).toBeInViewport();
   await sheet.getByRole("button", { name: "Close" }).click();

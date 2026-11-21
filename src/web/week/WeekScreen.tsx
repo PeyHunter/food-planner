@@ -534,7 +534,7 @@ function Sheet({ title, tall = false, onClose, children }: { title: string; tall
   const ref = useRef<HTMLDialogElement>(null);
   useSheet(ref);
   return (
-    <dialog ref={ref} className={`sheet${tall ? " tall" : ""}`} aria-label={title} onClose={onClose}>
+    <dialog ref={ref} className={`sheet${tall ? " tall" : ""}`} aria-label={title} tabIndex={-1} onClose={onClose}>
       <div className="sheet-head">
         <h2>{title}</h2>
         <button type="button" className="btn small white" onClick={onClose}>

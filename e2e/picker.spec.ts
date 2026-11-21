@@ -2,6 +2,12 @@ import { expect, test, type Page } from "@playwright/test";
 import { addDays, mondayOf } from "../src/shared/week.ts";
 import { e2ePasswords } from "./passwords.ts";
 
+/** Opens the week of this Monday. A full load: WebKit treats a hash-only goto as same-page, so the week would not change. */
+async function openWeek(page: Page, monday: string) {
+  await page.goto("about:blank");
+  await page.goto(`/#/week?monday=${monday}`);
+}
+
 const recipe = (title: string, types: string[]) => ({ title, feeds: 4, types, tags: [], ageFromMonths: null, ageToMonths: null, lines: [], steps: [] });
 
 async function logIn(page: Page) {
@@ -22,7 +28,7 @@ test("tapping what is already chosen in the dinner sheet takes it away again", a
 
   // A week far ahead and its own, so no other test (or a repeat of this one) plans the same day.
   const monday = addDays(mondayOf(new Date().toISOString().slice(0, 10)), 7 * (30 + (stamp % 200)));
-  await page.goto(`/#/week?monday=${monday}`);
+  await openWeek(page, monday);
   const tuesday = page.getByRole("listitem", { name: "Tuesday" });
 
   // Category chip: a second tap goes back to All.
@@ -69,11 +75,12 @@ test("tapping what is already chosen in the dinner sheet takes it away again", a
   await expect(tuesday.getByRole("button", { name: "+ Pick a dinner" })).toBeVisible();
 });
 
-test("the dinner sheet is a centred dialog on a computer and keeps its size while the list filters", async ({ page }) => {
+test("the dinner sheet is a centred dialog on a computer and keeps its size while the list filters", async ({ page, browserName }) => {
+  test.skip(browserName === "webkit", "a computer-size check; the WebKit project is an iPhone");
   await page.setViewportSize({ width: 1440, height: 900 });
   await logIn(page);
   const monday = addDays(mondayOf(new Date().toISOString().slice(0, 10)), 7 * 21);
-  await page.goto(`/#/week?monday=${monday}`);
+  await openWeek(page, monday);
   await page.getByRole("listitem", { name: "Wednesday" }).getByRole("button", { name: "+ Pick a dinner" }).click();
   const sheet = page.getByRole("dialog", { name: "Dinner for Wednesday" });
   await expect(sheet).toBeVisible();
