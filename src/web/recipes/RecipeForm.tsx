@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { t } from "../i18n.ts";
 import { builtInTags, kidTags, mainTypes, type IngredientSuggestion, type MainType, type PhotoRecipeDraft, type RecipeInput } from "../../shared/recipes.ts";
 import { isUnit, units } from "../../shared/units.ts";
@@ -23,7 +23,9 @@ type Draft = {
   steps: string[];
 };
 
-const emptyLine = (): LineDraft => ({ amount: "", unit: "g", ingredient: "", note: "" });
+// The unit starts as "—" so the blank row at the end doesn't read as a real "200 g" line; typing an amount picks g.
+const emptyLine = (): LineDraft => ({ amount: "", unit: "", ingredient: "", note: "" });
+const isEmptyLine = (line: LineDraft) => !line.amount && !line.ingredient && !line.note && !line.unit;
 const blank: Draft = { title: "", description: "", feeds: "4", minutes: "", types: [], tags: [], otherTags: "", ageFrom: "", ageTo: "", lines: [emptyLine()], steps: [""] };
 
 const toggle = <T,>(list: T[], item: T) => (list.includes(item) ? list.filter((value) => value !== item) : [...list, item]);
@@ -250,7 +252,7 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
       {kids && (
         <fieldset>
           <legend>{t("For babies and kids (leave empty if not)")}</legend>
-          <div className="row">
+          <div className="row ages">
             <label>
               {t("Suits babies from (months)")}
               <input type="number" inputMode="numeric" min={0} max={240} value={draft.ageFrom} onChange={(event) => set({ ageFrom: event.target.value })} />
@@ -280,7 +282,7 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
         <ol className="step-rows">
           {draft.steps.map((step, index) => (
             <li key={index}>
-              <textarea aria-label={`Step ${index + 1}`} rows={2} value={step} onChange={(event) => setStep(index, event.target.value)} />
+              <GrowingTextarea aria-label={t("Step {n}", { n: index + 1 })} value={step} onChange={(text) => setStep(index, text)} />
             </li>
           ))}
         </ol>
@@ -291,7 +293,7 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
 
       <fieldset>
         <legend>{t("Main photo")}</legend>
-        {preview && <img className="preview" src={preview} alt="New main photo" />}
+        {preview && <img className="preview" src={preview} alt={t("New main photo")} />}
         {started && photo === started && <p className="hint">{t("The dish picture from the book. Pick another photo if it isn't right.")}</p>}
         {fromPhoto && !started && <p className="hint">{t("No dish picture on the page. Add one when you've made it.")}</p>}
         <label className="ink-button white small file-button">
@@ -312,7 +314,7 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
         {busy ?? t("Save recipe")}
       </button>
       {id && (
-        <button type="button" className="quiet danger" onClick={remove}>
+        <button type="button" className="ink-button white small danger" onClick={remove}>
           {t("Delete recipe")}
         </button>
       )}
@@ -344,11 +346,11 @@ function IngredientRow({ index, line, onChange, onRemove }: { index: number; lin
   }, [line.ingredient, focused]);
 
   return (
-    <li className="line-row">
+    <li className={isEmptyLine(line) ? "line-row blank" : "line-row"}>
       <div className="suggest-wrap">
         <input
           aria-label={`Ingredient ${n}`}
-          placeholder={t("carrot")}
+          placeholder={t("Add an ingredient")}
           autoComplete="off"
           value={line.ingredient}
           onFocus={() => setFocused(true)}
@@ -368,7 +370,10 @@ function IngredientRow({ index, line, onChange, onRemove }: { index: number; lin
           </ul>
         )}
       </div>
-      <input className="amount" aria-label={`Amount ${n}`} inputMode="decimal" placeholder="200" value={line.amount} onChange={(event) => onChange({ amount: event.target.value })} />
+      <input className="amount" aria-label={`Amount ${n}`} inputMode="decimal"
+        value={line.amount}
+        onChange={(event) => onChange(!line.amount && !line.unit && event.target.value ? { amount: event.target.value, unit: "g" } : { amount: event.target.value })}
+      />
       <select aria-label={`Unit ${n}`} value={line.unit} onChange={(event) => onChange({ unit: event.target.value })}>
         <option value="">—</option>
         {units.map((unit) => (
@@ -378,8 +383,8 @@ function IngredientRow({ index, line, onChange, onRemove }: { index: number; lin
         ))}
       </select>
       <input className="note" aria-label={`Note ${n}`} placeholder={t("note, e.g. chopped")} value={line.note} onChange={(event) => onChange({ note: event.target.value })} />
-      <button type="button" className="quiet remove" aria-label={`Remove line ${n}`} onClick={onRemove}>
-        ×
+      <button type="button" className="remove" aria-label={t("Remove line {n}", { n })} onClick={onRemove}>
+        ✕
       </button>
       {guess && (
         <div className="line-hint" aria-label={`Shop section, line ${n}`}>
@@ -398,4 +403,16 @@ function IngredientRow({ index, line, onChange, onRemove }: { index: number; lin
       )}
     </li>
   );
+}
+
+/** A step box that grows with its text, so a long step is never cut off. */
+function GrowingTextarea({ value, onChange, ...rest }: { value: string; onChange: (text: string) => void; "aria-label": string }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const box = ref.current;
+    if (!box) return;
+    box.style.blockSize = "auto";
+    box.style.blockSize = `${box.scrollHeight + 6}px`;
+  }, [value]);
+  return <textarea ref={ref} rows={2} className="grow" value={value} onChange={(event) => onChange(event.target.value)} {...rest} />;
 }

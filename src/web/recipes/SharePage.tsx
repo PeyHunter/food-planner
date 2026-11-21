@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
+import { PhotoViewer } from "../PhotoViewer.tsx";
 import { t } from "../i18n.ts";
 import { formatMinutes, sharePhotoMedia, type SharedRecipe } from "../../shared/recipes.ts";
-import { IngredientsPanel, StepsPanel, TypeStickers } from "./RecipePage.tsx";
+import { Gallery, IngredientsPanel, StepsPanel, TypeStickers, photosToView } from "./RecipePage.tsx";
 import "./recipes.css";
 
 type State = { kind: "loading" } | { kind: "gone" } | { kind: "offline" } | { kind: "ready"; recipe: SharedRecipe };
@@ -60,6 +61,8 @@ export function SharePage({ token }: { token: string }) {
 
 function SharedRecipeView({ recipe }: { recipe: SharedRecipe }) {
   const gallery = recipe.photos.filter((photo) => photo.role === "gallery");
+  const [viewing, setViewing] = useState<number>();
+  const viewerPhotos = photosToView(recipe.title, recipe.mainPhoto, gallery);
   return (
     <article className="shared">
       <span className="sticker white tilt-r shared-from">{t("Shared from our food planner")}</span>
@@ -72,9 +75,10 @@ function SharedRecipeView({ recipe }: { recipe: SharedRecipe }) {
         ) : (
           <span className="no-photo" aria-hidden="true" />
         )}
-        <TypeStickers recipe={recipe} />
+        {recipe.mainPhoto && <button type="button" className="hero-open" aria-label={t("Open the photo")} onClick={() => setViewing(0)} />}
       </div>
       <h1>{recipe.title}</h1>
+      <TypeStickers recipe={recipe} />
       {recipe.minutes !== null && <p className="time">{t("Takes {time}", { time: formatMinutes(recipe.minutes) })}</p>}
       {recipe.description && <p className="description">{recipe.description}</p>}
       <IngredientsPanel recipe={recipe} />
@@ -82,17 +86,10 @@ function SharedRecipeView({ recipe }: { recipe: SharedRecipe }) {
       {gallery.length > 0 && (
         <section className="panel">
           <h2>{t("Photos")}</h2>
-          <ul className="gallery">
-            {gallery.map((photo) => (
-              <li key={photo.id}>
-                <a href={photo.url} target="_blank" rel="noreferrer">
-                  <img src={photo.url} alt="Recipe photo" loading="lazy" />
-                </a>
-              </li>
-            ))}
-          </ul>
+          <Gallery photos={gallery} onOpen={(index) => setViewing((recipe.mainPhoto ? 1 : 0) + index)} />
         </section>
       )}
+      {viewing !== undefined && <PhotoViewer photos={viewerPhotos} start={viewing} onClose={() => setViewing(undefined)} />}
     </article>
   );
 }
