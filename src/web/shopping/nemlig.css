@@ -75,4 +75,4 @@
 .ns-organic{padding:.05em .5em;border:var(--line-thin) solid var(--ink);border-radius:999px;background:var(--mint);font-weight:800;font-size:.75rem;text-transform:uppercase;letter-spacing:.03em}
 .ns-in{color:color-mix(in oklch,var(--mint) 45%,var(--ink));font-weight:800;font-size:.85rem}
 /* Narrow phones: the buttons go under the name. */
-@container (max-width:22rem){.ns-item{grid-template-columns:1fr}.ns-item-tools{justify-content:start}}
+@container (max-width:30rem){.ns-item{grid-template-columns:1fr}.ns-item-tools{justify-content:start}.ns-item-tools .btn{flex:1}}
