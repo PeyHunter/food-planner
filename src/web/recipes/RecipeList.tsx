@@ -3,11 +3,13 @@ import { t } from "../i18n.ts";
 import { formatMinutes, type RecipeSummary } from "../../shared/recipes.ts";
 import { listBookRecipes } from "./api.ts";
 import { TypeStickers } from "./RecipePage.tsx";
+import { StarterRecipesButton } from "./StarterRecipesButton.tsx";
 
 export function RecipeList() {
   const [q, setQ] = useState("");
   const [recipes, setRecipes] = useState<RecipeSummary[]>();
   const [problem, setProblem] = useState<string>();
+  const [loads, setLoads] = useState(0);
 
   useEffect(() => {
     let current = true;
@@ -21,7 +23,7 @@ export function RecipeList() {
       current = false;
       clearTimeout(timer);
     };
-  }, [q]);
+  }, [q, loads]);
 
   return (
     <section className="recipe-list">
@@ -51,6 +53,7 @@ export function RecipeList() {
         <div className="empty">
           <p className="big">{t("Nothing here yet.")}</p>
           <p>{t("Add your first recipe.")}</p>
+          <StarterRecipesButton onAdded={() => setLoads((count) => count + 1)} />
         </div>
       )}
       {recipes && recipes.length === 0 && q && <p className="hint">{t('No recipe matches "{q}".', { q })}</p>}

@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { loggingClient } from "./ai-calls.ts";
 import { and, asc, eq } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { mainTypes, type MainType, type PhotoRecipeDraft } from "../shared/recipes.ts";
@@ -149,7 +150,9 @@ export function createVeggieRecipeRoutes({ database, now, photoRecipeClient }: A
     const original = { title: row.title, feeds: row.feeds, lines, steps: stepRows.map((step) => step.text) };
     const signal = AbortSignal.timeout(timeoutMs);
     try {
-      const output = await rewriteRecipe(photoRecipeClient, original, replacement, signal);
+      const { kitchenId, userId } = c.get("member");
+      const client = loggingClient(photoRecipeClient, database, { kitchenId, userId, feature: "vegetarian" });
+      const output = await rewriteRecipe(client, original, replacement, signal);
       if (output === undefined) return c.json({ error: noRecipe }, 422);
       // Description, feeds, cooking time and tags stay the original's; only the meat changes.
       const draft = toDraft({ ...(output as object), description: row.description, feeds: row.feeds, minutes: row.minutes, tags: summary!.tags }, summary!.tags);

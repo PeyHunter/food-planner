@@ -6,7 +6,10 @@ A meal planner and recipe book for Peyton and Ronja (and their baby, Runi Lee). 
 
 - Two accounts, `peyton` and `ronja`, created at startup from env `PEYTON_PASSWORD` / `RONJA_PASSWORD` (create if missing, never overwrite a changed password). No sign-up page.
 - Both share one **Kitchen**: every recipe, plan, rule and list belongs to the kitchen, not a person. Record who added what.
-- Kitchens without kids, one or two logins each: `isabel` + `christopher`, `magnus` + `mads`, and `marieke` on her own (env `<NAME>_PASSWORD`, a kitchen is made only when all its passwords are set; list in `kidFreeKitchenLogins`, src/server/main.ts). They have no kids: no Runi & kids tab, no child meals or child rules, no kid tags or age ranges in the recipe form. Each kitchen only sees its own recipes, weeks and lists.
+- Kitchens without kids, one or two logins each: `isabel` + `christopher`, `magnus` + `mads`, and `marieke` on her own (env `<NAME>_PASSWORD`, a kitchen is made only when all its passwords are set; every kitchen is listed in `kitchenConfigs`, src/server/kitchens-config.ts, as `{ logins, kids, language }`). They have no kids: no Runi & kids tab, no child meals or child rules, no kid tags or age ranges in the recipe form. Each kitchen only sees its own recipes, weeks and lists.
+- A kitchen with kids for `valdemar` + `anna`, with their children Vilje and Konrad (not Runi Lee), in Danish. Birthdays are unknown at start: they are left empty and the Runi & kids tab asks for them. New logins are added with `scripts/add-logins.sh <name>...` on k3s-1 (seals only the named passwords into the existing sealed secret).
+- **Starter recipes**: a new kitchen gets 15 everyday Danish family dinners (3 fish, some vegetarian, metric) once, in its language. An empty recipe list shows an "Add 15 starter recipes" button. Their ingredients reuse the kitchen's by name.
+- **AI usage**: every Claude API call is saved in `ai_calls` (kitchen, user, feature, model, tokens, cost in dollars from one price table in src/server/ai-calls.ts). `scripts/usage-report.sql` shows the last 30 days per kitchen and login.
 - Stay logged in for a long time (cookie session, like LP-Collection's 400-day sessions).
 
 ## Recipes
@@ -62,7 +65,7 @@ From the user after seeing the designs. Full notes in `docs/design-feedback-2026
 - **Look**: Sticker pop (design 4): white dot grid, chunky ink outlines, bright coloured day tiles, tilted sticker tags.
 - **Browse** uses design 3's "Flip through the book" layout in the Sticker pop style: a stack of recipe pages, big dish photo, page counter ("p. 12 / 48"), swipe to the next page, type filter chips, a big "Add to week" button.
 - **Week** shows more per day, like design 3: a **rules card at the top** with Adults and each child side by side (a tick or "1/2" per rule, and "2 to go" when rules are not met), and per day the dish photo, main type and tags, people count, "next up" on today, and the child's meal line.
-- **Children** are data, not a hard-coded row. A `children` table (name, birthday). Runi Lee is created at startup; her birthday is set in the app. The app shows each child's age ("Runi Lee, 7 months").
+- **Children** are data, not a hard-coded row. A `children` table (name, birthday). Each kitchen's children are created with it (Runi Lee for Peyton and Ronja); birthdays are set in the app. The app shows each child's age ("Runi Lee, 7 months").
 - **"Runi & kids" tab** (bottom nav): pick a child, see age, birthday, her recipes and her rules. Child recipes carry an **age range in months** (e.g. 6–12). The tab lists recipes that fit the child's current age, so the same recipes work again for the next child at that age.
 - **Rules are clear and editable** per adults and per child (e.g. "Runi Lee: Fish at least 2 a week"). Defaults as in Week plan above.
 - **Rule check with swaps**: when the planned week misses a rule (no fish for Runi), the week screen says so in plain words and suggests swaps from recipes already in the book ("Swap Tuesday for Salmon mash to get fish 2/2"). One tap accepts. Plain deterministic code, no AI.
