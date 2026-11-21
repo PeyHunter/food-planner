@@ -1,19 +1,28 @@
 import { useEffect, useState } from "react";
 import { t } from "../i18n.ts";
 import { formatMinutes, type RecipeSummary } from "../../shared/recipes.ts";
-import { listBookRecipes } from "./api.ts";
+import { childRecipeTag } from "../../shared/week.ts";
+import { listRecipes } from "./api.ts";
 import { TypeStickers } from "./RecipePage.tsx";
 
 export function RecipeList() {
   const [q, setQ] = useState("");
   const [recipes, setRecipes] = useState<RecipeSummary[]>();
   const [problem, setProblem] = useState<string>();
+  // Runi's own recipes live on the Runi & kids tab; the list only says how many it leaves out.
+  const [hidden, setHidden] = useState(0);
 
   useEffect(() => {
     let current = true;
     const timer = setTimeout(() => {
-      listBookRecipes(q).then(
-        (found) => current && (setRecipes(found), setProblem(undefined)),
+      listRecipes(q).then(
+        (found) => {
+          if (!current) return;
+          const book = found.filter((recipe) => !recipe.tags.includes(childRecipeTag));
+          setRecipes(book);
+          setHidden(found.length - book.length);
+          setProblem(undefined);
+        },
         (error: Error) => current && setProblem(error.message),
       );
     }, 150);
@@ -45,7 +54,7 @@ export function RecipeList() {
           </a>
         </span>
       </div>
-      <input type="search" className="search" placeholder={t("Search by name or ingredient")} aria-label="Search recipes" value={q} onChange={(event) => setQ(event.target.value)} />
+      <input type="search" className="search" placeholder={t("Search by name or ingredient")} aria-label={t("Search recipes")} value={q} onChange={(event) => setQ(event.target.value)} />
       {problem && <p role="alert">{problem}</p>}
       {recipes && recipes.length === 0 && !q && (
         <div className="empty">
@@ -54,6 +63,11 @@ export function RecipeList() {
         </div>
       )}
       {recipes && recipes.length === 0 && q && <p className="hint">{t('No recipe matches "{q}".', { q })}</p>}
+      {hidden > 0 && (
+        <p className="hint kids-hint">
+          <a href="#/kids">{t("Runi's recipes are on the Runi & kids tab →")}</a>
+        </p>
+      )}
       <ul className="cards">
         {recipes?.map((recipe) => (
           <li key={recipe.id}>

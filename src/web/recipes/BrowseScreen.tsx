@@ -68,13 +68,13 @@ export function BrowseScreen() {
       <div className="book-head">
         <p className="kicker">{t("What's for dinner?")}</p>
         <div className="book-actions">
-          <a className="btn small white" href="#/recipes/list" aria-label="List and search">
+          <a className="btn small white" href="#/recipes/list" aria-label={t("List and search")}>
             {t("☰ List")}
           </a>
           <a className="btn small white" href="#/recipes/freezer">
             {t("❄ Freezer")}
           </a>
-          <a className="btn small sun" href="#/recipes/new" aria-label="+ Add recipe">
+          <a className="btn small sun" href="#/recipes/new" aria-label={t("+ Add recipe")}>
             {t("+ Add")}
           </a>
         </div>
@@ -171,10 +171,8 @@ function BookPage({ recipe, number, total, showPhoto }: { recipe: RecipeSummary;
     <article className="page">
       <a className={`photo ${colour}`} href={`#/recipes/${recipe.id}`} tabIndex={-1} aria-hidden="true">
         {recipe.mainPhoto && showPhoto ? <img src={recipe.mainPhoto.url} alt="" decoding="async" /> : !recipe.mainPhoto && <Plate />}
-        {recipe.tags.includes("freezable") && <span className="stamp">freez-<br />able!</span>}
-        <span className="page-no">
-          p. {number} / {total}
-        </span>
+        {recipe.tags.includes("freezable") && <span className="stamp">{t("freez-\nable!")}</span>}
+        <span className="page-no">{t("p. {n} / {total}", { n: number, total })}</span>
       </a>
       <div className="page-body">
         <h3>
@@ -244,9 +242,17 @@ function DayPicker({ recipe, onClose, onAdded }: { recipe: RecipeSummary; onClos
             return (
               <li key={date}>
                 <button type="button" disabled={busy || !view} onClick={() => choose(date, nextWeek)}>
-                  <b>{weekdayName(date, locale())}</b>
-                  <span className="date">{showDate(date).replace(/^\w+ /, "")}</span>
-                  <span className={dinner ? "planned" : "free"}>{!view ? "…" : dinner ? dinner.title : t("Free")}</span>
+                  <span className="when">
+                    <b>{weekdayName(date, locale())}</b>
+                    <span className="date">{showDate(date).replace(/^\S+ /, "")}</span>
+                  </span>
+                  {dinner ? (
+                    <span className="planned">
+                      <span className="now">{t("Now:")}</span> {dinner.title}
+                    </span>
+                  ) : (
+                    <span className="free">{!view ? "…" : t("Free")}</span>
+                  )}
                 </button>
               </li>
             );

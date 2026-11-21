@@ -39,7 +39,7 @@ test("flip through the book, filter to Fish, swipe, and add a dish to Wednesday"
   await expect(first).toHaveAttribute("aria-current", "true");
   await expect(first.getByText("p. 1 / 2")).toBeVisible();
   await expect(first.getByText("Made 1×")).toBeVisible();
-  await expect(first.getByText("freez-able!")).toBeVisible();
+  await expect(first.getByText(/^freez-\s*able!$/)).toBeVisible();
   await filters.evaluate((element) => {
     element.scrollTo(0, 0);
     window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" });
