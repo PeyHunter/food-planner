@@ -16,9 +16,11 @@ export default defineConfig({
   projects: webkit
     ? [{ name: "iphone-webkit", use: iPhoneWebKit, timeout: 60_000, testMatch: ["csp.spec.ts", "kids.spec.ts", "picker.spec.ts", "reach.spec.ts", "sheet.spec.ts", "week.spec.ts"] }]
     : [
-        { name: "iphone", use: iPhone, testIgnore: ["browse.spec.ts", "danish.spec.ts", "nemlig.spec.ts"] },
+        { name: "iphone", use: iPhone, testIgnore: ["browse.spec.ts", "danish.spec.ts", "nemlig.spec.ts", "security.spec.ts"] },
+        // "Log out everywhere else" ends peyton's logins in every other test running at the same time, so it runs alone.
+        { name: "iphone-security", use: iPhone, testMatch: "security.spec.ts", dependencies: ["iphone"] },
         // Browse plans next week's Wednesday in the same kitchen as week.spec.ts, so it runs after the rest.
-        { name: "iphone-browse", use: iPhone, testMatch: "browse.spec.ts", dependencies: ["iphone"] },
+        { name: "iphone-browse", use: iPhone, testMatch: "browse.spec.ts", dependencies: ["iphone-security"] },
         // Sets up nemlig.com for the kitchen from scratch, so it runs alone.
         { name: "iphone-nemlig", use: iPhone, testMatch: "nemlig.spec.ts", dependencies: ["iphone-browse"] },
         // Switches peyton to Danish and turns on nemlig.com for the kitchen, so it runs last, alone.
