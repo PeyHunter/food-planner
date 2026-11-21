@@ -13,7 +13,7 @@ import { sessionUser } from "./access.ts";
 import type { AppDependencies } from "./app.ts";
 import type { Database } from "./db.ts";
 import { photoStore, sharePhotoFile, smallWidth, type StoredPhoto } from "./photos.ts";
-import { guessShopSection } from "../shared/shop-section-guess.ts";
+import { guessShopSection } from "../shared/groceries.ts";
 import { nameForms, sameIngredient } from "../shared/ingredient-names.ts";
 import { cooks, ingredients, kitchenMembers, kitchens, photos, recipeLines, recipes, recipeTags, recipeTypes, steps, users } from "./schema.ts";
 
@@ -512,6 +512,19 @@ const toIngredient = (row: { id: string; name: string; shopSection: string; pack
 });
 
 const sortTypes = (types: string[]) => mainTypes.filter((type) => types.includes(type));
+
+/** Gives ingredients still in Other a fresh guess, for names added before the guesser knew them. Other sections may be the user's choice, so they stay. */
+export async function reguessOtherShopSections({ db }: Database) {
+  const others = await db.select({ id: ingredients.id, name: ingredients.name }).from(ingredients).where(eq(ingredients.shopSection, "Other"));
+  let moved = 0;
+  for (const { id, name } of others) {
+    const section = guessShopSection(name);
+    if (section === "Other") continue;
+    await db.update(ingredients).set({ shopSection: section }).where(and(eq(ingredients.id, id), eq(ingredients.shopSection, "Other")));
+    moved++;
+  }
+  return moved;
+}
 
 export async function recipeSummaries({ db }: Database, rows: { id: string; title: string; feeds: number }[]): Promise<RecipeSummary[]> {
   if (!rows.length) return [];

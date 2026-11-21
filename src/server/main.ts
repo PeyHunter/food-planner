@@ -9,6 +9,7 @@ import { createApp } from "./app.ts";
 import { connectDatabase, migrate } from "./db.ts";
 import { ensureHousehold, type StartingUser } from "./household.ts";
 import { photoStore, shrinkOldPhotos } from "./photos.ts";
+import { reguessOtherShopSections } from "./recipes.ts";
 import { fakeClient, type PhotoRecipeClient } from "./photo-recipe.ts";
 
 type Config = {
@@ -125,6 +126,7 @@ await ensureHousehold(database, [
   { username: "ronja", password: config.ronjaPassword },
 ]);
 for (const { name, people } of config.kidFreeKitchens) await ensureHousehold(database, people, { name, kids: false });
+await reguessOtherShopSections(database);
 
 const app = createApp({ database, now: () => new Date(), publicUrl: config.publicUrl, photosDir, webDir: "dist/web", photoRecipeClient: photoRecipeClient(process.env) });
 // The built phone UI; any path the API doesn't own falls back to the single page.

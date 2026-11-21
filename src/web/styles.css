@@ -62,6 +62,7 @@ input{font:inherit;font-size:max(16px,1rem)}
 .sticker{display:inline-flex;align-items:center;gap:.35em;padding:.25em .7em;border:var(--line) solid var(--ink);border-radius:999px;background:var(--sun);
   font-weight:800;font-size:.8rem;line-height:1.2;text-transform:uppercase;letter-spacing:.04em;box-shadow:var(--pop-sm);white-space:nowrap;inline-size:fit-content}
 .sticker.tomato{background:var(--tomato)}.sticker.mint{background:var(--mint)}.sticker.lilac{background:var(--lilac)}.sticker.sky{background:var(--sky)}.sticker.white{background:var(--paper)}
+.sticker.sun-soft{background:var(--sun-soft)}.sticker.sky-soft{background:var(--sky-soft)}.sticker.tomato-soft{background:var(--tomato-soft)}.sticker.mint-soft{background:var(--mint-soft)}
 .tilt-l{rotate:-3deg}.tilt-r{rotate:3deg}
 
 /* buttons */
