@@ -6,6 +6,7 @@ import { getWeek, setDinner } from "../week/api.ts";
 import { listBookRecipes, showDate, today } from "./api.ts";
 import { chipsFor, daysToPick, filterBook, sameChip, type Chip } from "./book.ts";
 import { TypeStickers, typeColour } from "./RecipePage.tsx";
+import { StarterRecipesButton } from "./StarterRecipesButton.tsx";
 import "./browse.css";
 
 /** Photos this many pages either side of the open one are loaded, so the next page is ready before the swipe. */
@@ -28,8 +29,9 @@ export function BrowseScreen() {
   const crate = useRef<HTMLOListElement>(null);
   const restored = useRef(false);
 
+  const load = () => listBookRecipes("").then(setRecipes, (error: Error) => setProblem(error.message));
   useEffect(() => {
-    listBookRecipes("").then(setRecipes, (error: Error) => setProblem(error.message));
+    void load();
   }, []);
 
   const chips = useMemo(() => chipsFor(recipes ?? []), [recipes]);
@@ -105,6 +107,7 @@ export function BrowseScreen() {
         <div className="empty">
           <p className="big">{t("The book is empty.")}</p>
           <p>{t("Add your first recipe.")}</p>
+          <StarterRecipesButton onAdded={load} />
         </div>
       )}
       {recipes && recipes.length > 0 && pages.length === 0 && (

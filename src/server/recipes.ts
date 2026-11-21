@@ -99,14 +99,7 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
     const input = parseInput(await c.req.json().catch(() => undefined));
     if ("error" in input) return c.json(input, 400);
     const { kitchenId, userId } = c.get("member");
-    const id = await db.transaction(async (tx) => {
-      const [row] = await tx
-        .insert(recipes)
-        .values({ kitchenId, createdBy: userId, ...recipeColumns(input) })
-        .returning({ id: recipes.id });
-      await writeParts(tx, row!.id, kitchenId, userId, input);
-      return row!.id;
-    });
+    const id = await db.transaction((tx) => insertRecipe(tx, kitchenId, userId, input));
     return c.json({ id }, 201);
   });
 
@@ -398,44 +391,6 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
     }
   }
 
-  type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-
-  async function writeParts(tx: Tx, recipeId: string, kitchenId: string, userId: string, input: RecipeInput) {
-    if (input.types.length) await tx.insert(recipeTypes).values(input.types.map((type) => ({ recipeId, type })));
-    if (input.tags.length) await tx.insert(recipeTags).values(input.tags.map((tag) => ({ recipeId, tag })));
-    if (input.steps.length) await tx.insert(steps).values(input.steps.map((text, position) => ({ recipeId, position, text })));
-    if (!input.lines.length) return;
-    const names = [...new Map(input.lines.map((line) => [line.ingredient.toLowerCase(), line.ingredient])).values()];
-    // Existing ones are reused across capitals and singular/plural ("potatoes" uses "potato").
-    const known = () =>
-      tx
-        .select({ id: ingredients.id, name: ingredients.name })
-        .from(ingredients)
-        .where(and(eq(ingredients.kitchenId, kitchenId), inArray(sql`lower(${ingredients.name})`, names.flatMap(nameForms))));
-    const matchIn = (rows: { id: string; name: string }[], name: string) =>
-      rows.find((row) => row.name.toLowerCase() === name.toLowerCase()) ?? rows.find((row) => sameIngredient(name, row.name));
-    const before = await known();
-    const fresh: string[] = [];
-    for (const name of names) if (!matchIn(before, name) && !fresh.some((other) => sameIngredient(name, other))) fresh.push(name);
-    if (fresh.length)
-      await tx
-        .insert(ingredients)
-        .values(fresh.map((name) => ({ kitchenId, name, shopSection: guessShopSection(name), createdBy: userId })))
-        .onConflictDoNothing();
-    const after = fresh.length ? await known() : before;
-    const idOf = new Map(names.map((name) => [name.toLowerCase(), matchIn(after, name)!.id]));
-    await tx.insert(recipeLines).values(
-      input.lines.map((line, position) => ({
-        recipeId,
-        position,
-        amount: line.amount,
-        unit: line.unit,
-        ingredientId: idOf.get(line.ingredient.toLowerCase())!,
-        note: line.note,
-      })),
-    );
-  }
-
   async function loadRecipe(id: string): Promise<Recipe> {
     const [row] = await db
       .select({
@@ -557,6 +512,54 @@ export async function recipeSummaries({ db }: Database, rows: { id: string; titl
       return { lastMadeOn: cooked?.last ?? null, timesMade: cooked?.count ?? 0 };
     })(),
   }));
+}
+
+export type Tx = Parameters<Parameters<Database["db"]["transaction"]>[0]>[0];
+
+async function writeParts(tx: Tx, recipeId: string, kitchenId: string, userId: string | null, input: RecipeInput) {
+  if (input.types.length) await tx.insert(recipeTypes).values(input.types.map((type) => ({ recipeId, type })));
+  if (input.tags.length) await tx.insert(recipeTags).values(input.tags.map((tag) => ({ recipeId, tag })));
+  if (input.steps.length) await tx.insert(steps).values(input.steps.map((text, position) => ({ recipeId, position, text })));
+  if (!input.lines.length) return;
+  const names = [...new Map(input.lines.map((line) => [line.ingredient.toLowerCase(), line.ingredient])).values()];
+  // Existing ones are reused across capitals and singular/plural ("potatoes" uses "potato").
+  const known = () =>
+    tx
+      .select({ id: ingredients.id, name: ingredients.name })
+      .from(ingredients)
+      .where(and(eq(ingredients.kitchenId, kitchenId), inArray(sql`lower(${ingredients.name})`, names.flatMap(nameForms))));
+  const matchIn = (rows: { id: string; name: string }[], name: string) =>
+    rows.find((row) => row.name.toLowerCase() === name.toLowerCase()) ?? rows.find((row) => sameIngredient(name, row.name));
+  const before = await known();
+  const fresh: string[] = [];
+  for (const name of names) if (!matchIn(before, name) && !fresh.some((other) => sameIngredient(name, other))) fresh.push(name);
+  if (fresh.length)
+    await tx
+      .insert(ingredients)
+      .values(fresh.map((name) => ({ kitchenId, name, shopSection: guessShopSection(name), createdBy: userId })))
+      .onConflictDoNothing();
+  const after = fresh.length ? await known() : before;
+  const idOf = new Map(names.map((name) => [name.toLowerCase(), matchIn(after, name)!.id]));
+  await tx.insert(recipeLines).values(
+    input.lines.map((line, position) => ({
+      recipeId,
+      position,
+      amount: line.amount,
+      unit: line.unit,
+      ingredientId: idOf.get(line.ingredient.toLowerCase())!,
+      note: line.note,
+    })),
+  );
+}
+
+/** Saves a new recipe; its ingredients reuse the kitchen's by name. Returns its id. */
+export async function insertRecipe(tx: Tx, kitchenId: string, userId: string | null, input: RecipeInput) {
+  const [row] = await tx
+    .insert(recipes)
+    .values({ kitchenId, createdBy: userId, ...recipeColumns(input) })
+    .returning({ id: recipes.id });
+  await writeParts(tx, row!.id, kitchenId, userId, input);
+  return row!.id;
 }
 
 function recipeColumns(input: RecipeInput) {

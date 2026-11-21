@@ -60,8 +60,8 @@ test("isabel and christopher get their own kitchen with no children and only adu
     { username: "isabel", password: randomUUID() },
     { username: "christopher", password: randomUUID() },
   ];
-  await ensureHousehold(app.database, family, { name: "Isabel and Christopher's kitchen", kids: false });
-  await ensureHousehold(app.database, family, { name: "Isabel and Christopher's kitchen", kids: false });
+  await ensureHousehold(app.database, family, { name: "Isabel and Christopher's kitchen", kids: [], language: "en" });
+  await ensureHousehold(app.database, family, { name: "Isabel and Christopher's kitchen", kids: [], language: "en" });
 
   const members = await app.query<{ username: string; kitchen_id: string; kids: boolean }>(
     "select u.username, m.kitchen_id, k.kids from users u join kitchen_members m on m.user_id = u.id join kitchens k on k.id = m.kitchen_id order by u.username",
