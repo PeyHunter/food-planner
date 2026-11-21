@@ -13,4 +13,4 @@
 .profile .segmented input{position:absolute;inset:0;margin:0;opacity:0;cursor:pointer}
 .profile .segmented span{display:grid;place-items:center;min-block-size:3rem;padding-inline:.75rem;font-weight:800}
 .profile .segmented input:checked+span{background:var(--ink);color:var(--paper)}
-.profile .segmented input:focus-visible+span{outline:3px solid var(--tomato);outline-offset:-5px}
+.profile .segmented input:focus-visible+span{outline:var(--line-bold) solid var(--tomato);outline-offset:-5px}

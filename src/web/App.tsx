@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import type { Language } from "../shared/profile.ts";
 import { switchLanguage, t } from "./i18n.ts";
+import { getChildren } from "./kids/api.ts";
+import { kidsTabLabel } from "./kids/labels.ts";
 import { KidsScreen } from "./kids/KidsScreen.tsx";
 import { ProfileScreen } from "./profile/ProfileScreen.tsx";
 import { KidsContext } from "./kitchen.ts";
@@ -110,11 +112,13 @@ const allTabs: Tab[] = [
   { id: "recipes", label: "Recipes", icon: "📖", colour: "var(--tomato-soft)", screen: () => <RecipesScreen />, soon: "Flip through your recipe book and add new dishes." },
   { id: "week", label: "Week", icon: "📅", colour: "var(--sun-soft)", screen: () => <WeekScreen />, soon: "Plan dinners for the week and check the rules." },
   { id: "shopping", label: "Shopping", icon: "🛒", colour: "var(--mint-soft)", screen: () => <ShoppingScreen />, soon: "One list with everything the week needs." },
-  { id: "kids", label: "Runi & kids", icon: "🧒", colour: "var(--lilac-soft)", screen: () => <KidsScreen />, soon: "Runi Lee's own recipes and rules, by age." },
+  { id: "kids", label: "Kids", icon: "🧒", colour: "var(--lilac-soft)", screen: () => <KidsScreen />, soon: "Each child's own recipes and rules, by age." },
 ];
 
 function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
   const kids = me.kitchen?.kids ?? true;
+  const kidNames = useKidNames(kids);
+  const label = (tab: Tab) => (tab.id === "kids" ? kidsTabLabel(kidNames) : t(tab.label));
   const tabs = kids ? allTabs : allTabs.filter((tab) => tab.id !== "kids");
   const profileTab: Tab = {
     id: "profile",
@@ -146,8 +150,10 @@ function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
     <KidsContext.Provider value={kids}>
       <main className="app">
         <header className="top">
-          <img className="logo" src="/icons/icon-192.png" alt="" width={48} height={48} />
-          <h1>{t("Hi {name}", { name })}</h1>
+          <a className="home" href="#/week">
+            <img className="logo" src="/icons/icon-192.png" alt="" width={48} height={48} />
+            <h1>{t("Hi {name}", { name })}</h1>
+          </a>
           <a className="profile-link" href="#/profile" aria-label={t("Profile")} aria-current={onProfile ? "page" : undefined}>
             <span className="avatar" aria-hidden="true">
               {name.charAt(0)}
@@ -174,7 +180,7 @@ function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
             <span className="ic" aria-hidden="true">
               {tab.icon}
             </span>
-            {t(tab.label)}
+            {label(tab)}
           </button>
         ))}
       </nav>
@@ -182,13 +188,26 @@ function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
   );
 }
 
+/** The kids tab is named after the kitchen's children, so it needs their names. */
+function useKidNames(kids: boolean) {
+  const [names, setNames] = useState<string[]>([]);
+  useEffect(() => {
+    if (!kids) return;
+    getChildren().then(
+      (children) => setNames(children.map((child) => child.name)),
+      () => setNames([]),
+    );
+  }, [kids]);
+  return names;
+}
+
 function ComingSoon({ tab }: { tab: Tab }) {
   return (
     <section className="card" style={{ "--c": tab.colour } as CSSProperties}>
       <span className="sticker white tilt-l">{t("Coming soon")}</span>
       <h2>{t(tab.label)}</h2>
-      <p className="note">{tab.soon}</p>
-      <p className="note">We're still building this part. Check back soon!</p>
+      <p className="note">{t(tab.soon)}</p>
+      <p className="note">{t("We're still building this part. Check back soon!")}</p>
     </section>
   );
 }

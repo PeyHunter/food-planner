@@ -2,7 +2,7 @@
 .recipes {
   --r-ink: var(--ink, #23202f);
   --r-paper: var(--paper, #fff);
-  --r-line: 3px solid var(--r-ink);
+  --r-line: var(--line-bold) solid var(--r-ink);
   --r-pop: 4px 4px 0 var(--r-ink);
   --r-tomato: var(--tomato, #ff6f5b);
   --r-sun: var(--sun, #ffd84d);
@@ -360,7 +360,7 @@
   grid-template-columns: 5.5rem 1fr;
   gap: 0.6rem;
   padding: 0.45rem 0;
-  border-bottom: 2px dashed color-mix(in srgb, var(--r-ink) 20%, white);
+  border-bottom: var(--line) dashed color-mix(in srgb, var(--r-ink) 20%, white);
 }
 
 .recipes .lines li:last-child {
