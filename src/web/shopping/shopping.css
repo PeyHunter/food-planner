@@ -28,7 +28,8 @@
 
 .shopping .link{inline-size:fit-content;padding:.35rem .5rem;border:0;background:none;font-weight:800;font-size:.85rem;text-decoration:underline 2px;text-underline-offset:3px}
 .shopping .line-tools{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem .5rem;margin-inline-start:2.9rem}
-.shopping .move{flex:none;inline-size:auto;min-block-size:0;padding:.2rem .5rem;border:var(--line-thin) solid var(--ink);border-radius:999px;background:var(--paper);font:inherit;font-size:16px;font-weight:800}
+/* Always at the row's end, so the selects line up whether or not "Set pack size" is there. */
+.shopping .move{flex:none;margin-inline-start:auto;inline-size:auto;min-block-size:0;padding:.2rem .5rem;border:var(--line-thin) solid var(--ink);border-radius:999px;background:var(--paper);font:inherit;font-size:16px;font-weight:800}
 .shopping .pack{display:flex;flex-wrap:wrap;align-items:end;gap:.5rem;padding:.6rem;border:var(--line-thin) dashed var(--ink);border-radius:.9rem;background:var(--mint-soft)}
 .shopping .pack label{flex:1 1 5rem;font-size:.85rem}
 .shopping .pack input,.shopping .pack select{min-block-size:2.75rem;padding:.4rem .6rem}
@@ -40,7 +41,8 @@
 .shopping .add{display:flex;gap:.5rem;margin-block-start:.6rem}
 .shopping .add input{flex:1}
 
-.shopping .foot{display:grid;gap:.5rem;justify-items:start}
-.shopping .foot .note{color:var(--muted)}
-.shopping .nemlig-switch{justify-self:start}
-.shopping .nemlig a.tick{text-decoration:none;color:inherit}
+/* "Bought it all" and "Clear ticked" side by side, the cleared note under them. */
+.shopping .foot{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem}
+.shopping .foot .btn{flex:1 1 9rem}
+.shopping .foot .note{flex-basis:100%;color:var(--muted)}
+.shopping .send-nemlig{inline-size:100%;min-block-size:3.75rem;font-size:1.1rem;box-shadow:var(--pop)}

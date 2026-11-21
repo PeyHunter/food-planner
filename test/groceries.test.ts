@@ -119,6 +119,19 @@ describe("guessShopSection", () => {
     ["parmasan", "Dairy"],
     ["mozarella", "Dairy"],
     ["chiken breast", "Meat & fish"],
+    // A tin word anywhere wins
+    ["Hakkede tomat dåse", "Tins & jars"],
+    ["dåse majs", "Tins & jars"],
+    ["kikærter på dåse", "Tins & jars"],
+    ["can of corn", "Tins & jars"],
+    ["canned peaches", "Tins & jars"],
+    ["tinned tomatoes", "Tins & jars"],
+    // Peppercorns are a spice, not a bell pepper
+    ["Szechuan pepper", "Spices & sauces"],
+    ["sichuan peppercorns", "Spices & sauces"],
+    ["peberkorn", "Spices & sauces"],
+    ["black pepper", "Spices & sauces"],
+    ["red pepper", "Vegetables"],
     // Unknown
     ["birthday candles", "Other"],
     ["zzqx", "Other"],

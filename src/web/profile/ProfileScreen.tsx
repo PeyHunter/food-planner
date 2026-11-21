@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
 import type { Language, Profile, ProfileChange } from "../../shared/profile.ts";
-import { addDays, mondayOf, weekdayName } from "../../shared/week.ts";
-import { locale, t, switchLanguage } from "../i18n.ts";
-import { today } from "../recipes/api.ts";
+import { t, switchLanguage } from "../i18n.ts";
 import { getProfile, saveProfile } from "./api.ts";
+import { NemligSettings } from "./NemligSettings.tsx";
 import "./profile.css";
 
 const languageNames: Record<Language, string> = { en: "English", da: "Dansk" };
-const weekDays = Array.from({ length: 7 }, (_, index) => addDays(mondayOf(today()), index));
 
 /** #/profile: your language, the kitchen's settings (children, nemlig.com delivery), and logging out. */
 export function ProfileScreen({ onBack, onLogOut }: { onBack: () => void; onLogOut: () => void }) {
@@ -71,26 +69,14 @@ export function ProfileScreen({ onBack, onLogOut }: { onBack: () => void; onLogO
               <span>{t("Get our groceries from nemlig.com")}</span>
             </label>
             {profile.nemlig.on && (
-              <>
-                <label>
-                  {t("Delivery day")}
-                  <select value={profile.nemlig.day} onChange={(event) => void save({ nemlig: { day: Number(event.target.value) } })}>
-                    {weekDays.map((date, index) => (
-                      <option key={date} value={index}>
-                        {weekdayName(date, locale())}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="toggle">
-                  <input type="checkbox" role="switch" checked={profile.nemlig.organic} onChange={(event) => void save({ nemlig: { organic: event.target.checked } })} />
-                  <span>{t("Everything organic")}</span>
-                </label>
-              </>
+              <NemligSettings
+                day={profile.nemlig.day}
+                organic={profile.nemlig.organic}
+                onDay={(day) => void save({ nemlig: { day } })}
+                onOrganic={(organic) => void save({ nemlig: { organic } })}
+              />
             )}
-            <p className="hint">
-              {t("The shopping list gets a nemlig.com list: each item opens nemlig's search, so you can put it in your basket. Sending the list to nemlig.com by itself every week comes later.")}
-            </p>
+            <p className="hint">{t("Shopping gets a “Send list to nemlig.com” button. It opens nemlig.com for each item, so you can put it in your basket there. You log in and pay on nemlig.com.")}</p>
           </section>
         </>
       )}

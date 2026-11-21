@@ -346,6 +346,7 @@ const table: Record<ShopSection, [string, string][]> = {
     ["salt and pepper", "salt og peber"],
     ["black pepper, ground pepper, peppercorn", "peber, sort peber, peberkorn, friskkværnet peber"],
     ["white pepper", "hvid peber"],
+    ["sichuan pepper, szechuan pepper, szechwan pepper, sichuan peppercorn, szechuan peppercorn", "szechuanpeber, sichuanpeber"],
     ["paprika, smoked paprika", "paprika, røget paprika"],
     ["cumin, ground cumin", "spidskommen"],
     ["caraway", "kommen"],
@@ -478,6 +479,8 @@ const descriptors = new Set(
   ).split(" "),
 );
 const frozenWords = new Set(["frozen", "frost", "frosne", "frossen", "frosset", "dybfrost", "dybfrosne", "dybfrossen"]);
+// Said anywhere in the name, these put it with the tins: "hakkede tomat dåse" is not a fresh tomato.
+const tinWords = new Set(fold("dåse dåser dåsen can cans canned tin tins tinned").split(" "));
 const driedWords = new Set(fold("dried dry tørret tørrede").split(" "));
 // Fresh herbs, chillies and mushrooms sit with the vegetables, but dried ones are in the spice rack or with the dry goods.
 const driedSection: Record<string, ShopSection> = {
@@ -623,11 +626,12 @@ export function recognise(name: string): { grocery: Grocery; exact: boolean } | 
 /**
  * The shop section a new ingredient most likely lives in. Knows English and Danish, plurals, Danish endings and compounds,
  * and words like "fresh" or "hakket" in front. Saying frozen ("frozen spinach", "frosne bær") always means Frozen,
- * and a dried herb or chilli ("dried basil", "tørret timian") is a spice, dried mushrooms dry goods.
+ * a tin word ("dåse", "canned") always means Tins & jars, and a dried herb or chilli ("dried basil", "tørret timian") is a spice, dried mushrooms dry goods.
  */
 export function guessShopSection(name: string): ShopSection {
   const words = wordsOf(name);
   if (words.some((word) => frozenWords.has(word))) return "Frozen";
+  if (words.some((word) => tinWords.has(word))) return "Tins & jars";
   const grocery = recognise(name)?.grocery;
   const dried = grocery && words.some((word) => driedWords.has(word)) ? driedSection[grocery.en[0]!] : undefined;
   return dried ?? grocery?.section ?? "Other";
