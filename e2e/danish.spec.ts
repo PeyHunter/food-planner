@@ -22,9 +22,8 @@ test("in Danish: a dinner out, a salad next to the main dish, nemlig.com list, b
   await page.request.post(`/api/recipes/${main.id}/photos`, { multipart: { role: "main", photo: { name: "laks.jpg", mimeType: "image/jpeg", buffer: jpeg } } });
 
   // Profile: Danish and nemlig.com.
-  await page.locator("summary").click();
   await page.getByRole("link", { name: "Profile" }).click();
-  await page.getByRole("button", { name: "Dansk" }).click();
+  await page.getByRole("radio", { name: "Dansk" }).click();
   await expect(page.getByRole("heading", { name: "Profil" })).toBeVisible();
   await page.getByRole("switch", { name: "Vi handler hos nemlig.com" }).check();
   await page.getByRole("switch", { name: "Alt økologisk" }).check();
@@ -76,4 +75,38 @@ test("in Danish: a dinner out, a salad next to the main dish, nemlig.com list, b
 
   // Back to English for anyone after this.
   await page.request.put("/api/profile", { data: { language: "en", nemlig: { on: false, organic: false } } });
+});
+
+test("Profile is in the header on every tab, English | Dansk switches at once, Back returns to the tab", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Name").fill("peyton");
+  await page.getByLabel("Password").fill(e2ePasswords.peyton);
+  await page.getByRole("button", { name: "Log in" }).click();
+  const nav = page.getByRole("navigation", { name: "Main" });
+  await nav.getByRole("button", { name: "Shopping" }).click();
+
+  const header = page.locator("header.top");
+  await header.getByRole("link", { name: "Profile" }).click();
+  await expect(page.getByRole("heading", { level: 2, name: "Profile" })).toBeVisible();
+  const language = page.getByRole("radiogroup", { name: "Language" });
+  await expect(page.locator(".profile .card").first()).toContainText("Language");
+  await expect(language.getByRole("radio", { name: "English" })).toBeChecked();
+  await expect(page.getByRole("button", { name: "Log out" })).toBeVisible();
+
+  await language.getByRole("radio", { name: "Dansk" }).click();
+  await expect(nav.getByRole("button")).toHaveText([/Opskrifter$/, /Uge$/, /Indkøb$/, /(Runi Lee|Børn)$/]);
+  await expect(header.getByRole("link", { name: "Profil" })).toBeVisible();
+  await expect(page.getByRole("radiogroup", { name: "Sprog" }).getByRole("radio", { name: "Dansk" })).toBeChecked();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+  await page.getByRole("radiogroup", { name: "Sprog" }).getByRole("radio", { name: "English" }).click();
+  await expect(nav.getByRole("button", { name: "Week" })).toBeVisible();
+  // Profile was reloaded, so Back has no tab to return to and goes to Week.
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(nav.getByRole("button", { name: "Week" })).toHaveAttribute("aria-current", "page");
+
+  await nav.getByRole("button", { name: "Shopping" }).click();
+  await header.getByRole("link", { name: "Profile" }).click();
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(nav.getByRole("button", { name: "Shopping" })).toHaveAttribute("aria-current", "page");
 });
