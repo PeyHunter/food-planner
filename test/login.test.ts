@@ -104,6 +104,7 @@ test("responses carry security headers", async () => {
   const response = await app.request("/api/health");
   expect(response.headers.get("content-security-policy")).toContain("script-src 'self'");
   expect(response.headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
+  expect(response.headers.get("content-security-policy")).toContain("style-src 'self';");
   expect(response.headers.get("referrer-policy")).toBe("same-origin");
   expect(response.headers.get("x-content-type-options")).toBe("nosniff");
 });

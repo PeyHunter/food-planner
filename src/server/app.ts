@@ -42,6 +42,9 @@ export function createApp(dependencies: AppDependencies) {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'"],
         styleSrc: ["'self'"],
+        // Safari's own <select> carries an inline style attribute; without this every dropdown logs a refused style.
+        // Only style="" attributes are allowed: <style> tags and outside stylesheets stay blocked.
+        styleSrcAttr: ["'unsafe-inline'"],
         imgSrc: ["'self'", "blob:", "data:"],
         connectSrc: ["'self'"],
         fontSrc: ["'self'"],

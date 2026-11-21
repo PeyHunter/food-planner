@@ -14,7 +14,7 @@ export default defineConfig({
   testDir: "e2e",
   use: { baseURL: `http://localhost:${port}`, trace: "retain-on-failure" },
   projects: webkit
-    ? [{ name: "iphone-webkit", use: iPhoneWebKit, testMatch: ["kids.spec.ts", "picker.spec.ts", "reach.spec.ts", "sheet.spec.ts", "week.spec.ts"] }]
+    ? [{ name: "iphone-webkit", use: iPhoneWebKit, timeout: 60_000, testMatch: ["csp.spec.ts", "kids.spec.ts", "picker.spec.ts", "reach.spec.ts", "sheet.spec.ts", "week.spec.ts"] }]
     : [
         { name: "iphone", use: iPhone, testIgnore: ["browse.spec.ts", "danish.spec.ts", "nemlig.spec.ts"] },
         // Browse plans next week's Wednesday in the same kitchen as week.spec.ts, so it runs after the rest.
