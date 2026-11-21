@@ -127,6 +127,24 @@
   color: #b3261e;
 }
 
+/* a quiet extra action ("Start over"): an outlined pill like the other buttons, not a grey browser box */
+.recipes button.quiet {
+  justify-self: center;
+  min-block-size: 2.75rem;
+  padding: 0 1.1rem;
+  border: 2px solid var(--r-ink);
+  border-radius: 999px;
+  background: var(--r-paper);
+  color: var(--r-ink);
+  font: inherit;
+  font-weight: 800;
+}
+
+.recipes .ink-button.danger {
+  justify-self: center;
+  background: color-mix(in oklab, var(--r-tomato) 15%, var(--r-paper));
+}
+
 /* stickers and chips */
 .recipes .stickers {
   display: flex;
@@ -255,6 +273,7 @@
 /* recipe page */
 .recipes .hero {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   overflow: clip;
   border: var(--r-line);
   border-radius: 1.6rem;
@@ -266,6 +285,20 @@
   grid-area: 1 / 1;
 }
 
+/* An invisible button over the dish photo opens the full-screen viewer. */
+.recipes .hero-open {
+  z-index: 1;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
+.recipes .hero .age-sticker {
+  z-index: 2;
+  pointer-events: none;
+}
+
 .recipes .hero img,
 .recipes .hero .no-photo {
   inline-size: 100%;
@@ -273,9 +306,13 @@
   object-fit: cover;
 }
 
-.recipes .hero .stickers {
-  align-self: start;
-  padding: 0.8rem;
+/* computers: the photo is capped so the name and ingredients start on the first screen */
+@media (min-width: 60rem) {
+  .recipes .hero img,
+  .recipes .hero .no-photo {
+    aspect-ratio: auto;
+    block-size: min(55svh, 30rem);
+  }
 }
 
 .recipes .made {
@@ -381,6 +418,20 @@
   list-style: none;
 }
 
+.recipes .gallery li {
+  position: relative;
+}
+
+.recipes .gallery .open-photo {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0.8rem;
+  background: none;
+  cursor: zoom-in;
+}
+
 .recipes .gallery img {
   aspect-ratio: 1;
   inline-size: 100%;
@@ -420,6 +471,16 @@
   gap: 0.75rem;
 }
 
+/* a label that wraps to two lines keeps its box level with the one beside it */
+.recipes .row.ages {
+  align-items: end;
+}
+
+.recipes .step-rows textarea.grow {
+  resize: none;
+  overflow: hidden;
+}
+
 .recipes .line-rows,
 .recipes .step-rows {
   display: grid;
@@ -441,6 +502,12 @@
   border: var(--r-line);
   border-radius: 1rem;
   background: var(--sun-soft, #fff4c4);
+}
+
+/* the empty row at the end, waiting for the next ingredient */
+.recipes .line-row.blank {
+  border-style: dashed;
+  background: var(--r-paper) !important;
 }
 
 .recipes .line-row:nth-child(4n + 2) {
@@ -473,10 +540,19 @@
   color: var(--r-ink);
 }
 
+/* the same round outlined ✕ as the week screen's rule, side and extra rows */
 .recipes .line-row .remove {
   grid-area: remove;
+  align-self: center;
+  justify-self: center;
+  inline-size: 2.5rem;
+  block-size: 2.5rem;
   padding: 0;
-  font-size: 1.4rem;
+  border: 1.5px solid var(--r-ink);
+  border-radius: 50%;
+  background: var(--r-paper);
+  color: var(--r-ink);
+  font-weight: 800;
 }
 
 .recipes .suggest-wrap {
@@ -522,7 +598,14 @@
   object-fit: cover;
 }
 
-/* photo to recipe: the pages side by side, as many as fit */
+/* photo to recipe: the pages side by side, as many as fit, each shown whole so you can check it was all captured */
+.recipes .photo-pages .preview {
+  aspect-ratio: 3 / 4;
+  max-block-size: 20rem;
+  object-fit: contain;
+  background: color-mix(in srgb, var(--r-ink) 8%, white);
+}
+
 .recipes .photo-pages {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr));
@@ -559,7 +642,8 @@
 }
 
 .recipes .share-url {
-  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+  color: var(--r-muted);
 }
 
 .recipes .share-note,
@@ -679,7 +763,9 @@
 
 .recipes .freezer-dish {
   display: grid;
-  gap: 0.35rem;
+  grid-template-columns: 4rem 1fr;
+  align-items: center;
+  gap: 0.7rem;
   color: inherit;
   text-decoration: none;
 }
@@ -688,8 +774,31 @@
   background: color-mix(in oklab, var(--sky) 25%, var(--r-paper));
 }
 
-.recipes .freezer-offer .bar {
-  flex-wrap: wrap;
+.recipes .freezer-dish img,
+.recipes .freezer-dish .no-photo {
+  inline-size: 4rem;
+  block-size: 4rem;
+  border: var(--r-line);
+  border-radius: 0.8rem;
+  object-fit: cover;
+}
+
+.recipes .freezer-text {
+  display: grid;
+  gap: 0.35rem;
+}
+
+/* two answers side by side, the same height, the main one on the right */
+.recipes .freezer-offer .pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+  gap: 0.6rem;
+}
+
+.recipes .freezer-offer .pair > * {
+  padding-inline: 0.6rem;
+  white-space: normal;
+  text-align: center;
 }
 
 .recipes .freezer-offer input {
@@ -698,3 +807,36 @@
 
 .save-shared { display: grid; gap: 0.8rem; justify-items: start; }
 .save-shared .save-photo { inline-size: 100%; max-block-size: 16rem; object-fit: cover; border: var(--line) solid var(--ink); border-radius: 1.2rem; }
+
+/* computers (1024 px and up): the list is a wide grid of big cards, photo on top, like a recipe site */
+@media (min-width: 64rem) {
+  .recipes .recipe-list .cards {
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    gap: 1.4rem;
+  }
+
+  .recipes .recipe-list .card {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    align-items: start;
+    block-size: 100%;
+    padding: 0;
+    overflow: clip;
+    gap: 0;
+  }
+
+  .recipes .recipe-list .card img,
+  .recipes .recipe-list .card .no-photo {
+    inline-size: 100%;
+    block-size: auto;
+    aspect-ratio: 4 / 3;
+    border: 0;
+    border-block-end: var(--r-line);
+    border-radius: 0;
+  }
+
+  .recipes .recipe-list .card-text {
+    padding: 0.9rem 1rem 1.1rem;
+    font-size: 1.15rem;
+  }
+}

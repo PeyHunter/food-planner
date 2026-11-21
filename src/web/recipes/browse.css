@@ -4,9 +4,10 @@
 .book { display: grid; gap: 1rem; }
 .book .sr { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-.book-head { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: .2rem .5rem; }
-.book-head h2 { grid-column: 1 / -1; }
-.book-head .kicker { font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: color-mix(in oklch, var(--tomato) 70%, var(--ink)); }
+/* The kicker never wraps; when the buttons don't fit beside it they move to their own row. */
+.book-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4rem .5rem; }
+.book-head h2 { flex-basis: 100%; }
+.book-head .kicker { white-space: nowrap; font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: color-mix(in oklch, var(--tomato) 70%, var(--ink)); }
 .book-head h2 { font-size: var(--step-2); }
 .book-head h2 em { font-style: normal; background: var(--sun); padding-inline: .15em; border: var(--line) solid var(--ink); border-radius: .4em; box-shadow: var(--pop-sm); display: inline-block; rotate: -2deg; }
 .book-actions { display: flex; gap: .4rem; }
@@ -17,6 +18,10 @@
 .recipes .book .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: calc(var(--gutter) * -1); padding: .2rem var(--gutter) .5rem; scroll-padding-inline: var(--gutter); }
 .recipes .book .chips::-webkit-scrollbar { display: none; }
 .recipes .book .chip { flex: none; }
+/* computers have room for every chip: wrap instead of hiding some off the edge */
+@media (min-width: 60rem) {
+  .recipes .book .chips { flex-wrap: wrap; overflow: visible; margin-inline: 0; padding-inline: 0; }
+}
 
 /* the stack: two pages peek out behind the open one */
 .deck { position: relative; isolation: isolate; margin-block: .4rem .2rem; }
@@ -38,7 +43,7 @@
 .page .photo img { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; object-fit: cover; }
 .page .plate-art { block-size: 85%; inline-size: auto; color: var(--ink); }
 .page .stamp { position: absolute; inset-block-start: .8rem; inset-inline-end: .8rem; display: grid; place-items: center; inline-size: 5rem; block-size: 5rem; border: var(--line) solid var(--ink); border-radius: 50%;
-  background: var(--tomato); box-shadow: var(--pop-sm); outline: 2px dashed var(--paper); outline-offset: -.6rem; font-weight: 800; font-size: .85rem; line-height: 1.05; text-align: center; rotate: 12deg; }
+  background: var(--tomato); box-shadow: var(--pop-sm); outline: 2px dashed var(--paper); outline-offset: -.6rem; font-weight: 800; font-size: .85rem; line-height: 1.05; text-align: center; white-space: pre-line; rotate: 12deg; }
 .page .page-no { position: absolute; inset-block-end: .8rem; inset-inline-start: .8rem; padding: .25em .75em; border: var(--line) solid var(--ink); border-radius: 999px; background: var(--paper); box-shadow: var(--pop-sm); font-weight: 800; font-variant-numeric: tabular-nums; }
 .page-body { display: grid; gap: .45rem; padding: .8rem 1rem 1rem; }
 .page-body h3 { font-size: var(--step-1); }
@@ -65,10 +70,12 @@
 .book .sheet section { display: grid; gap: .5rem; }
 .book .sheet h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; }
 .book .day-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .45rem; }
-.book .day-list button { display: grid; grid-template-columns: 6.5rem 3.5rem 1fr; align-items: center; gap: .5rem; inline-size: 100%; min-block-size: 3rem; padding: .45rem .8rem;
+.book .day-list button { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); align-items: center; gap: .5rem; inline-size: 100%; min-block-size: 3rem; padding: .45rem .8rem;
   border: 2px solid var(--ink); border-radius: 1rem; background: var(--paper); text-align: start; }
 .book .day-list button:active { background: var(--sun-soft); }
-.book .day-list .date { color: var(--muted); font-size: .9rem; }
+.book .day-list .when { display: grid; }
+.book .day-list .date { color: var(--muted); font-size: .85rem; }
 .book .day-list .free { color: var(--muted); }
-.book .day-list .planned { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
-.book .day-list .planned::before { content: "Now: "; color: var(--muted); }
+/* long names get two lines before they are cut */
+.book .day-list .planned { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-weight: 700; line-height: 1.25; }
+.book .day-list .now { color: var(--muted); font-weight: 600; }

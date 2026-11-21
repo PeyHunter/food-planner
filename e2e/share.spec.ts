@@ -111,5 +111,5 @@ test("without a share sheet the link is copied", async ({ page }) => {
   await expect(page.locator(".share-note")).toHaveText("Link copied");
   const copied = await page.evaluate(() => (window as unknown as { copied: string }).copied);
   expect(copied).toMatch(/\/s\/[A-Za-z0-9_-]{43}$/);
-  await expect(page.getByText(copied, { exact: false })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "The share link" })).toHaveValue(copied);
 });

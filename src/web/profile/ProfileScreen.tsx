@@ -9,8 +9,8 @@ import "./profile.css";
 const languageNames: Record<Language, string> = { en: "English", da: "Dansk" };
 const weekDays = Array.from({ length: 7 }, (_, index) => addDays(mondayOf(today()), index));
 
-/** #/profile: your language, and the kitchen's settings (children, nemlig.com delivery). */
-export function ProfileScreen() {
+/** #/profile: your language, the kitchen's settings (children, nemlig.com delivery), and logging out. */
+export function ProfileScreen({ onBack, onLogOut }: { onBack: () => void; onLogOut: () => void }) {
   const [profile, setProfile] = useState<Profile>();
   const [problem, setProblem] = useState<string>();
 
@@ -34,17 +34,22 @@ export function ProfileScreen() {
 
   return (
     <section className="profile">
+      <button type="button" className="btn white small back" onClick={onBack}>
+        <span aria-hidden="true">←</span> {t("Back")}
+      </button>
       <h2>{t("Profile")}</h2>
       {problem && <p role="alert">{problem}</p>}
       {profile && (
         <>
           <section className="card">
             <h3>{t("Language")}</h3>
-            <div className="chips" role="group" aria-label={t("Language")}>
+            {/* Native radios: one tap switches, arrow keys move, and screen readers say "1 of 2". */}
+            <div className="segmented" role="radiogroup" aria-label={t("Language")}>
               {(Object.keys(languageNames) as Language[]).map((language) => (
-                <button key={language} type="button" className="chip" aria-pressed={profile.language === language} onClick={() => void save({ language })}>
-                  {languageNames[language]}
-                </button>
+                <label key={language}>
+                  <input type="radio" name="language" value={language} checked={profile.language === language} onChange={() => void save({ language })} />
+                  <span>{languageNames[language]}</span>
+                </label>
               ))}
             </div>
             <p className="hint">{t("Only for you. The others in your kitchen pick their own.")}</p>
@@ -89,6 +94,9 @@ export function ProfileScreen() {
           </section>
         </>
       )}
+      <button type="button" className="btn white log-out" onClick={onLogOut}>
+        {t("Log out")}
+      </button>
     </section>
   );
 }
