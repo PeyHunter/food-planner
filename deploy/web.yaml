@@ -109,6 +109,14 @@ spec:
                   name: food-planner-secrets
                   key: ANTHROPIC_API_KEY
                   optional: true
+            # Seals per-person secrets such as the nemlig.com login (src/server/secrets.ts). Optional: without it the app
+            # runs and the nemlig.com login stays off. Made once with scripts/add-app-key.sh.
+            - name: APP_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: food-planner-secrets
+                  key: APP_SECRET_KEY
+                  optional: true
           readinessProbe:
             httpGet:
               path: /api/health

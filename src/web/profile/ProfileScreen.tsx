@@ -3,11 +3,12 @@ import type { Language, Profile, ProfileChange } from "../../shared/profile.ts";
 import { t, switchLanguage } from "../i18n.ts";
 import { getProfile, saveProfile } from "./api.ts";
 import { NemligSettings } from "./NemligSettings.tsx";
+import { SecuritySettings } from "../security/SecuritySettings.tsx";
 import "./profile.css";
 
 const languageNames: Record<Language, string> = { en: "English", da: "Dansk" };
 
-/** #/profile: your language, the kitchen's settings (children, nemlig.com delivery), and logging out. */
+/** #/profile: your language, the kitchen's settings (children, nemlig.com delivery), passkeys, devices, activity, and logging out. */
 export function ProfileScreen({ onBack, onLogOut }: { onBack: () => void; onLogOut: () => void }) {
   const [profile, setProfile] = useState<Profile>();
   const [problem, setProblem] = useState<string>();
@@ -76,6 +77,8 @@ export function ProfileScreen({ onBack, onLogOut }: { onBack: () => void; onLogO
             )}
             <p className="hint">{t("Shopping gets a “Send list to nemlig.com” button. It opens nemlig.com for each item, so you can put it in your basket there. You log in and pay on nemlig.com.")}</p>
           </section>
+
+          <SecuritySettings />
         </>
       )}
       <button type="button" className="btn white log-out" onClick={onLogOut}>

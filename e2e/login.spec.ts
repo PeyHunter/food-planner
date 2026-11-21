@@ -20,7 +20,7 @@ test("peyton logs in on an iPhone, stays logged in, and logs out", async ({ page
   await expect(page.getByRole("heading", { name: "Hi Peyton" })).toBeVisible();
 
   await page.getByRole("link", { name: "Profile" }).click();
-  await page.getByRole("button", { name: "Log out" }).click();
+  await page.getByRole("button", { name: "Log out", exact: true }).click();
   await expect(page.getByRole("button", { name: "Log in" })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("button", { name: "Log in" })).toBeVisible();
@@ -33,7 +33,7 @@ test("after logging out, the next person starts on Week, not on the last person'
   await page.getByRole("button", { name: "Log in" }).click();
   await page.getByRole("link", { name: "Profile" }).click();
   await expect(page).toHaveURL(/#\/profile$/);
-  await page.getByRole("button", { name: "Log out" }).click();
+  await page.getByRole("button", { name: "Log out", exact: true }).click();
 
   await page.getByLabel("Name").fill("ronja");
   await page.getByLabel("Password").fill(e2ePasswords.ronja);
