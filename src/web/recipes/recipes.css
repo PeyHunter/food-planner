@@ -299,6 +299,13 @@
   pointer-events: none;
 }
 
+.recipes .hero img,
+.recipes .hero .no-photo {
+  inline-size: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
 /* computers: the photo is capped so the name and ingredients start on the first screen */
 @media (min-width: 60rem) {
   .recipes .hero img,
