@@ -1,9 +1,11 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { t } from "../i18n.ts";
 import { builtInTags, kidTags, mainTypes, type IngredientSuggestion, type MainType, type PhotoRecipeDraft, type RecipeInput } from "../../shared/recipes.ts";
 import { isUnit, units } from "../../shared/units.ts";
+import { didYouMean, guessShopSection } from "../../shared/groceries.ts";
 import { useKids } from "../kitchen.ts";
 import { createRecipe, deleteRecipe, getRecipe, go, suggestIngredients, updateRecipe, uploadPhoto } from "./api.ts";
+import { sectionColour } from "./section-colour.ts";
 
 // Form fields hold text while typing; they become numbers on save.
 type LineDraft = { amount: string; unit: string; ingredient: string; note: string };
@@ -322,6 +324,8 @@ function IngredientRow({ index, line, onChange, onRemove }: { index: number; lin
   const [suggestions, setSuggestions] = useState<IngredientSuggestion[]>([]);
   const [focused, setFocused] = useState(false);
   const n = index + 1;
+  const name = line.ingredient.trim();
+  const guess = useMemo(() => (name ? { section: guessShopSection(name), fixes: didYouMean(name) } : undefined), [name]);
 
   useEffect(() => {
     const q = line.ingredient.trim();
@@ -377,6 +381,21 @@ function IngredientRow({ index, line, onChange, onRemove }: { index: number; lin
       <button type="button" className="quiet remove" aria-label={`Remove line ${n}`} onClick={onRemove}>
         ×
       </button>
+      {guess && (
+        <div className="line-hint" aria-label={`Shop section, line ${n}`}>
+          <span className={`sticker ${sectionColour[guess.section]}`}>{t(guess.section)}</span>
+          {guess.fixes.length > 0 && (
+            <>
+              <span className="did-you-mean">{t("Did you mean:")}</span>
+              {guess.fixes.map((fix) => (
+                <button key={fix} type="button" className="chip" onClick={() => onChange({ ingredient: fix })}>
+                  {fix}?
+                </button>
+              ))}
+            </>
+          )}
+        </div>
+      )}
     </li>
   );
 }

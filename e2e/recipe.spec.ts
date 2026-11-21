@@ -97,6 +97,29 @@ test("typing an ingredient suggests ones the kitchen already has", async ({ page
   await expect(page.getByRole("list", { name: "Suggestions for ingredient 1" })).toBeHidden();
 });
 
+test("each ingredient shows its guessed shop section, and offers a fix for a name it doesn't know", async ({ page }) => {
+  await logIn(page);
+  await page.getByRole("link", { name: "+ Add recipe" }).click();
+  const hint = page.getByLabel("Shop section, line 1");
+
+  await page.getByLabel("Ingredient 1").fill("2 dl piskefløde");
+  await expect(hint).toContainText("Dairy");
+  await expect(hint.getByRole("button")).toHaveCount(0);
+
+  await page.getByLabel("Ingredient 1").fill("brocoli");
+  await expect(hint).toContainText("Did you mean:");
+  await hint.getByRole("button", { name: "broccoli?" }).click();
+  await expect(page.getByLabel("Ingredient 1")).toHaveValue("broccoli");
+  await expect(hint).toHaveText("Vegetables");
+
+  await page.getByLabel("Ingredient 1").fill("hvidløgsfed");
+  await expect(hint).toHaveText("Vegetables");
+  await page.getByLabel("Ingredient 1").fill("mozarella");
+  await expect(hint.getByRole("button", { name: "mozzarella?" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT });
+});
+
 test("saving with a big photo on a slow line shows how much of the photo is sent", async ({ page }) => {
   await logIn(page);
   await page.getByRole("link", { name: "+ Add recipe" }).click();
