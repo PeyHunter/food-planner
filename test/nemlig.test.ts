@@ -107,6 +107,21 @@ describe("buildSendList", () => {
     expect(itemUrl(carrot)).toBe("https://www.nemlig.com/gulerod-123");
   });
 
+  test("an extra named like an ingredient on the list uses its remembered word, and saving a word remembers it there", () => {
+    const salmon = ingredient("s", "laksefilt", "Meat & fish");
+    const withExtra: ShoppingView = {
+      ...view,
+      sections: [{ section: "Meat & fish", lines: [item(salmon)] }],
+      extras: [{ key: "extra:9", id: "9", name: "Laksefilt", ticked: false }],
+    };
+    const items = buildSendList(withExtra, { organic: "none", remembered: { s: { word: "laksefilet", link: null } } });
+    expect(items.map((one) => [one.name, one.word, one.ingredientId])).toEqual([
+      ["laksefilt", "laksefilet", "s"],
+      ["Laksefilt", "laksefilet", "s"],
+    ]);
+    expect(buildSendList(view, { organic: "none" }).find((one) => one.name === "milk")!.ingredientId).toBeNull();
+  });
+
   test("says the packs to buy when the pack size is known, else what is needed", () => {
     const items = buildSendList(view, { organic: "none" });
     expect(items.map((one) => buyOf(one, "en"))).toEqual(["", "", "Buy 2 packs (500 g each)", "", "", ""]);

@@ -1,3 +1,4 @@
+import type { Language } from "./profile.ts";
 import type { ShopSection } from "./recipes.ts";
 
 /** One thing you can buy. English names are singular; the first Danish name, usually the plural, is the one a Danish shop search uses. */
@@ -494,7 +495,14 @@ const asides = new Set(["in", "with", "packed", "til"]);
 
 const byName = new Map<string, Grocery>();
 for (const grocery of groceries) for (const name of [...grocery.en, ...grocery.da]) if (!byName.has(fold(name))) byName.set(fold(name), grocery);
-const display = [...new Set(groceries.flatMap((grocery) => [...grocery.en, ...grocery.da]))].map((name) => ({ name, key: fold(name) }));
+const danishNames = new Set(groceries.flatMap((grocery) => grocery.da));
+const englishNames = new Set(groceries.flatMap((grocery) => grocery.en));
+const display = [...new Set(groceries.flatMap((grocery) => [...grocery.en, ...grocery.da]))].map((name) => ({
+  name,
+  key: fold(name),
+  da: danishNames.has(name),
+  en: englishNames.has(name),
+}));
 
 /** Bare words of a name: no amounts, units, brackets or punctuation. */
 function wordsOf(name: string) {
@@ -543,7 +551,7 @@ function compound(word: string) {
 }
 
 /** Longest run of words that names a grocery, rightmost first, since the thing comes last in both languages. */
-function exact(words: string[]) {
+function exact(words: string[], compounds = true) {
   for (let size = words.length; size >= 1; size--) {
     for (let start = words.length - size; start >= 0; start--) {
       const run = words.slice(start, start + size);
@@ -556,7 +564,7 @@ function exact(words: string[]) {
       // A compound written apart: "tomat puré" is tomatpuré.
       const joined = size === 2 ? byName.get(run.join("")) : undefined;
       if (joined) return joined;
-      if (size === 1 && !frozenWords.has(run[0]!)) {
+      if (compounds && size === 1 && !frozenWords.has(run[0]!)) {
         const part = compound(run[0]!);
         if (part) return part;
       }
@@ -582,13 +590,18 @@ function distance(a: string, b: string) {
   return rows[a.length]![b.length]!;
 }
 
-/** Known names close to a typed one, best first, one per grocery. A name it starts ("tomat" for "tomatp") counts as close too. */
-function closest(query: string, slack = 0) {
+/**
+ * Known names close to a typed one, best first, one per grocery. A name it starts ("tomat" for "tomatp") counts as close too.
+ * `slack` allows more slips; on a short word it allows one missing or extra letter ("dil" -> dild). `only` keeps one language's names.
+ */
+function closest(query: string, slack = 0, only?: Language) {
   if (query.length < 3) return [];
   const best = new Map<Grocery, { name: string; score: number }>();
-  for (const { name, key } of display) {
+  for (const { name, key, da, en } of display) {
+    if ((only === "da" && !da) || (only === "en" && !en)) continue;
     const away = distance(query, key);
-    const score = away <= allowedDistance(query.length) + (query.length >= 5 ? slack : 0) ? away : query.length >= 4 && key.startsWith(query) ? 1 + (key.length - query.length) / 100 : undefined;
+    const limit = allowedDistance(query.length) + (query.length >= 5 ? slack : slack && Math.abs(key.length - query.length) === 1 ? 1 : 0);
+    const score = away <= limit ? away : query.length >= 4 && key.startsWith(query) ? 1 + (key.length - query.length) / 100 : undefined;
     if (score === undefined || score === 0) continue;
     const grocery = byName.get(key)!;
     const before = best.get(grocery);
@@ -637,13 +650,26 @@ export function guessShopSection(name: string): ShopSection {
   return dried ?? grocery?.section ?? "Other";
 }
 
-/** Up to 3 known names close to one that isn't recognised: "tomatoe" -> tomato, "agurke" -> agurk. Nothing for a known name. */
-export function didYouMean(name: string): string[] {
-  if (recognise(name)?.exact) return [];
+/**
+ * Up to 3 known names close to one that isn't recognised: "tomatoe" -> tomato, "agurke" -> agurk. Nothing for a known name.
+ * In Danish only Danish names are offered; in English, a word closest to a Danish name ("seleri") gets Danish names only.
+ */
+export function didYouMean(name: string, language: Language = "en"): string[] {
+  const phrase = meaningful(name).join(" ");
+  const found = recognise(name);
+  if (found?.exact) {
+    // Known only as the start of a compound ("laksefilt" reads as laks + "efilt"): offer a listed name one slip away.
+    if (exact(wordsOf(name), false)) return [];
+    return closest(phrase, 0, language === "da" ? "da" : undefined)
+      .filter(({ name: known }) => distance(phrase, fold(known)) <= allowedDistance(phrase.length))
+      .slice(0, 3)
+      .map(({ name: known }) => known);
+  }
   // One more slip than a guess allows, so "rodlog" still finds rødløg.
-  return closest(meaningful(name).join(" "), 1)
-    .slice(0, 3)
-    .map(({ name: known }) => known);
+  let near = closest(phrase, 1, language === "da" ? "da" : undefined);
+  const first = display.find((entry) => entry.name === near[0]?.name);
+  if (first && first.da !== first.en) near = closest(phrase, 1, first.da ? "da" : "en");
+  return near.slice(0, 3).map(({ name: known }) => known);
 }
 
 /** The main Danish name for a known English or Danish name ("chicken breasts" -> kyllingebryst), for a Danish shop search. */

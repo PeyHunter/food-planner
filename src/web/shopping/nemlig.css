@@ -4,7 +4,7 @@
 .nemlig-send[open]{display:flex;flex-direction:column}
 .nemlig-send::backdrop{background:color-mix(in oklch,var(--ink) 50%,transparent)}
 @media (min-width:48rem){
-  .nemlig-send{inline-size:min(100% - 3rem,34rem);block-size:min(88svh,38rem);max-block-size:88svh;margin:auto;border-block-end:var(--line) solid var(--ink);border-radius:1.5rem;box-shadow:6px 6px 0 var(--ink)}
+  .nemlig-send{inline-size:min(100% - 3rem,46rem);block-size:min(88svh,48rem);max-block-size:88svh;margin:auto;border-block-end:var(--line) solid var(--ink);border-radius:1.5rem;box-shadow:6px 6px 0 var(--ink)}
 }
 
 .ns-head{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.6rem;padding:.9rem var(--gutter) .6rem;border-block-end:var(--line) solid var(--ink);background:var(--sun-soft)}
@@ -76,3 +76,9 @@
 .ns-in{color:color-mix(in oklch,var(--mint) 45%,var(--ink));font-weight:800;font-size:.85rem}
 /* Narrow phones: the buttons go under the name. */
 @container (max-width:30rem){.ns-item{grid-template-columns:1fr}.ns-item-tools{justify-content:start}.ns-item-tools .btn{flex:1}}
+
+/* Headings take focus on a new step; only a keyboard user needs to see it. */
+.nemlig-send [tabindex="-1"]:focus:not(:focus-visible){outline:none}
+.ns-ask{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;inline-size:100%}
+.ns-ask p{flex:1 1 100%;margin:0}
+.ns-ask .btn{flex:1 1 10rem}

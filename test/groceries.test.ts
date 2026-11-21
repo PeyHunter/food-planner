@@ -157,6 +157,25 @@ describe("didYouMean", () => {
     expect(offered.length).toBeLessThanOrEqual(3);
   });
 
+  test.each([
+    ["mæk", "mælk"],
+    ["laksefilt", "laksefilet"],
+    ["dil", "dild"],
+    ["seleri", "selleri"],
+    ["spinnach", "spinat"],
+  ])("in Danish, %s offers %s first and only Danish names", (name, first) => {
+    const offered = didYouMean(name, "da");
+    expect(offered[0]).toBe(first);
+    const english = new Set(groceries.flatMap((grocery) => grocery.en));
+    const danish = new Set(groceries.flatMap((grocery) => grocery.da));
+    expect(offered.filter((one) => english.has(one) && !danish.has(one))).toEqual([]);
+  });
+
+  test("a word closest to a Danish name gets no English names, even in English", () => {
+    expect(didYouMean("seleri", "en")).not.toContain("celery");
+    expect(didYouMean("mæk", "en")).toEqual(["mælk"]);
+  });
+
   test.each(["tomato", "Tomatoes", "kyllingebryst", "hvidløgsfed", "2 dl piskefløde", "", "zzqx"])("offers nothing for %j", (name) => {
     expect(didYouMean(name)).toEqual([]);
   });

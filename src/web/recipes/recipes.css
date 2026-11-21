@@ -2,7 +2,7 @@
 .recipes {
   --r-ink: var(--ink, #23202f);
   --r-paper: var(--paper, #fff);
-  --r-line: var(--line-bold) solid var(--r-ink);
+  --r-line: var(--line) solid var(--r-ink);
   --r-pop: 4px 4px 0 var(--r-ink);
   --r-tomato: var(--tomato, #ff6f5b);
   --r-sun: var(--sun, #ffd84d);
@@ -132,7 +132,7 @@
   justify-self: center;
   min-block-size: 2.75rem;
   padding: 0 1.1rem;
-  border: var(--line-bold) solid var(--r-ink);
+  border: var(--line) solid var(--r-ink);
   border-radius: 999px;
   background: var(--r-paper);
   color: var(--r-ink);

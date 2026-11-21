@@ -170,3 +170,20 @@ test("a link to a recipe opened while logged out lands on that recipe after logg
   await expect(fresh.getByRole("heading", { name: "Deep link stew" })).toBeVisible();
   await fresh.close();
 });
+
+test("an amount never picks a unit by itself: 1 dild asks for one instead of becoming 1 g", async ({ page }) => {
+  await logIn(page);
+  const title = `Dild ${Date.now()}`;
+  await page.getByRole("link", { name: "+ Add recipe" }).click();
+  await page.getByLabel("Name").fill(title);
+  await page.getByRole("button", { name: "Fish" }).click();
+  await page.getByLabel("Amount 1").fill("1");
+  await expect(page.getByLabel("Unit 1")).toHaveValue("");
+  await page.getByLabel("Ingredient 1").fill("dild");
+  await page.getByRole("button", { name: "Save recipe" }).click();
+  await expect(page.getByRole("alert")).toHaveText("Pick a unit for dild.");
+  await page.getByLabel("Unit 1").selectOption("pcs");
+  await page.getByRole("button", { name: "Save recipe" }).click();
+  await expect(page.getByRole("heading", { name: title })).toBeVisible();
+  await expect(page.locator(".lines .amount")).toHaveText(["1 pcs"]);
+});

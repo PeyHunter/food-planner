@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { t } from "../i18n.ts";
+import { currentLanguage, t } from "../i18n.ts";
 import { builtInTags, kidTags, mainTypes, type IngredientSuggestion, type MainType, type PhotoRecipeDraft, type RecipeInput } from "../../shared/recipes.ts";
 import { isUnit, units } from "../../shared/units.ts";
 import { didYouMean, guessShopSection } from "../../shared/groceries.ts";
@@ -24,7 +24,7 @@ type Draft = {
   steps: string[];
 };
 
-// The unit starts as "—" so the blank row at the end doesn't read as a real "200 g" line; typing an amount picks g.
+// The unit starts as "—" and stays so until picked: an amount alone asks for a unit, never becomes a guessed "1 g".
 const emptyLine = (): LineDraft => ({ amount: "", unit: "", ingredient: "", note: "" });
 const isEmptyLine = (line: LineDraft) => !line.amount && !line.ingredient && !line.note && !line.unit;
 const blank: Draft = { title: "", description: "", feeds: "4", minutes: "", types: [], tags: [], otherTags: "", ageFrom: "", ageTo: "", lines: [emptyLine()], steps: [""] };
@@ -51,6 +51,7 @@ function toInput(draft: Draft): RecipeInput {
       .map((line) => {
         const amount = numberOrNull(line.amount);
         if (Number.isNaN(amount)) throw new Error(t("The amount for {name} must be a number, like 2 or 0.5.", { name: line.ingredient || t("an ingredient") }));
+        if (amount !== null && !isUnit(line.unit)) throw new Error(t("Pick a unit for {name}.", { name: line.ingredient || t("an ingredient") }));
         return { amount, unit: amount === null || !isUnit(line.unit) ? null : line.unit, ingredient: line.ingredient, note: line.note };
       }),
     steps: draft.steps,
@@ -329,7 +330,7 @@ function IngredientRow({ index, line, onChange, onRemove }: { index: number; lin
   const [focused, setFocused] = useState(false);
   const n = index + 1;
   const name = line.ingredient.trim();
-  const guess = useMemo(() => (name ? { section: guessShopSection(name), fixes: didYouMean(name) } : undefined), [name]);
+  const guess = useMemo(() => (name ? { section: guessShopSection(name), fixes: didYouMean(name, currentLanguage()) } : undefined), [name]);
 
   useEffect(() => {
     const q = line.ingredient.trim();
@@ -374,7 +375,7 @@ function IngredientRow({ index, line, onChange, onRemove }: { index: number; lin
       </div>
       <input className="amount" aria-label={`Amount ${n}`} inputMode="decimal"
         value={line.amount}
-        onChange={(event) => onChange(!line.amount && !line.unit && event.target.value ? { amount: event.target.value, unit: "g" } : { amount: event.target.value })}
+        onChange={(event) => onChange({ amount: event.target.value })}
       />
       <select aria-label={`Unit ${n}`} value={line.unit} onChange={(event) => onChange({ unit: event.target.value })}>
         <option value="">—</option>

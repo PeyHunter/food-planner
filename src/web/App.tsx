@@ -141,6 +141,8 @@ function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
   if (current.id !== "profile") lastTab.current = current;
   const logOut = async () => {
     await fetch("/api/logout", { method: "POST" });
+    // The next person to log in starts on Week, not on this person's last page. A link opened while logged out still works.
+    window.history.replaceState(null, "", "#/week");
     onLoggedOut();
   };
   const name = capitalise(me.username);

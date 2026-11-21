@@ -93,14 +93,18 @@ test("Profile is in the header on every tab, English | Dansk switches at once, B
   await expect(language.getByRole("radio", { name: "English" })).toBeChecked();
   await expect(page.getByRole("button", { name: "Log out" })).toBeVisible();
 
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await language.getByRole("radio", { name: "Dansk" }).click();
   await expect(nav.getByRole("button")).toHaveText([/Opskrifter$/, /Uge$/, /Indkøb$/, /(Runi Lee|Børn)$/]);
+  // The page says it is Danish, so the browser spellchecks Danish.
+  await expect(page.locator("html")).toHaveAttribute("lang", "da");
   await expect(header.getByRole("link", { name: "Profil" })).toBeVisible();
   await expect(page.getByRole("radiogroup", { name: "Sprog" }).getByRole("radio", { name: "Dansk" })).toBeChecked();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
   await page.getByRole("radiogroup", { name: "Sprog" }).getByRole("radio", { name: "English" }).click();
   await expect(nav.getByRole("button", { name: "Week" })).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
   // Profile was reloaded, so Back has no tab to return to and goes to Week.
   await page.getByRole("button", { name: "Back" }).click();
   await expect(nav.getByRole("button", { name: "Week" })).toHaveAttribute("aria-current", "page");
@@ -109,4 +113,37 @@ test("Profile is in the header on every tab, English | Dansk switches at once, B
   await header.getByRole("link", { name: "Profile" }).click();
   await page.getByRole("button", { name: "Back" }).click();
   await expect(nav.getByRole("button", { name: "Shopping" })).toHaveAttribute("aria-current", "page");
+});
+
+test("in Danish, typos in a recipe get Danish 'Mente du' fixes, never English ones", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Name").fill("peyton");
+  await page.getByLabel("Password").fill(e2ePasswords.peyton);
+  await page.getByRole("button", { name: "Log in" }).click();
+  await expect(page.getByRole("navigation", { name: "Main" })).toBeVisible();
+  await page.getByRole("link", { name: "Profile" }).click();
+  await page.getByRole("radio", { name: "Dansk" }).click();
+  await expect(page.getByRole("heading", { name: "Profil" })).toBeVisible();
+
+  try {
+    await page.goto("/#/recipes/new");
+    const typed = page.getByLabel("Ingredient 1");
+    const fixes = page.locator(".line-hint .chip");
+    for (const [typo, fix] of [
+      ["mæk", "mælk?"],
+      ["laksefilt", "laksefilet?"],
+      ["dil", "dild?"],
+      ["seleri", "selleri?"],
+    ]) {
+      await typed.fill(typo!);
+      await expect(page.getByText("Mente du:")).toBeVisible();
+      await expect(fixes.first()).toHaveText(fix!);
+      await expect(fixes.filter({ hasText: /^(milk|salmon|dill|celery|celeriac)/ })).toHaveCount(0);
+    }
+    await page.screenshot({ path: `${shots}/did-you-mean-da.png` });
+    await fixes.first().click();
+    await expect(typed).toHaveValue("selleri");
+  } finally {
+    await page.request.put("/api/profile", { data: { language: "en" } });
+  }
 });

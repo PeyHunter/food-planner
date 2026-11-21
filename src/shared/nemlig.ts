@@ -1,5 +1,6 @@
 import { danishName, guessShopSection, recognise } from "./groceries.ts";
 import { translate } from "./i18n.ts";
+import { sameIngredient } from "./ingredient-names.ts";
 import { nemligSearchUrl, type Language, type Organic } from "./profile.ts";
 import type { ShopSection } from "./recipes.ts";
 import type { ShoppingView } from "./shopping.ts";
@@ -12,7 +13,7 @@ export type Remembered = { word: string | null; link: string | null };
 export type SendItem = {
   /** The shopping list key, so it can be ticked off after. */
   key: string;
-  /** Null for an extra ("milk"), which has no ingredient to remember a word on. */
+  /** Null for an extra ("milk") with no ingredient of the same name on the list to remember a word on. */
   ingredientId: string | null;
   name: string;
   /** What the dinners need; null for "salt, to taste" or an extra. */
@@ -118,18 +119,24 @@ export function buildSendList(
         };
       }),
   );
+  const allLines = view.sections.flatMap((section) => section.lines);
   const extras = view.extras
     .filter((extra) => !ticked(extra.key, extra.ticked))
-    .map((extra): SendItem => ({
-      key: extra.key,
-      ingredientId: null,
-      name: extra.name,
-      need: null,
-      pack: null,
-      word: searchWord(extra.name),
-      link: null,
-      organic: isOrganic(organic, guessShopSection(extra.name)),
-    }));
+    .map((extra): SendItem => {
+      // An extra named like an ingredient on the list ("laksefilt") searches with that ingredient's remembered word.
+      const same = allLines.find((line) => sameIngredient(line.ingredient.name, extra.name) || sameIngredient(extra.name, line.ingredient.name));
+      const kept = same ? remembered[same.ingredient.id] : undefined;
+      return {
+        key: extra.key,
+        ingredientId: same?.ingredient.id ?? null,
+        name: extra.name,
+        need: null,
+        pack: null,
+        word: kept?.word ?? searchWord(extra.name),
+        link: kept?.link ?? null,
+        organic: isOrganic(organic, guessShopSection(extra.name)),
+      };
+    });
   return [...lines, ...extras];
 }
 
