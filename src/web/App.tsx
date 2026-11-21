@@ -5,6 +5,8 @@ import { getChildren } from "./kids/api.ts";
 import { kidsTabLabel } from "./kids/labels.ts";
 import { KidsScreen } from "./kids/KidsScreen.tsx";
 import { ProfileScreen } from "./profile/ProfileScreen.tsx";
+import { cancelled, logInWithPasskey, passkeysWork } from "./security/api.ts";
+import "./security/security.css";
 import { KidNamesContext, KidsContext } from "./kitchen.ts";
 import { RecipesScreen } from "./recipes/RecipesScreen.tsx";
 import { ShoppingScreen } from "./shopping/ShoppingScreen.tsx";
@@ -82,6 +84,19 @@ function LoginScreen({ onLoggedIn }: { onLoggedIn: () => Promise<void> }) {
     }
   };
 
+  const withPasskey = async () => {
+    setBusy(true);
+    setProblem(undefined);
+    try {
+      await logInWithPasskey();
+      await onLoggedIn();
+    } catch (error) {
+      if (!cancelled(error)) setProblem((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <main className="app login">
       <img className="logo" src="/icons/icon-192.png" alt="" width={96} height={96} />
@@ -100,6 +115,14 @@ function LoginScreen({ onLoggedIn }: { onLoggedIn: () => Promise<void> }) {
         <button type="submit" className="btn" disabled={busy}>
           {t("Log in")}
         </button>
+        {passkeysWork() && (
+          <>
+            <p className="or">{t("or")}</p>
+            <button type="button" className="btn mint passkey" disabled={busy} onClick={() => void withPasskey()}>
+              {t("Use Face ID / fingerprint")}
+            </button>
+          </>
+        )}
       </form>
     </main>
   );

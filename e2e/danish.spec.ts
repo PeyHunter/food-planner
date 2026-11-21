@@ -91,7 +91,7 @@ test("Profile is in the header on every tab, English | Dansk switches at once, B
   const language = page.getByRole("radiogroup", { name: "Language" });
   await expect(page.locator(".profile .card").first()).toContainText("Language");
   await expect(language.getByRole("radio", { name: "English" })).toBeChecked();
-  await expect(page.getByRole("button", { name: "Log out" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Log out", exact: true })).toBeVisible();
 
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await language.getByRole("radio", { name: "Dansk" }).click();

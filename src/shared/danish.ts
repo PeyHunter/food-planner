@@ -1,3 +1,5 @@
+import { danishSecurity } from "./danish-security.ts";
+
 /** Danish for the app's English text. Keys are the English text exactly as written in the code; {name} parts stay. */
 export const danish: Record<string, string> = {
   // Words the data uses: main types, tags, shop sections, units, tabs
@@ -494,4 +496,5 @@ export const danish: Record<string, string> = {
   "Keep adding": "Bliv ved",
   "Yes, carry on": "Ja, fortsæt",
   "Days before today start off. Tap one to add it.": "Dage før i dag er slået fra. Tryk på en for at tage den med.",
+  ...danishSecurity,
 };

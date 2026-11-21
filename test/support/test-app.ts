@@ -43,10 +43,11 @@ export async function createTestApp({ publicUrl = "http://localhost", photoRecip
         now = new Date(now.getTime() + ms);
       },
     },
-    async logIn(username: string, password: string) {
+    /** `ip` stands in for the address Traefik puts in X-Forwarded-For. */
+    async logIn(username: string, password: string, { ip, userAgent }: { ip?: string; userAgent?: string } = {}) {
       const response = await app.request("/api/login", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...(ip ? { "x-forwarded-for": ip } : {}), ...(userAgent ? { "user-agent": userAgent } : {}) },
         body: JSON.stringify({ username, password }),
       });
       const setCookie = response.headers.getSetCookie().find((cookie) => cookie.startsWith("fp_session=")) ?? null;

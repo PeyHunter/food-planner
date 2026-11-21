@@ -11,6 +11,7 @@ import { ensureHousehold } from "./household.ts";
 import { readKitchens, type ReadyKitchen } from "./kitchens-config.ts";
 import { photoStore, shrinkOldPhotos } from "./photos.ts";
 import { reguessOtherShopSections } from "./recipes.ts";
+import { readSecretKey, secretStore } from "./secrets.ts";
 import { fakeClient, type PhotoRecipeClient } from "./photo-recipe.ts";
 import { addStarterRecipesOnce } from "./starter-recipes.ts";
 
@@ -109,7 +110,12 @@ for (const { people, starter, ...kitchen } of config.kitchens) {
 }
 await reguessOtherShopSections(database);
 
-const app = createApp({ database, now: () => new Date(), publicUrl: config.publicUrl, photosDir, webDir: "dist/web", photoRecipeClient: photoRecipeClient(process.env) });
+// Without the key the app runs; only the features that keep a sealed login (nemlig.com) stay off.
+const secretKey = readSecretKey(process.env.APP_SECRET_KEY);
+if (!Buffer.isBuffer(secretKey)) console.log(`${secretKey.error} The nemlig.com login stays off until it is set.`);
+const secrets = Buffer.isBuffer(secretKey) ? secretStore(database, () => new Date(), secretKey) : undefined;
+
+const app = createApp({ database, now: () => new Date(), publicUrl: config.publicUrl, photosDir, webDir: "dist/web", photoRecipeClient: photoRecipeClient(process.env), secrets });
 // The built phone UI; any path the API doesn't own falls back to the single page.
 // Built files carry a hash in their name, so they never change; the page and the service worker must be asked for
 // again each time, or a phone keeps showing last week's app after an update.

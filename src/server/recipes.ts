@@ -9,7 +9,7 @@ import { createMiddleware } from "hono/factory";
 import { kidTags, mainTypes, shopSections, type Cook, type Ingredient, type IngredientRow, type IngredientSettings, type MainType, type Photo, type Recipe, type RecipeInput, type RecipeSummary, type ShareLink, type SharedRecipe, type ShopSection, sharePhotoMedia } from "../shared/recipes.ts";
 import { isUnit } from "../shared/units.ts";
 import { childRecipeTag } from "../shared/week.ts";
-import { sessionUser } from "./access.ts";
+import { currentSession, type Session } from "./access.ts";
 import type { AppDependencies } from "./app.ts";
 import type { Database } from "./db.ts";
 import { photoStore, sharePhotoFile, smallWidth, type StoredPhoto } from "./photos.ts";
@@ -17,7 +17,8 @@ import { guessShopSection } from "../shared/groceries.ts";
 import { nameForms, sameIngredient } from "../shared/ingredient-names.ts";
 import { cooks, ingredients, kitchenMembers, kitchens, photos, recipeLines, recipes, recipeTags, recipeTypes, steps, users } from "./schema.ts";
 
-type Member = { userId: string; kitchenId: string; kids: boolean; language: Language };
+/** `checkedAt` is when the session was checked, so requireRecentAuth needs no clock of its own. */
+type Member = { userId: string; kitchenId: string; kids: boolean; language: Language; session: Session; checkedAt: Date };
 export type MemberEnv = { Variables: { member: Member } };
 type Env = MemberEnv;
 
@@ -42,8 +43,9 @@ const likeText = (text: string) => `%${text.replace(/[\\%_]/g, (char) => `\\${ch
 /** Lets only logged-in kitchen members through and sets `member`. */
 export const kitchenMember = ({ database, now }: Pick<AppDependencies, "database" | "now">) =>
   createMiddleware<MemberEnv>(async (c, next) => {
-    const user = await sessionUser(database, now, c);
-    if (!user) return c.json({ error: "Not logged in" }, 401);
+    const found = await currentSession(database, now, c);
+    if (!found) return c.json({ error: "Not logged in" }, 401);
+    const { user, session } = found;
     const [row] = await database.db
       .select({ kitchenId: kitchenMembers.kitchenId, kids: kitchens.kids })
       .from(kitchenMembers)
@@ -51,7 +53,7 @@ export const kitchenMember = ({ database, now }: Pick<AppDependencies, "database
       .where(eq(kitchenMembers.userId, user.id))
       .limit(1);
     if (!row) return c.json({ error: "You are not in a kitchen yet." }, 403);
-    c.set("member", { userId: user.id, kitchenId: row.kitchenId, kids: row.kids, language: isLanguage(user.language) ? user.language : "en" });
+    c.set("member", { userId: user.id, kitchenId: row.kitchenId, kids: row.kids, language: isLanguage(user.language) ? user.language : "en", session, checkedAt: now() });
     await next();
   });
 
