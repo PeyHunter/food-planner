@@ -5,7 +5,7 @@ import { getChildren } from "./kids/api.ts";
 import { kidsTabLabel } from "./kids/labels.ts";
 import { KidsScreen } from "./kids/KidsScreen.tsx";
 import { ProfileScreen } from "./profile/ProfileScreen.tsx";
-import { KidsContext } from "./kitchen.ts";
+import { KidNamesContext, KidsContext } from "./kitchen.ts";
 import { RecipesScreen } from "./recipes/RecipesScreen.tsx";
 import { ShoppingScreen } from "./shopping/ShoppingScreen.tsx";
 import { WeekScreen } from "./week/WeekScreen.tsx";
@@ -148,6 +148,7 @@ function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
 
   return (
     <KidsContext.Provider value={kids}>
+      <KidNamesContext.Provider value={kidNames}>
       <main className="app">
         <header className="top">
           <a className="home" href="#/week">
@@ -184,6 +185,7 @@ function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
           </button>
         ))}
       </nav>
+      </KidNamesContext.Provider>
     </KidsContext.Provider>
   );
 }

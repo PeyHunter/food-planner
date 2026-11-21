@@ -3,7 +3,8 @@ import { t } from "../i18n.ts";
 import { builtInTags, kidTags, mainTypes, type IngredientSuggestion, type MainType, type PhotoRecipeDraft, type RecipeInput } from "../../shared/recipes.ts";
 import { isUnit, units } from "../../shared/units.ts";
 import { didYouMean, guessShopSection } from "../../shared/groceries.ts";
-import { useKids } from "../kitchen.ts";
+import { tagLabel } from "../kids/labels.ts";
+import { useKidNames, useKids } from "../kitchen.ts";
 import { createRecipe, deleteRecipe, getRecipe, go, suggestIngredients, updateRecipe, uploadPhoto } from "./api.ts";
 import { sectionColour } from "./section-colour.ts";
 
@@ -95,6 +96,7 @@ function photoDraft({ recipe }: FromPhoto): Draft {
 export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Prefill; fromPhoto?: FromPhoto }) {
   const [draft, setDraft] = useState<Draft | undefined>(id ? undefined : fromPhoto ? photoDraft(fromPhoto) : start ? startDraft(start) : blank);
   const kids = useKids();
+  const kidNames = useKidNames();
   const [keepPhotos, setKeepPhotos] = useState(true);
   const [started] = useState(() => startPhoto(fromPhoto));
   const [photo, setPhoto] = useState<File | undefined>(started);
@@ -239,7 +241,7 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
         <div className="chips">
           {builtInTags.filter((tag) => kids || !kidTags.includes(tag)).map((tag) => (
             <button key={tag} type="button" className="chip" aria-pressed={draft.tags.includes(tag)} onClick={() => set({ tags: toggle(draft.tags, tag) })}>
-              {t(tag)}
+              {tagLabel(tag, kidNames)}
             </button>
           ))}
         </div>

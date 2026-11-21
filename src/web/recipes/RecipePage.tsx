@@ -1,5 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { currentLanguage, t } from "../i18n.ts";
+import { tagLabel } from "../kids/labels.ts";
+import { useKidNames } from "../kitchen.ts";
 import { formatMinutes, type Recipe, type RecipeLine, type RecipeSummary } from "../../shared/recipes.ts";
 import { ageRangeLabel } from "../../shared/child-age.ts";
 import { formatAmount, scale } from "../../shared/units.ts";
@@ -11,6 +13,7 @@ import { PhotoViewer, type ViewerPhoto } from "../PhotoViewer.tsx";
 export const typeColour: Record<string, string> = { Fish: "sky", Meat: "tomato", Chicken: "sun", Vegetarian: "mint", Vegetables: "mint" };
 
 export function TypeStickers({ recipe }: { recipe: Pick<RecipeSummary, "types" | "tags"> }) {
+  const kidNames = useKidNames();
   return (
     <span className="stickers">
       {recipe.types.map((type, index) => (
@@ -20,7 +23,7 @@ export function TypeStickers({ recipe }: { recipe: Pick<RecipeSummary, "types" |
       ))}
       {recipe.tags.map((tag) => (
         <span key={tag} className="sticker white">
-          {t(tag)}
+          {tagLabel(tag, kidNames)}
         </span>
       ))}
     </span>

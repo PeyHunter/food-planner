@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { t } from "../i18n.ts";
+import { kidsTabLabel } from "../kids/labels.ts";
+import { useKidNames } from "../kitchen.ts";
 import { formatMinutes, type RecipeSummary } from "../../shared/recipes.ts";
 import { childRecipeTag } from "../../shared/week.ts";
 import { listRecipes } from "./api.ts";
@@ -10,9 +12,10 @@ export function RecipeList() {
   const [q, setQ] = useState("");
   const [recipes, setRecipes] = useState<RecipeSummary[]>();
   const [problem, setProblem] = useState<string>();
-  // Runi's own recipes live on the Runi & kids tab; the list only says how many it leaves out.
+  // The kids' own recipes live on the kids tab; the list only says how many it leaves out.
   const [hidden, setHidden] = useState(0);
   const [loads, setLoads] = useState(0);
+  const kidNames = useKidNames();
 
   useEffect(() => {
     let current = true;
@@ -68,7 +71,7 @@ export function RecipeList() {
       {recipes && recipes.length === 0 && q && <p className="hint">{t('No recipe matches "{q}".', { q })}</p>}
       {hidden > 0 && (
         <p className="hint kids-hint">
-          <a href="#/kids">{t("Runi's recipes are on the Runi & kids tab →")}</a>
+          <a href="#/kids">{t("Kids' recipes are on the {tab} tab →", { tab: kidsTabLabel(kidNames) })}</a>
         </p>
       )}
       <ul className="cards">

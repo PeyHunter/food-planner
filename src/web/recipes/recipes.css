@@ -848,13 +848,13 @@
   .recipes .recipe-list .cards {
     grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
     gap: 1.4rem;
+    /* a short card keeps its own height instead of growing to the tallest in its row */
+    align-items: start;
   }
 
   .recipes .recipe-list .card {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
     align-items: start;
-    block-size: 100%;
     padding: 0;
     overflow: clip;
     gap: 0;

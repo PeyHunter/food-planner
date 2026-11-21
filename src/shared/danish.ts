@@ -411,7 +411,7 @@ export const danish: Record<string, string> = {
   "p. {n} / {total}": "s. {n} / {total}",
   "Now:": "Nu:",
   "List and search": "Liste og søgning",
-  "Runi's recipes are on the Runi & kids tab →": "Runis opskrifter ligger under Runi & børn →",
+  "Kids' recipes are on the {tab} tab →": "Børnenes opskrifter ligger under fanen {tab} →",
   "Step {n}": "Trin {n}",
   "New main photo": "Nyt hovedbillede",
   "Add an ingredient": "Tilføj en ingrediens",
