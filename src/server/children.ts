@@ -75,7 +75,7 @@ export function createChildRoutes({ database, now }: AppDependencies) {
   routes.delete("/api/children/:id", member, async (c) => {
     const { kitchenId } = c.get("member");
     if (!(await ownChild(kitchenId, c.req.param("id")))) return c.json({ error: "No such child." }, 404);
-    // Startup gives a kitchen with no children Runi Lee again, so the last one stays.
+    // A kitchen with kids keeps at least one child: the week and rules are planned around them.
     if ((await listChildren(kitchenId)).length === 1) return c.json({ error: "Keep at least one child." }, 409);
     await db.delete(children).where(eq(children.id, c.req.param("id")));
     return c.body(null, 204);

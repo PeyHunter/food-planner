@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, date, doublePrecision, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, date, doublePrecision, index, integer, numeric, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 const at = (name: string) => timestamp(name, { withTimezone: true, mode: "date" });
 
@@ -22,6 +22,8 @@ export const kitchens = pgTable("kitchens", {
   /** 0 is Monday, 6 is Sunday. */
   nemligDay: integer("nemlig_day").notNull().default(6),
   nemligOrganic: boolean("nemlig_organic").notNull().default(false),
+  /** When the starter recipes were put in at creation. Kitchens made before they existed count as done. */
+  starterAddedAt: at("starter_added_at"),
 });
 
 export const kitchenMembers = pgTable(
@@ -263,4 +265,22 @@ export const freezerPortions = pgTable(
     updatedAt: at("updated_at").notNull().defaultNow(),
   },
   (table) => [primaryKey({ columns: [table.kitchenId, table.recipeId] }), check("freezer_portions_count", sql`${table.count} >= 0`)],
+);
+
+/** One row per Claude API call, for the usage report (scripts/usage-report.sql). */
+export const aiCalls = pgTable(
+  "ai_calls",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kitchenId: kitchenId(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    /** photo, link or vegetarian. */
+    feature: text("feature").notNull(),
+    model: text("model").notNull(),
+    inputTokens: integer("input_tokens").notNull(),
+    outputTokens: integer("output_tokens").notNull(),
+    costUsd: numeric("cost_usd", { precision: 12, scale: 6 }).notNull(),
+    createdAt: at("created_at").notNull().defaultNow(),
+  },
+  (table) => [index("ai_calls_created").on(table.createdAt)],
 );

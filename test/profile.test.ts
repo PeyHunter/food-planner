@@ -34,10 +34,10 @@ test("a kitchen without kids can say it has a child, and keeps that after a rest
     { username: "isabel", password: randomUUID() },
     { username: "christopher", password: randomUUID() },
   ];
-  await ensureHousehold(app.database, people, { name: "Isabel's", kids: false });
+  await ensureHousehold(app.database, people, { name: "Isabel's", kids: [], language: "en" });
   const { call } = await loggedIn("isabel", people[0]!.password, app);
   expect(((await (await call("/api/profile", "PUT", { kids: true })).json()) as Profile).kids).toBe(true);
-  await ensureHousehold(app.database, people, { name: "Isabel's", kids: false });
+  await ensureHousehold(app.database, people, { name: "Isabel's", kids: [], language: "en" });
   const week = (await (await call("/api/plan/weeks/2026-03-02")).json()) as WeekView;
   expect(week.children.map((child) => child.name)).toEqual(["Baby"]);
   expect(((await (await call("/api/profile")).json()) as Profile).kids).toBe(true);
