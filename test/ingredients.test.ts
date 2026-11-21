@@ -70,7 +70,7 @@ test("new ingredients get a guessed shop section, and a user's choice is never o
     feeds: 2,
     types: ["Fish"],
     tags: [],
-    lines: ["cream", "Salmon", "Sweet potatoes", "Frozen peas", "Sumac"].map((ingredient) => ({ amount: 1, unit: "pcs", ingredient, note: "" })),
+    lines: ["cream", "Salmon", "Sweet potatoes", "Frozen peas", "Spirulina"].map((ingredient) => ({ amount: 1, unit: "pcs", ingredient, note: "" })),
     steps: [],
   });
   expect((await list()).map((ingredient) => [ingredient.name, ingredient.shopSection])).toEqual([
@@ -79,7 +79,7 @@ test("new ingredients get a guessed shop section, and a user's choice is never o
     ["Salmon", "Meat & fish"],
     ["salt", "Spices & sauces"],
     ["Spaghetti", "Dry goods"],
-    ["Sumac", "Other"],
+    ["Spirulina", "Other"],
     ["Sweet potatoes", "Vegetables"],
   ]);
 });
