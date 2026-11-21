@@ -123,12 +123,23 @@ test("ticks are shared, set rather than flipped, and Clear ticked hides them", a
 
 test("a pack size set on the ingredient rounds the list up to packs", async () => {
   const { call, create, list } = await loggedIn();
-  const soup = await create(recipe("Soup", [line(800, "g", "Carrots")]));
+  // Quinces aren't in the shop catalog, so they start with no pack size.
+  const soup = await create(recipe("Soup", [line(800, "g", "Quinces")]));
   await call("/api/plan/days/2026-03-02", "PUT", { dinnerRecipeId: soup });
   const before = (await list()).sections[0]!.lines[0]!;
   expect(before).toMatchObject({ amount: 400, needsPackSize: true, packs: null });
   await call(`/api/ingredients/${before.ingredient.id}`, "PUT", { shopSection: "Vegetables", packAmount: 1, packUnit: "kg", alwaysAtHome: false });
-  expect((await list()).sections[0]!.lines[0]).toMatchObject({ packs: 1, leftover: "600 g carrots left", needsPackSize: false });
+  expect((await list()).sections[0]!.lines[0]).toMatchObject({ packs: 1, leftover: "600 g quinces left", needsPackSize: false });
+});
+
+test("known groceries come with the shop's pack: 3 onions and 600 g carrots fill a 1 kg net and a 2 kg bag", async () => {
+  const { call, create, list } = await loggedIn();
+  const stew = await create(recipe("Stew", [line(3, "pcs", "Onions"), line(600, "g", "Gulerødder")]));
+  await call("/api/plan/days/2026-03-02", "PUT", { dinnerRecipeId: stew, people: 4 });
+  const lines = (await list()).sections.flatMap((section) => section.lines);
+  // 3 × 160 g is 480 g, shown rounded up to 500 g.
+  expect(lines.find((one) => one.ingredient.name === "Onions")).toMatchObject({ amount: 500, unit: "g", packs: 1, needsPackSize: false });
+  expect(lines.find((one) => one.ingredient.name === "Gulerødder")).toMatchObject({ amount: 600, unit: "g", packs: 1 });
 });
 
 test("perf: the list for 7 planned days builds in 200 ms or less", async () => {
@@ -163,4 +174,27 @@ test("Bought it all clears every item at once, and Bring back shows them again",
   expect((await call(`/api/shopping/${monday}/bought`, "POST", { keys: [42] })).status).toBe(400);
   await call(`/api/shopping/${monday}/bring-back`, "POST");
   expect(names(await list())).toEqual(["Carrots", "Onion"]);
+});
+
+test("one thing under a Danish and an English name is one line: løg on Wednesday, onions on Thursday", async () => {
+  const { call, create, list } = await loggedIn();
+  const danish = await create(recipe("Frikadeller", [line(1, "pcs", "Løg"), line(500, "g", "Hakket svinekød")]));
+  const english = await create(recipe("Chili", [line(2, "pcs", "Onions"), line(400, "g", "Chopped tomatoes")]));
+  await call("/api/plan/days/2026-03-04", "PUT", { dinnerRecipeId: danish, people: 4 });
+  await call("/api/plan/days/2026-03-05", "PUT", { dinnerRecipeId: english, people: 4 });
+
+  const shopping = await list();
+  const onions = shopping.sections.flatMap((section) => section.lines).filter((one) => /løg|onion/i.test(one.ingredient.name));
+  expect(onions).toHaveLength(1);
+  expect(onions[0]!.meals).toEqual(["Wed: Frikadeller", "Thu: Chili"]);
+  // The key is the first name's, so a tick stays put when only Thursday is picked.
+  const thursdayOnly = await list("?days=2026-03-05");
+  expect(thursdayOnly.sections.flatMap((section) => section.lines).find((one) => /løg|onion/i.test(one.ingredient.name))!.key).toBe(onions[0]!.key);
+});
+
+test("red onion and onion stay two lines", async () => {
+  const { call, create, list } = await loggedIn();
+  const salad = await create(recipe("Salad", [line(1, "pcs", "Red onion"), line(1, "pcs", "Onion")]));
+  await call("/api/plan/days/2026-03-04", "PUT", { dinnerRecipeId: salad, people: 4 });
+  expect(names(await list()).filter((name) => /onion/i.test(name)).sort()).toEqual(["Onion", "Red onion"]);
 });

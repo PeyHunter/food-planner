@@ -1,8 +1,13 @@
+import { moreGroceries, moreNames } from "./groceries-more.ts";
+import { packFrom, packOf, type Pack } from "./grocery-packs.ts";
 import type { Language } from "./profile.ts";
 import type { ShopSection } from "./recipes.ts";
 
-/** One thing you can buy. English names are singular; the first Danish name, usually the plural, is the one a Danish shop search uses. */
-export type Grocery = { en: string[]; da: string[]; section: ShopSection };
+/**
+ * One thing you can buy. English names are singular; the first Danish name, usually the plural, is the one a Danish shop search uses.
+ * `pack` is how Danish shops sell it, when known (see docs/research/danish-pack-sizes.md).
+ */
+export type Grocery = { en: string[]; da: string[]; section: ShopSection; pack?: Pack };
 
 // [English names, Danish names], comma separated. Irregular Danish plurals are listed as names of their own.
 const table: Record<ShopSection, [string, string][]> = {
@@ -420,6 +425,8 @@ const table: Record<ShopSection, [string, string][]> = {
   Frozen: [
     ["pea, garden pea, petit pois", "ærter, ært, grønne ærter"],
     ["frozen vegetable, mixed vegetable", "frostgrøntsager, wokgrøntsager"],
+    ["frozen spinach", "frossen spinat, frosne spinat, bladspinat frost"],
+    ["frozen berry, frozen raspberry, frozen blueberry, frozen strawberry", "frosne bær, frosne hindbær, frosne blåbær, frosne jordbær, bærmix"],
     ["ice cream", "is, flødeis"],
     ["ice lolly", "ispind"],
     ["fish finger", "fiskepinde, fiskepind"],
@@ -453,9 +460,20 @@ const table: Record<ShopSection, [string, string][]> = {
 
 const list = (names: string) => names.split(",").map((name) => name.trim()).filter(Boolean);
 
-export const groceries: Grocery[] = Object.entries(table).flatMap(([section, rows]) =>
-  rows.map(([en, da]) => ({ en: list(en), da: list(da), section: section as ShopSection })),
-);
+export const groceries: Grocery[] = [
+  ...Object.entries(table).flatMap(([section, rows]) =>
+    rows.map(([en, da]) => {
+      const first = list(en)[0]!;
+      const [moreEn, moreDa] = moreNames[first] ?? ["", ""];
+      const grocery: Grocery = { en: [...list(en), ...list(moreEn)], da: [...list(da), ...list(moreDa)], section: section as ShopSection };
+      const pack = packOf(first);
+      return pack ? { ...grocery, pack } : grocery;
+    }),
+  ),
+  ...Object.entries(moreGroceries).flatMap(([section, rows]) =>
+    rows.map(([en, da, row]): Grocery => ({ en: list(en), da: list(da), section: section as ShopSection, ...(row ? { pack: packFrom(row) } : {}) })),
+  ),
+];
 
 /** Lower case, æ/ø/å written ae/oe/aa and other accents dropped, so "oksekød" and "oksekoed" are the same. */
 function fold(text: string) {
@@ -494,12 +512,14 @@ const driedSection: Record<string, ShopSection> = {
 const asides = new Set(["in", "with", "packed", "til"]);
 
 const byName = new Map<string, Grocery>();
-for (const grocery of groceries) for (const name of [...grocery.en, ...grocery.da]) if (!byName.has(fold(name))) byName.set(fold(name), grocery);
+// Keyed the way a typed name is read, without punctuation or digits: "sun-dried tomato" is found as "sun dried tomato".
+const nameKey = (name: string) => fold(name).replace(/[^a-z\s]/g, " ").split(/\s+/).filter(Boolean).join(" ");
+for (const grocery of groceries) for (const name of [...grocery.en, ...grocery.da]) if (!byName.has(nameKey(name))) byName.set(nameKey(name), grocery);
 const danishNames = new Set(groceries.flatMap((grocery) => grocery.da));
 const englishNames = new Set(groceries.flatMap((grocery) => grocery.en));
 const display = [...new Set(groceries.flatMap((grocery) => [...grocery.en, ...grocery.da]))].map((name) => ({
   name,
-  key: fold(name),
+  key: nameKey(name),
   da: danishNames.has(name),
   en: englishNames.has(name),
 }));
@@ -675,4 +695,24 @@ export function didYouMean(name: string, language: Language = "en"): string[] {
 /** The main Danish name for a known English or Danish name ("chicken breasts" -> kyllingebryst), for a Danish shop search. */
 export function danishName(name: string): string | undefined {
   return recognise(name)?.grocery.da[0];
+}
+
+/**
+ * The grocery a whole name is, with nothing guessed: "løg", "onions" and "Chopped tomatoes" yes; "garlic powder" (garlic + powder),
+ * "hvidløgspulver" (a compound) or a spelling slip no. Pack sizes and merging two names into one shopping line use this, since
+ * a wrong guess there buys the wrong thing.
+ */
+export function groceryOf(name: string): Grocery | undefined {
+  const words = wordsOf(name);
+  const frozen = words.some((word) => frozenWords.has(word));
+  for (const phrase of [words, words.filter((word) => !descriptors.has(word) && !frozenWords.has(word))]) {
+    if (!phrase.length) continue;
+    const head = phrase.slice(0, -1).join(" ");
+    const found = inflections(phrase.at(-1)!)
+      .map((form) => byName.get(head ? `${head} ${form}` : form))
+      .find(Boolean);
+    // "Frozen peas" is not a bag of fresh peas.
+    if (found) return frozen && found.section !== "Frozen" ? undefined : found;
+  }
+  return undefined;
 }
