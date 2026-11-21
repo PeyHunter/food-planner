@@ -89,7 +89,7 @@ test("send the list to nemlig.com: first-time setup, check the list, fill the ba
 
   // Check the list: Danish search words, organic for fruit and veg only, packs to buy and amounts needed.
   const row = (name: string) => sheet.getByRole("listitem").filter({ hasText: name });
-  await expect(row("Chicken breasts")).toContainText("Buy 2 packs (500 g each)");
+  await expect(row("Chicken breasts")).toContainText("2 packs · 500 g");
   await expect(row("Chicken breasts")).toContainText("kyllingefilet");
   await expect(row("Courgettes")).toContainText("økologisk squash");
   await expect(row("Courgettes")).toContainText("Organic");

@@ -1,4 +1,4 @@
-import { danishName, guessShopSection, recognise } from "./groceries.ts";
+import { danishName, groceryOf, guessShopSection, recognise } from "./groceries.ts";
 import { translate } from "./i18n.ts";
 import { sameIngredient } from "./ingredient-names.ts";
 import { nemligSearchUrl, type Language, type Organic } from "./profile.ts";
@@ -23,6 +23,8 @@ export type SendItem = {
   /** What goes in nemlig's search box, without the organic word. */
   word: string;
   link: string | null;
+  /** nemlig.com's product for the catalog pack, when the kitchen kept that pack size and saved no word or link of its own. */
+  productId: string | null;
   organic: boolean;
 };
 
@@ -84,8 +86,11 @@ export function nemligLink(text: string): string | undefined {
   }
 }
 
-/** Where "Find on nemlig.com" goes: the pasted product, or nemlig's search with "økologisk" in front when organic. */
-export const itemUrl = (item: Pick<SendItem, "word" | "link" | "organic">) => item.link ?? nemligSearchUrl(fullWord(item), false);
+export const productUrl = (id: string) => `https://www.nemlig.com/produkt/${encodeURIComponent(id)}`;
+
+/** Where "Find on nemlig.com" goes: the pasted product, the catalog's product, or nemlig's search with "økologisk" in front when organic. */
+export const itemUrl = (item: Pick<SendItem, "word" | "link" | "organic" | "productId">) =>
+  item.link ?? (item.productId ? productUrl(item.productId) : nemligSearchUrl(fullWord(item), false));
 
 /**
  * Everything still to buy, in list order: not ticked (always-at-home items are never on the list).
@@ -107,6 +112,11 @@ export function buildSendList(
         const need = line.amount !== null && line.unit !== null ? { amount: line.amount, unit: line.unit } : null;
         const { packAmount, packUnit } = line.ingredient;
         const pack = line.packs !== null && packAmount !== null && packUnit !== null ? { packs: line.packs, amount: packAmount, unit: packUnit } : null;
+        const organicItem = isOrganic(organic, section);
+        // The catalog's product is one size and not organic: a typed pack size or the organic word needs the search.
+        const catalog = groceryOf(line.ingredient.name)?.pack;
+        const productId =
+          !kept && !organicItem && pack && catalog?.nemligId && catalog.amount === pack.amount && catalog.unit === pack.unit ? catalog.nemligId : null;
         return {
           key: line.key,
           ingredientId: line.ingredient.id,
@@ -115,7 +125,8 @@ export function buildSendList(
           pack,
           word: kept?.word ?? searchWord(line.ingredient.name),
           link: kept?.link ?? null,
-          organic: isOrganic(organic, section),
+          productId,
+          organic: organicItem,
         };
       }),
   );
@@ -134,6 +145,7 @@ export function buildSendList(
         pack: null,
         word: kept?.word ?? searchWord(extra.name),
         link: kept?.link ?? null,
+        productId: null,
         organic: isOrganic(organic, guessShopSection(extra.name)),
       };
     });
@@ -143,11 +155,15 @@ export function buildSendList(
 /** "600 g", "3 pcs", or "" when there is no amount: what the dinners need. */
 export const needOf = ({ need }: Pick<SendItem, "need">, language: Language) => (need ? amountLabel(need.amount, need.unit, language) : "");
 
-/** What to put in the basket: "Buy 2 packs (500 g each)" when the pack size is known, else "" (the screen says what is needed). */
+/** Sold one at a time (a courgette, a lemon): the packs are just pieces. */
+const onePiece = (pack: NonNullable<SendItem["pack"]>) => pack.unit === "pcs" && pack.amount === 1;
+
+/** What to put in the basket: "3 pcs" for things sold one at a time, "1 pack · 500 ml", "2 packs · 1 kg" (the size of one pack) when known, else "" (the screen says what is needed). */
 export function buyOf({ pack }: Pick<SendItem, "pack">, language: Language) {
   if (!pack) return "";
+  if (onePiece(pack)) return amountLabel(pack.packs, "pcs", language);
   const size = amountLabel(pack.amount, pack.unit, language);
-  return translate(language, pack.packs === 1 ? "Buy 1 pack ({pack})" : "Buy {n} packs ({pack} each)", { n: pack.packs, pack: size });
+  return translate(language, pack.packs === 1 ? "1 pack · {pack}" : "{n} packs · {pack}", { n: pack.packs, pack: size });
 }
 
 /** The word with "økologisk" in front when the item is organic, as nemlig's search gets it. */
@@ -155,6 +171,7 @@ export const fullWord = (item: Pick<SendItem, "word" | "organic">) => (item.orga
 
 /** The list as plain Danish text, one line per item: packs to buy when known ("2 x 500 g"), else the amount needed. */
 export function copyText(items: SendItem[]) {
-  const amount = (item: SendItem) => (item.pack ? `${item.pack.packs} x ${amountLabel(item.pack.amount, item.pack.unit, "da")}` : needOf(item, "da"));
+  const amount = ({ pack, need }: SendItem) =>
+    pack ? (onePiece(pack) ? amountLabel(pack.packs, "pcs", "da") : `${pack.packs} x ${amountLabel(pack.amount, pack.unit, "da")}`) : needOf({ need }, "da");
   return items.map((item) => [amount(item), fullWord(item)].filter(Boolean).join(" ")).join("\n");
 }

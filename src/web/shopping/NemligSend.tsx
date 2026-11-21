@@ -35,7 +35,7 @@ function load(monday: string): Saved | undefined {
     if (!text) return undefined;
     const saved = { ...fresh(), ...(JSON.parse(text) as Partial<Saved>) };
     // Sends saved before packs were counted have `measure` instead of `need` and `pack`.
-    saved.items = saved.items.map((item) => ({ ...item, need: item.need ?? null, pack: item.pack ?? null }));
+    saved.items = saved.items.map((item) => ({ ...item, need: item.need ?? null, pack: item.pack ?? null, productId: item.productId ?? null }));
     return saved;
   } catch {
     return undefined;
@@ -448,10 +448,15 @@ function ItemFacts({ item }: { item: SendItem }) {
     <>
       {buy ? <span className="ns-amount">{buy}</span> : need && <span className="ns-amount need">{t("You need {amount}", { amount: need })}</span>}
       {item.organic && <span className="ns-organic">{t("Organic")}</span>}
+      {buy && need && <span className="ns-need">{t("Recipes use {amount}", { amount: need })}</span>}
       <span className="ns-word">
         {item.link ? (
           <>
             <span aria-hidden="true">🔗</span> {t("Your nemlig.com product")}
+          </>
+        ) : item.productId ? (
+          <>
+            <span aria-hidden="true">🔗</span> {t("nemlig.com product")}
           </>
         ) : (
           <>

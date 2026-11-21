@@ -10,6 +10,8 @@ export type ShoppingIngredient = {
   shopSection: ShopSection;
   packAmount: number | null;
   packUnit: Unit | null;
+  /** Grams in one piece, when known: "3 tomatoes" then fills 500 g bags, and "300 g lemon" counts lemons. */
+  pieceGrams?: number | null;
   alwaysAtHome: boolean;
 };
 export type ShoppingRecipe = {
@@ -66,6 +68,19 @@ const measureOf = (amount: number | null, unit: Unit | null): Measure => {
   if (amount === null || unit === null) return "none";
   return kindOf(unit);
 };
+/**
+ * A line as the shop sells it: pieces of a thing sold by weight become grams, and grams of a thing sold by the piece become pieces.
+ * Needs the piece weight; without it the line stays as written.
+ */
+function asSold(amount: number | null, unit: Unit | null, ingredient: ShoppingIngredient): { amount: number | null; unit: Unit | null } {
+  const { pieceGrams, packUnit } = ingredient;
+  if (amount === null || unit === null || !pieceGrams || packUnit === null) return { amount, unit };
+  const [line, pack] = [kindOf(unit), kindOf(packUnit)];
+  if (line === "pcs" && pack === "mass") return { amount: amount * pieceGrams, unit: "g" };
+  if (line === "mass" && pack === "pcs") return { amount: convert(amount, unit, "g") / pieceGrams, unit: "pcs" };
+  return { amount, unit };
+}
+
 const baseUnit: Record<Exclude<Measure, "none">, Unit> = { mass: "g", volume: "ml", pcs: "pcs", bag: "bag" };
 
 /** Default days: today through Sunday of today's week. */
@@ -138,8 +153,9 @@ function packsFor(amount: number, unit: Unit, ingredient: ShoppingIngredient, la
 export function buildShoppingList(days: ShoppingDay[], language: Language = "en"): ShoppingSection[] {
   const groups = new Map<string, Group>();
   const add = (recipe: ShoppingRecipe, eaters: number, meal: string) => {
-    for (const line of recipe.lines) {
-      if (line.ingredient.alwaysAtHome) continue;
+    for (const written of recipe.lines) {
+      if (written.ingredient.alwaysAtHome) continue;
+      const line = { ...written, ...asSold(written.amount, written.unit, written.ingredient) };
       const measure = measureOf(line.amount, line.unit);
       const key = `${line.ingredient.id}:${measure}`;
       let group = groups.get(key);

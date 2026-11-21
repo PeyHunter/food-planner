@@ -10,7 +10,7 @@ import { connectDatabase, migrate } from "./db.ts";
 import { ensureHousehold } from "./household.ts";
 import { readKitchens, type ReadyKitchen } from "./kitchens-config.ts";
 import { photoStore, shrinkOldPhotos } from "./photos.ts";
-import { reguessOtherShopSections } from "./recipes.ts";
+import { applyCatalogPacks, reguessOtherShopSections } from "./recipes.ts";
 import { fakeClient, type PhotoRecipeClient } from "./photo-recipe.ts";
 import { addStarterRecipesOnce } from "./starter-recipes.ts";
 
@@ -108,6 +108,7 @@ for (const { people, starter, ...kitchen } of config.kitchens) {
   if (starter) await addStarterRecipesOnce(database, kitchenId, kitchen.language);
 }
 await reguessOtherShopSections(database);
+await applyCatalogPacks(database);
 
 const app = createApp({ database, now: () => new Date(), publicUrl: config.publicUrl, photosDir, webDir: "dist/web", photoRecipeClient: photoRecipeClient(process.env) });
 // The built phone UI; any path the API doesn't own falls back to the single page.
