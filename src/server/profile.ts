@@ -1,6 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
-import { isLanguage, type Profile, type ProfileChange } from "../shared/profile.ts";
+import { isLanguage, isOrganic, type Profile, type ProfileChange } from "../shared/profile.ts";
 import type { AppDependencies } from "./app.ts";
 import { kitchenMember, type MemberEnv } from "./recipes.ts";
 import { children, kitchens, users } from "./schema.ts";
@@ -11,7 +11,7 @@ const readBody = async (request: { json(): Promise<unknown> }): Promise<Body> =>
   return body && typeof body === "object" ? (body as Body) : {};
 };
 
-/** Your language, and the kitchen's shared settings: kids, and getting ready for nemlig.com delivery. */
+/** Your language, and the kitchen's shared settings: kids, and nemlig.com delivery. */
 export function createProfileRoutes({ database, now }: AppDependencies) {
   const { db } = database;
   const routes = new Hono<MemberEnv>();
@@ -25,7 +25,7 @@ export function createProfileRoutes({ database, now }: AppDependencies) {
     return {
       language: isLanguage(user!.language) ? user!.language : "en",
       kids: kitchen!.kids,
-      nemlig: { on: kitchen!.nemligOn, day: kitchen!.nemligDay, organic: kitchen!.nemligOrganic },
+      nemlig: { on: kitchen!.nemligOn, day: kitchen!.nemligDay, organic: isOrganic(kitchen!.nemligOrganic) ? kitchen!.nemligOrganic : "none" },
     };
   }
 
@@ -42,7 +42,9 @@ export function createProfileRoutes({ database, now }: AppDependencies) {
     const nemlig = (body.nemlig ?? {}) as Body;
     if (typeof nemlig !== "object") return c.json({ error: "Send the nemlig.com settings." }, 400);
     if ("on" in nemlig && typeof nemlig.on !== "boolean") return c.json({ error: "Say yes or no to nemlig.com." }, 400);
-    if ("organic" in nemlig && typeof nemlig.organic !== "boolean") return c.json({ error: "Say yes or no to organic." }, 400);
+    // A yes or no from an older app still works: yes is everything organic.
+    if (typeof nemlig.organic === "boolean") nemlig.organic = nemlig.organic ? "all" : "none";
+    if ("organic" in nemlig && !isOrganic(nemlig.organic)) return c.json({ error: "Pick none, fruit and veg, or everything for organic." }, 400);
     if ("day" in nemlig && !(Number.isInteger(nemlig.day) && (nemlig.day as number) >= 0 && (nemlig.day as number) <= 6)) return c.json({ error: "Pick a delivery day." }, 400);
 
     await db.transaction(async (tx) => {
@@ -51,7 +53,7 @@ export function createProfileRoutes({ database, now }: AppDependencies) {
         ...(typeof body.kids === "boolean" ? { kids: body.kids } : {}),
         ...("on" in nemlig ? { nemligOn: nemlig.on as boolean } : {}),
         ...("day" in nemlig ? { nemligDay: nemlig.day as number } : {}),
-        ...("organic" in nemlig ? { nemligOrganic: nemlig.organic as boolean } : {}),
+        ...("organic" in nemlig ? { nemligOrganic: nemlig.organic as string } : {}),
       };
       if (Object.keys(kitchen).length) await tx.update(kitchens).set(kitchen).where(eq(kitchens.id, kitchenId));
       // A kitchen that now has kids but no child gets one to rename on the kids tab.

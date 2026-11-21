@@ -17,11 +17,12 @@ export const kitchens = pgTable("kitchens", {
   name: text("name").notNull(),
   /** False for a kitchen without children: no Runi & kids tab, no child rules or meals. */
   kids: boolean("kids").notNull().default(true),
-  /** Getting ready for nemlig.com home delivery. Nothing is sent to nemlig yet. */
+  /** Sends the shopping list to nemlig.com: the app opens nemlig's pages, the user fills the basket there. */
   nemligOn: boolean("nemlig_on").notNull().default(false),
   /** 0 is Monday, 6 is Sunday. */
   nemligDay: integer("nemlig_day").notNull().default(6),
-  nemligOrganic: boolean("nemlig_organic").notNull().default(false),
+  /** "none", "produce" (fruit and veg) or "all". */
+  nemligOrganic: text("nemlig_organic").notNull().default("none"),
 });
 
 export const kitchenMembers = pgTable(
@@ -66,6 +67,9 @@ export const ingredients = pgTable(
     packAmount: doublePrecision("pack_amount"),
     packUnit: text("pack_unit"),
     alwaysAtHome: boolean("always_at_home").notNull().default(false),
+    /** The nemlig.com search word or product link the kitchen picked for this ingredient, kept for next week. */
+    nemligWord: text("nemlig_word"),
+    nemligLink: text("nemlig_link"),
     createdBy: createdBy(),
     createdAt: at("created_at").notNull().defaultNow(),
   },

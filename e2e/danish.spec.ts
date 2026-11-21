@@ -6,7 +6,7 @@ import { e2ePasswords } from "./passwords.ts";
 const shots = process.env.SHOTS_DIR ?? "test-results";
 const recipe = (title: string, types: string[], lines: unknown[] = []) => ({ title, feeds: 2, types, tags: [], ageFromMonths: null, ageToMonths: null, lines, steps: ["Cook it."] });
 
-test("in Danish: a dinner out, a salad next to the main dish, nemlig.com list, bought it all, share as picture", async ({ page }) => {
+test("in Danish: a dinner out, a salad next to the main dish, send to nemlig.com, bought it all, share as picture", async ({ page }) => {
   const stamp = Date.now();
   await page.goto("/");
   await page.getByLabel("Name").fill("peyton");
@@ -26,8 +26,8 @@ test("in Danish: a dinner out, a salad next to the main dish, nemlig.com list, b
   await page.getByRole("radio", { name: "Dansk" }).click();
   await expect(page.getByRole("heading", { name: "Profil" })).toBeVisible();
   await page.getByRole("switch", { name: "Vi handler hos nemlig.com" }).check();
-  await page.getByRole("switch", { name: "Alt økologisk" }).check();
-  await expect(page.getByLabel("Leveringsdag")).toHaveValue("6");
+  await page.getByRole("radio", { name: "Alt", exact: true }).check();
+  await expect(page.getByRole("radio", { name: "søndag" })).toBeChecked();
   await page.screenshot({ path: `${shots}/profile-da.png`, fullPage: true });
 
   // Next week, so no day is in the past: Monday salmon + salad, Tuesday out.
@@ -49,16 +49,17 @@ test("in Danish: a dinner out, a salad next to the main dish, nemlig.com list, b
   await monday.scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${shots}/week-da.png` });
 
-  // Shopping next week: the salad's spinach comes in bags; the nemlig.com list links to nemlig's search.
+  // Shopping next week: the salad's spinach comes in bags; the nemlig.com send searches for it, organic.
   await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Indkøb" }).click();
   await page.getByRole("button", { name: "Næste uge" }).click();
   await expect(page.getByText(`Spinat ${stamp}`).first()).toBeVisible();
   await expect(page.getByText(/1 pose/).first()).toBeVisible();
-  await page.getByRole("button", { name: "nemlig.com-liste" }).click();
-  const link = page.getByRole("link", { name: new RegExp(`Spinat ${stamp}`) });
-  await expect(link).toHaveAttribute("href", new RegExp(`nemlig\\.com/\\?search=${encodeURIComponent(`økologisk Spinat ${stamp}`)}`));
+  await page.getByRole("button", { name: "Send listen til nemlig.com" }).click();
+  const sheet = page.getByRole("dialog", { name: "Tjek listen" });
+  await expect(sheet.getByRole("listitem").filter({ hasText: `Spinat ${stamp}` })).toContainText(`økologisk Spinat ${stamp}`);
+  await expect(sheet.getByRole("listitem").filter({ hasText: `Spinat ${stamp}` })).toContainText("1 pose");
   await page.screenshot({ path: `${shots}/nemlig-da.png`, fullPage: true });
-  await page.getByRole("button", { name: "Tilbage til indkøbslisten" }).click();
+  await sheet.getByRole("button", { name: "Luk" }).click();
   await page.getByRole("button", { name: "✓ Alt er købt" }).click();
   await expect(page.getByText(`Spinat ${stamp}`)).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Hent tilbage" })).toBeVisible();
@@ -74,7 +75,7 @@ test("in Danish: a dinner out, a salad next to the main dish, nemlig.com list, b
   await file.saveAs(`${shots}/recipe-picture.jpg`);
 
   // Back to English for anyone after this.
-  await page.request.put("/api/profile", { data: { language: "en", nemlig: { on: false, organic: false } } });
+  await page.request.put("/api/profile", { data: { language: "en", nemlig: { on: false, organic: "none" } } });
 });
 
 test("Profile is in the header on every tab, English | Dansk switches at once, Back returns to the tab", async ({ page }) => {
