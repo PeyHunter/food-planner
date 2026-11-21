@@ -160,7 +160,7 @@ test("a link to a recipe opened while logged out lands on that recipe after logg
   await expect(recipesTab).toHaveAttribute("aria-current", "page");
 
   // Logged out on a page that is already open, then the link, then logging in.
-  await fresh.locator(".top .me summary").click();
+  await fresh.getByRole("link", { name: "Profile" }).click();
   await fresh.getByRole("button", { name: "Log out" }).click();
   await fresh.goto("/#/week");
   await fresh.goto(`/#/recipes/${id}`);

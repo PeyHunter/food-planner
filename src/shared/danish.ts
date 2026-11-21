@@ -46,6 +46,7 @@ export const danish: Record<string, string> = {
 
   // Profile
   Language: "Sprog",
+  Back: "Tilbage",
   "Only for you. The others in your kitchen pick their own.": "Kun for dig. De andre i jeres køkken vælger selv.",
   "Your kitchen": "Jeres køkken",
   "We have a baby or child": "Vi har en baby eller et barn",
