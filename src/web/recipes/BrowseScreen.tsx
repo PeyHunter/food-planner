@@ -4,7 +4,7 @@ import { formatMinutes, type RecipeSummary } from "../../shared/recipes.ts";
 import { weekdayName, type WeekView } from "../../shared/week.ts";
 import { getWeek, setDinner } from "../week/api.ts";
 import { listBookRecipes, showDate, today } from "./api.ts";
-import { chipsFor, daysToPick, filterBook, sameChip, type Chip } from "./book.ts";
+import { chipsFor, daysToPick, filterBook, pickFirstPage, sameChip, type Chip } from "./book.ts";
 import { TypeStickers, typeColour } from "./RecipePage.tsx";
 import { StarterRecipesButton } from "./StarterRecipesButton.tsx";
 import "./browse.css";
@@ -14,6 +14,25 @@ const photosAround = 1;
 
 // Kept while the app is open, so coming back from a recipe page opens the book on the same page and filters.
 let place: { chosen: Chip[]; at: number } = { chosen: [], at: 0 };
+// Each time the app is opened the book starts on a random page, not the one it started on last time.
+let firstPagePicked = false;
+const lastFirstKey = "book-last-first";
+
+function rememberedFirst() {
+  try {
+    return localStorage.getItem(lastFirstKey);
+  } catch {
+    return null;
+  }
+}
+
+function rememberFirst(id: string) {
+  try {
+    localStorage.setItem(lastFirstKey, id);
+  } catch {
+    // Private mode or storage full: the next open may repeat this page, nothing worse.
+  }
+}
 
 /**
  * The Recipes tab's first screen: the recipe book, one page at a time. Swiping left or right moves through the
@@ -29,7 +48,19 @@ export function BrowseScreen() {
   const crate = useRef<HTMLOListElement>(null);
   const restored = useRef(false);
 
-  const load = () => listBookRecipes("").then(setRecipes, (error: Error) => setProblem(error.message));
+  const load = () =>
+    listBookRecipes("").then(
+      (list) => {
+        if (!firstPagePicked && list.length > 0) {
+          firstPagePicked = true;
+          const first = pickFirstPage(list, rememberedFirst());
+          rememberFirst(list[first]!.id);
+          setAt(first);
+        }
+        setRecipes(list);
+      },
+      (error: Error) => setProblem(error.message),
+    );
   useEffect(() => {
     void load();
   }, []);

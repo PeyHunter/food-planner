@@ -99,3 +99,26 @@ test("the list view with search is one tap away", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Flip through the book", level: 2 })).toBeVisible();
   await expect(page.getByRole("link", { name: "+ Add recipe" })).toBeVisible();
 });
+
+test("each time the app is opened the book starts on a different recipe", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Name").fill("peyton");
+  await page.getByLabel("Password").fill(e2ePasswords.peyton);
+  await page.getByRole("button", { name: "Log in" }).click();
+  await expect(page.getByRole("navigation", { name: "Main" })).toBeVisible();
+  const stamp = Date.now();
+  await page.request.post("/api/recipes", { data: recipe(`First pick one ${stamp}`, ["Meat"], []) });
+  await page.request.post("/api/recipes", { data: recipe(`First pick two ${stamp}`, ["Fish"], []) });
+
+  const firstPage = async () => {
+    await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Recipes" }).click();
+    const open = page.getByRole("list", { name: "Recipe pages" }).locator("li[aria-current='true']");
+    await expect(open).toHaveCount(1);
+    return open.getAttribute("aria-label");
+  };
+
+  const before = await firstPage();
+  await page.reload();
+  const after = await firstPage();
+  expect(after).not.toBe(before);
+});
