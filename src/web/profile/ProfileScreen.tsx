@@ -1,16 +1,14 @@
 import { useEffect, useState } from "react";
 import type { Language, Profile, ProfileChange } from "../../shared/profile.ts";
-import { addDays, mondayOf, weekdayName } from "../../shared/week.ts";
-import { locale, t, switchLanguage } from "../i18n.ts";
-import { today } from "../recipes/api.ts";
+import { t, switchLanguage } from "../i18n.ts";
 import { getProfile, saveProfile } from "./api.ts";
+import { NemligSettings } from "./NemligSettings.tsx";
 import "./profile.css";
 
 const languageNames: Record<Language, string> = { en: "English", da: "Dansk" };
-const weekDays = Array.from({ length: 7 }, (_, index) => addDays(mondayOf(today()), index));
 
-/** #/profile: your language, and the kitchen's settings (children, nemlig.com delivery). */
-export function ProfileScreen() {
+/** #/profile: your language, the kitchen's settings (children, nemlig.com delivery), and logging out. */
+export function ProfileScreen({ onBack, onLogOut }: { onBack: () => void; onLogOut: () => void }) {
   const [profile, setProfile] = useState<Profile>();
   const [problem, setProblem] = useState<string>();
 
@@ -34,17 +32,22 @@ export function ProfileScreen() {
 
   return (
     <section className="profile">
+      <button type="button" className="btn white small back" onClick={onBack}>
+        <span aria-hidden="true">←</span> {t("Back")}
+      </button>
       <h2>{t("Profile")}</h2>
       {problem && <p role="alert">{problem}</p>}
       {profile && (
         <>
           <section className="card">
             <h3>{t("Language")}</h3>
-            <div className="chips" role="group" aria-label={t("Language")}>
+            {/* Native radios: one tap switches, arrow keys move, and screen readers say "1 of 2". */}
+            <div className="segmented" role="radiogroup" aria-label={t("Language")}>
               {(Object.keys(languageNames) as Language[]).map((language) => (
-                <button key={language} type="button" className="chip" aria-pressed={profile.language === language} onClick={() => void save({ language })}>
-                  {languageNames[language]}
-                </button>
+                <label key={language}>
+                  <input type="radio" name="language" value={language} checked={profile.language === language} onChange={() => void save({ language })} />
+                  <span>{languageNames[language]}</span>
+                </label>
               ))}
             </div>
             <p className="hint">{t("Only for you. The others in your kitchen pick their own.")}</p>
@@ -66,29 +69,20 @@ export function ProfileScreen() {
               <span>{t("Get our groceries from nemlig.com")}</span>
             </label>
             {profile.nemlig.on && (
-              <>
-                <label>
-                  {t("Delivery day")}
-                  <select value={profile.nemlig.day} onChange={(event) => void save({ nemlig: { day: Number(event.target.value) } })}>
-                    {weekDays.map((date, index) => (
-                      <option key={date} value={index}>
-                        {weekdayName(date, locale())}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="toggle">
-                  <input type="checkbox" role="switch" checked={profile.nemlig.organic} onChange={(event) => void save({ nemlig: { organic: event.target.checked } })} />
-                  <span>{t("Everything organic")}</span>
-                </label>
-              </>
+              <NemligSettings
+                day={profile.nemlig.day}
+                organic={profile.nemlig.organic}
+                onDay={(day) => void save({ nemlig: { day } })}
+                onOrganic={(organic) => void save({ nemlig: { organic } })}
+              />
             )}
-            <p className="hint">
-              {t("The shopping list gets a nemlig.com list: each item opens nemlig's search, so you can put it in your basket. Sending the list to nemlig.com by itself every week comes later.")}
-            </p>
+            <p className="hint">{t("Shopping gets a “Send list to nemlig.com” button. It opens nemlig.com for each item, so you can put it in your basket there. You log in and pay on nemlig.com.")}</p>
           </section>
         </>
       )}
+      <button type="button" className="btn white log-out" onClick={onLogOut}>
+        {t("Log out")}
+      </button>
     </section>
   );
 }
