@@ -32,7 +32,7 @@ export function FreezerScreen() {
   return (
     <section className="freezer">
       <nav className="bar">
-        <a className="back" href="#/recipes" aria-label="Back to recipes">
+        <a className="back" href="#/recipes" aria-label={t("Back to recipes")}>
           ←
         </a>
         <h2>
@@ -46,8 +46,11 @@ export function FreezerScreen() {
         {items?.map(({ recipe, count }) => (
           <li key={recipe.id} className={`panel freezer-row${count === 0 ? " gone" : ""}`}>
             <a href={`#/recipes/${recipe.id}`} className="freezer-dish">
-              <strong>{recipe.title}</strong>
-              <TypeStickers recipe={recipe} />
+              {recipe.mainPhoto ? <img src={recipe.mainPhoto.url} alt="" loading="lazy" /> : <span className="no-photo" aria-hidden="true" />}
+              <span className="freezer-text">
+                <strong>{recipe.title}</strong>
+                <TypeStickers recipe={recipe} />
+              </span>
             </a>
             <div className="stepper" role="group" aria-label={`Portions of ${recipe.title}`}>
               <button type="button" aria-label={`One less ${recipe.title}`} disabled={count === 0} onClick={() => void change(recipe.id, -1)}>

@@ -9,15 +9,17 @@ import { createMiddleware } from "hono/factory";
 import { kidTags, mainTypes, shopSections, type Cook, type Ingredient, type IngredientRow, type IngredientSettings, type MainType, type Photo, type Recipe, type RecipeInput, type RecipeSummary, type ShareLink, type SharedRecipe, type ShopSection, sharePhotoMedia } from "../shared/recipes.ts";
 import { isUnit } from "../shared/units.ts";
 import { childRecipeTag } from "../shared/week.ts";
-import { sessionUser } from "./access.ts";
+import { currentSession, type Session } from "./access.ts";
 import type { AppDependencies } from "./app.ts";
 import type { Database } from "./db.ts";
 import { photoStore, sharePhotoFile, smallWidth, type StoredPhoto } from "./photos.ts";
-import { guessShopSection } from "../shared/shop-section-guess.ts";
+import { groceryOf, guessShopSection } from "../shared/groceries.ts";
+import { packsVersion } from "../shared/grocery-packs.ts";
 import { nameForms, sameIngredient } from "../shared/ingredient-names.ts";
 import { cooks, ingredients, kitchenMembers, kitchens, photos, recipeLines, recipes, recipeTags, recipeTypes, steps, users } from "./schema.ts";
 
-type Member = { userId: string; kitchenId: string; kids: boolean; language: Language };
+/** `checkedAt` is when the session was checked, so requireRecentAuth needs no clock of its own. */
+type Member = { userId: string; kitchenId: string; kids: boolean; language: Language; session: Session; checkedAt: Date };
 export type MemberEnv = { Variables: { member: Member } };
 type Env = MemberEnv;
 
@@ -42,8 +44,9 @@ const likeText = (text: string) => `%${text.replace(/[\\%_]/g, (char) => `\\${ch
 /** Lets only logged-in kitchen members through and sets `member`. */
 export const kitchenMember = ({ database, now }: Pick<AppDependencies, "database" | "now">) =>
   createMiddleware<MemberEnv>(async (c, next) => {
-    const user = await sessionUser(database, now, c);
-    if (!user) return c.json({ error: "Not logged in" }, 401);
+    const found = await currentSession(database, now, c);
+    if (!found) return c.json({ error: "Not logged in" }, 401);
+    const { user, session } = found;
     const [row] = await database.db
       .select({ kitchenId: kitchenMembers.kitchenId, kids: kitchens.kids })
       .from(kitchenMembers)
@@ -51,7 +54,7 @@ export const kitchenMember = ({ database, now }: Pick<AppDependencies, "database
       .where(eq(kitchenMembers.userId, user.id))
       .limit(1);
     if (!row) return c.json({ error: "You are not in a kitchen yet." }, 403);
-    c.set("member", { userId: user.id, kitchenId: row.kitchenId, kids: row.kids, language: isLanguage(user.language) ? user.language : "en" });
+    c.set("member", { userId: user.id, kitchenId: row.kitchenId, kids: row.kids, language: isLanguage(user.language) ? user.language : "en", session, checkedAt: now() });
     await next();
   });
 
@@ -99,14 +102,7 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
     const input = parseInput(await c.req.json().catch(() => undefined));
     if ("error" in input) return c.json(input, 400);
     const { kitchenId, userId } = c.get("member");
-    const id = await db.transaction(async (tx) => {
-      const [row] = await tx
-        .insert(recipes)
-        .values({ kitchenId, createdBy: userId, ...recipeColumns(input) })
-        .returning({ id: recipes.id });
-      await writeParts(tx, row!.id, kitchenId, userId, input);
-      return row!.id;
-    });
+    const id = await db.transaction((tx) => insertRecipe(tx, kitchenId, userId, input));
     return c.json({ id }, 201);
   });
 
@@ -175,10 +171,15 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
     if (!uuidPattern.test(id)) return c.json({ error: "No such ingredient." }, 404);
     const settings = parseIngredientSettings(await c.req.json().catch(() => undefined));
     if ("error" in settings) return c.json(settings, 400);
+    const mine = and(eq(ingredients.id, id), eq(ingredients.kitchenId, c.get("member").kitchenId));
+    const [before] = await db.select({ packAmount: ingredients.packAmount, packUnit: ingredients.packUnit }).from(ingredients).where(mine);
+    if (!before) return c.json({ error: "No such ingredient." }, 404);
+    // A pack size someone typed is theirs: catalog updates leave it alone.
+    const packChanged = before.packAmount !== settings.packAmount || before.packUnit !== settings.packUnit;
     const [row] = await db
       .update(ingredients)
-      .set(settings)
-      .where(and(eq(ingredients.id, id), eq(ingredients.kitchenId, c.get("member").kitchenId)))
+      .set({ ...settings, ...(packChanged ? { packSource: "user" } : {}) })
+      .where(mine)
       .returning();
     if (!row) return c.json({ error: "No such ingredient." }, 404);
     return c.json(toIngredient(row));
@@ -398,44 +399,6 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
     }
   }
 
-  type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-
-  async function writeParts(tx: Tx, recipeId: string, kitchenId: string, userId: string, input: RecipeInput) {
-    if (input.types.length) await tx.insert(recipeTypes).values(input.types.map((type) => ({ recipeId, type })));
-    if (input.tags.length) await tx.insert(recipeTags).values(input.tags.map((tag) => ({ recipeId, tag })));
-    if (input.steps.length) await tx.insert(steps).values(input.steps.map((text, position) => ({ recipeId, position, text })));
-    if (!input.lines.length) return;
-    const names = [...new Map(input.lines.map((line) => [line.ingredient.toLowerCase(), line.ingredient])).values()];
-    // Existing ones are reused across capitals and singular/plural ("potatoes" uses "potato").
-    const known = () =>
-      tx
-        .select({ id: ingredients.id, name: ingredients.name })
-        .from(ingredients)
-        .where(and(eq(ingredients.kitchenId, kitchenId), inArray(sql`lower(${ingredients.name})`, names.flatMap(nameForms))));
-    const matchIn = (rows: { id: string; name: string }[], name: string) =>
-      rows.find((row) => row.name.toLowerCase() === name.toLowerCase()) ?? rows.find((row) => sameIngredient(name, row.name));
-    const before = await known();
-    const fresh: string[] = [];
-    for (const name of names) if (!matchIn(before, name) && !fresh.some((other) => sameIngredient(name, other))) fresh.push(name);
-    if (fresh.length)
-      await tx
-        .insert(ingredients)
-        .values(fresh.map((name) => ({ kitchenId, name, shopSection: guessShopSection(name), createdBy: userId })))
-        .onConflictDoNothing();
-    const after = fresh.length ? await known() : before;
-    const idOf = new Map(names.map((name) => [name.toLowerCase(), matchIn(after, name)!.id]));
-    await tx.insert(recipeLines).values(
-      input.lines.map((line, position) => ({
-        recipeId,
-        position,
-        amount: line.amount,
-        unit: line.unit,
-        ingredientId: idOf.get(line.ingredient.toLowerCase())!,
-        note: line.note,
-      })),
-    );
-  }
-
   async function loadRecipe(id: string): Promise<Recipe> {
     const [row] = await db
       .select({
@@ -513,6 +476,49 @@ const toIngredient = (row: { id: string; name: string; shopSection: string; pack
 
 const sortTypes = (types: string[]) => mainTypes.filter((type) => types.includes(type));
 
+/** The shop's usual pack for a name the catalog knows, as ingredient columns; nothing for a name it doesn't. */
+export function catalogPack(name: string) {
+  const pack = groceryOf(name)?.pack;
+  if (!pack) return {};
+  return { packAmount: pack.amount, packUnit: pack.unit, pieceGrams: pack.pieceGrams ?? null, packSource: `catalog:${packsVersion}` };
+}
+
+/**
+ * Puts the catalog's pack sizes on ingredients nobody sized by hand: unsized ones from before the catalog, and ones from an older catalog.
+ * A size someone typed is never changed, whether marked "user" or typed before pack sources existed.
+ */
+export async function applyCatalogPacks({ db }: Database) {
+  const current = `catalog:${packsVersion}`;
+  const rows = await db
+    .select({ id: ingredients.id, name: ingredients.name })
+    .from(ingredients)
+    .where(or(and(isNull(ingredients.packSource), isNull(ingredients.packAmount)), and(sql`${ingredients.packSource} like 'catalog:%'`, sql`${ingredients.packSource} <> ${current}`)));
+  let sized = 0;
+  for (const { id, name } of rows) {
+    const pack = catalogPack(name);
+    if (!pack.packSource) continue;
+    await db
+      .update(ingredients)
+      .set(pack)
+      .where(and(eq(ingredients.id, id), or(and(isNull(ingredients.packSource), isNull(ingredients.packAmount)), sql`${ingredients.packSource} like 'catalog:%'`)));
+    sized++;
+  }
+  return sized;
+}
+
+/** Gives ingredients still in Other a fresh guess, for names added before the guesser knew them. Other sections may be the user's choice, so they stay. */
+export async function reguessOtherShopSections({ db }: Database) {
+  const others = await db.select({ id: ingredients.id, name: ingredients.name }).from(ingredients).where(eq(ingredients.shopSection, "Other"));
+  let moved = 0;
+  for (const { id, name } of others) {
+    const section = guessShopSection(name);
+    if (section === "Other") continue;
+    await db.update(ingredients).set({ shopSection: section }).where(and(eq(ingredients.id, id), eq(ingredients.shopSection, "Other")));
+    moved++;
+  }
+  return moved;
+}
+
 export async function recipeSummaries({ db }: Database, rows: { id: string; title: string; feeds: number }[]): Promise<RecipeSummary[]> {
   if (!rows.length) return [];
   const ids = rows.map((row) => row.id);
@@ -544,6 +550,54 @@ export async function recipeSummaries({ db }: Database, rows: { id: string; titl
       return { lastMadeOn: cooked?.last ?? null, timesMade: cooked?.count ?? 0 };
     })(),
   }));
+}
+
+export type Tx = Parameters<Parameters<Database["db"]["transaction"]>[0]>[0];
+
+async function writeParts(tx: Tx, recipeId: string, kitchenId: string, userId: string | null, input: RecipeInput) {
+  if (input.types.length) await tx.insert(recipeTypes).values(input.types.map((type) => ({ recipeId, type })));
+  if (input.tags.length) await tx.insert(recipeTags).values(input.tags.map((tag) => ({ recipeId, tag })));
+  if (input.steps.length) await tx.insert(steps).values(input.steps.map((text, position) => ({ recipeId, position, text })));
+  if (!input.lines.length) return;
+  const names = [...new Map(input.lines.map((line) => [line.ingredient.toLowerCase(), line.ingredient])).values()];
+  // Existing ones are reused across capitals and singular/plural ("potatoes" uses "potato").
+  const known = () =>
+    tx
+      .select({ id: ingredients.id, name: ingredients.name })
+      .from(ingredients)
+      .where(and(eq(ingredients.kitchenId, kitchenId), inArray(sql`lower(${ingredients.name})`, names.flatMap(nameForms))));
+  const matchIn = (rows: { id: string; name: string }[], name: string) =>
+    rows.find((row) => row.name.toLowerCase() === name.toLowerCase()) ?? rows.find((row) => sameIngredient(name, row.name));
+  const before = await known();
+  const fresh: string[] = [];
+  for (const name of names) if (!matchIn(before, name) && !fresh.some((other) => sameIngredient(name, other))) fresh.push(name);
+  if (fresh.length)
+    await tx
+      .insert(ingredients)
+      .values(fresh.map((name) => ({ kitchenId, name, shopSection: guessShopSection(name), ...catalogPack(name), createdBy: userId })))
+      .onConflictDoNothing();
+  const after = fresh.length ? await known() : before;
+  const idOf = new Map(names.map((name) => [name.toLowerCase(), matchIn(after, name)!.id]));
+  await tx.insert(recipeLines).values(
+    input.lines.map((line, position) => ({
+      recipeId,
+      position,
+      amount: line.amount,
+      unit: line.unit,
+      ingredientId: idOf.get(line.ingredient.toLowerCase())!,
+      note: line.note,
+    })),
+  );
+}
+
+/** Saves a new recipe; its ingredients reuse the kitchen's by name. Returns its id. */
+export async function insertRecipe(tx: Tx, kitchenId: string, userId: string | null, input: RecipeInput) {
+  const [row] = await tx
+    .insert(recipes)
+    .values({ kitchenId, createdBy: userId, ...recipeColumns(input) })
+    .returning({ id: recipes.id });
+  await writeParts(tx, row!.id, kitchenId, userId, input);
+  return row!.id;
 }
 
 function recipeColumns(input: RecipeInput) {

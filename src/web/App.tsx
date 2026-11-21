@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import type { Language } from "../shared/profile.ts";
 import { switchLanguage, t } from "./i18n.ts";
+import { getChildren } from "./kids/api.ts";
+import { kidsTabLabel } from "./kids/labels.ts";
 import { KidsScreen } from "./kids/KidsScreen.tsx";
 import { ProfileScreen } from "./profile/ProfileScreen.tsx";
-import { KidsContext } from "./kitchen.ts";
+import { cancelled, logInWithPasskey, passkeysWork } from "./security/api.ts";
+import "./security/security.css";
+import { KidNamesContext, KidsContext } from "./kitchen.ts";
 import { RecipesScreen } from "./recipes/RecipesScreen.tsx";
 import { ShoppingScreen } from "./shopping/ShoppingScreen.tsx";
 import { WeekScreen } from "./week/WeekScreen.tsx";
@@ -80,6 +84,19 @@ function LoginScreen({ onLoggedIn }: { onLoggedIn: () => Promise<void> }) {
     }
   };
 
+  const withPasskey = async () => {
+    setBusy(true);
+    setProblem(undefined);
+    try {
+      await logInWithPasskey();
+      await onLoggedIn();
+    } catch (error) {
+      if (!cancelled(error)) setProblem((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <main className="app login">
       <img className="logo" src="/icons/icon-192.png" alt="" width={96} height={96} />
@@ -98,6 +115,14 @@ function LoginScreen({ onLoggedIn }: { onLoggedIn: () => Promise<void> }) {
         <button type="submit" className="btn" disabled={busy}>
           {t("Log in")}
         </button>
+        {passkeysWork() && (
+          <>
+            <p className="or">{t("or")}</p>
+            <button type="button" className="btn mint passkey" disabled={busy} onClick={() => void withPasskey()}>
+              {t("Use Face ID / fingerprint")}
+            </button>
+          </>
+        )}
       </form>
     </main>
   );
@@ -110,13 +135,22 @@ const allTabs: Tab[] = [
   { id: "recipes", label: "Recipes", icon: "📖", colour: "var(--tomato-soft)", screen: () => <RecipesScreen />, soon: "Flip through your recipe book and add new dishes." },
   { id: "week", label: "Week", icon: "📅", colour: "var(--sun-soft)", screen: () => <WeekScreen />, soon: "Plan dinners for the week and check the rules." },
   { id: "shopping", label: "Shopping", icon: "🛒", colour: "var(--mint-soft)", screen: () => <ShoppingScreen />, soon: "One list with everything the week needs." },
-  { id: "kids", label: "Runi & kids", icon: "🧒", colour: "var(--lilac-soft)", screen: () => <KidsScreen />, soon: "Runi Lee's own recipes and rules, by age." },
+  { id: "kids", label: "Kids", icon: "🧒", colour: "var(--lilac-soft)", screen: () => <KidsScreen />, soon: "Each child's own recipes and rules, by age." },
 ];
 
 function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
   const kids = me.kitchen?.kids ?? true;
+  const kidNames = useKidNames(kids);
+  const label = (tab: Tab) => (tab.id === "kids" ? kidsTabLabel(kidNames) : t(tab.label));
   const tabs = kids ? allTabs : allTabs.filter((tab) => tab.id !== "kids");
-  const profileTab: Tab = { id: "profile", label: "Profile", icon: "⚙", colour: "var(--paper)", screen: () => <ProfileScreen />, soon: "" };
+  const profileTab: Tab = {
+    id: "profile",
+    label: "Profile",
+    icon: "⚙",
+    colour: "var(--paper)",
+    screen: () => <ProfileScreen onBack={() => (window.location.hash = `#/${lastTab.current.id}`)} onLogOut={logOut} />,
+    soon: "",
+  };
   // The hash picks the tab, so a reload or a link to #/recipes/... opens that tab.
   const tabOfHash = () => [...tabs, profileTab].find((tab) => window.location.hash.startsWith(`#/${tab.id}`));
   const [current, setCurrent] = useState(() => tabOfHash() ?? tabs[1]!);
@@ -125,49 +159,35 @@ function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
     window.addEventListener("hashchange", onChange);
     return () => window.removeEventListener("hashchange", onChange);
   }, []);
-  // The name menu closes on a tap elsewhere, Escape, or a tab change.
-  const menu = useRef<HTMLDetailsElement>(null);
-  useEffect(() => {
-    const close = (event: Event) => {
-      const open = menu.current;
-      if (!open?.open) return;
-      if (event instanceof KeyboardEvent ? event.key === "Escape" : !open.contains(event.target as Node)) open.open = false;
-    };
-    document.addEventListener("pointerdown", close);
-    document.addEventListener("keydown", close);
-    return () => {
-      document.removeEventListener("pointerdown", close);
-      document.removeEventListener("keydown", close);
-    };
-  }, []);
-  useEffect(() => {
-    if (menu.current) menu.current.open = false;
-  }, [current]);
+  // Back from Profile goes to the tab you came from; Week when Profile was opened directly.
+  const lastTab = useRef(current.id === "profile" ? tabs.find((tab) => tab.id === "week")! : current);
+  if (current.id !== "profile") lastTab.current = current;
   const logOut = async () => {
     await fetch("/api/logout", { method: "POST" });
+    // The next person to log in starts on Week, not on this person's last page. A link opened while logged out still works.
+    window.history.replaceState(null, "", "#/week");
     onLoggedOut();
   };
+  const name = capitalise(me.username);
+  const onProfile = current.id === "profile";
 
   return (
     <KidsContext.Provider value={kids}>
+      <KidNamesContext.Provider value={kidNames}>
       <main className="app">
         <header className="top">
-          <img className="logo" src="/icons/icon-192.png" alt="" width={48} height={48} />
-          {/* Logging out is rare, so it hides behind your name. */}
-          <details className="me" ref={menu}>
-            <summary>
-              <h1>{t("Hi {name}", { name: capitalise(me.username) })}</h1>
-              <span className="caret" aria-hidden="true" />
-            </summary>
-            <div className="menu">
-              <a className="btn white small" href="#/profile">
-                {t("Profile")}
-              </a>
-              <button type="button" className="btn white small" onClick={logOut}>
-                {t("Log out")}
-              </button>
-            </div>
-          </details>
+          <a className="home" href="#/week">
+            <img className="logo" src="/icons/icon-192.png" alt="" width={48} height={48} />
+            <h1>{t("Hi {name}", { name })}</h1>
+          </a>
+          <a className="profile-link" href="#/profile" aria-label={t("Profile")} aria-current={onProfile ? "page" : undefined}>
+            <span className="avatar" aria-hidden="true">
+              {name.charAt(0)}
+            </span>
+            <span className="word" aria-hidden="true">
+              {t("Profile")}
+            </span>
+          </a>
         </header>
         {current.screen ? current.screen() : <ComingSoon tab={current} />}
       </main>
@@ -186,12 +206,26 @@ function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
             <span className="ic" aria-hidden="true">
               {tab.icon}
             </span>
-            {t(tab.label)}
+            {label(tab)}
           </button>
         ))}
       </nav>
+      </KidNamesContext.Provider>
     </KidsContext.Provider>
   );
+}
+
+/** The kids tab is named after the kitchen's children, so it needs their names. */
+function useKidNames(kids: boolean) {
+  const [names, setNames] = useState<string[]>([]);
+  useEffect(() => {
+    if (!kids) return;
+    getChildren().then(
+      (children) => setNames(children.map((child) => child.name)),
+      () => setNames([]),
+    );
+  }, [kids]);
+  return names;
 }
 
 function ComingSoon({ tab }: { tab: Tab }) {
@@ -199,8 +233,8 @@ function ComingSoon({ tab }: { tab: Tab }) {
     <section className="card" style={{ "--c": tab.colour } as CSSProperties}>
       <span className="sticker white tilt-l">{t("Coming soon")}</span>
       <h2>{t(tab.label)}</h2>
-      <p className="note">{tab.soon}</p>
-      <p className="note">We're still building this part. Check back soon!</p>
+      <p className="note">{t(tab.soon)}</p>
+      <p className="note">{t("We're still building this part. Check back soon!")}</p>
     </section>
   );
 }

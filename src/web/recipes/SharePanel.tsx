@@ -84,11 +84,14 @@ export function SharePanel({ recipe }: { recipe: Recipe }) {
         </button>
       </div>
       <label className="switch">
-        <input type="checkbox" role="switch" aria-label="Share link" checked={!!link} disabled={busy} onChange={(event) => void toggle(event.target.checked)} />
+        <input type="checkbox" role="switch" aria-label={t("Share link")} checked={!!link} disabled={busy} onChange={(event) => void toggle(event.target.checked)} />
         <span>{link ? t("Share link is on") : t("Share link is off")}</span>
       </label>
       {link ? (
-        <p className="hint share-url">{t("Anyone with this link can see the recipe, no login needed: {link}", { link })}</p>
+        <>
+          <p className="hint">{t("Anyone with the link can see the recipe, no login needed.")}</p>
+          <input className="share-url" readOnly value={link} aria-label={t("The share link")} onFocus={(event) => event.target.select()} />
+        </>
       ) : (
         <p className="hint">{t("The link is off. Only you two can see this recipe.")}</p>
       )}

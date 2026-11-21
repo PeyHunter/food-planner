@@ -16,16 +16,20 @@ async function loggedIn(username = "peyton", password = startingUsers[0]!.passwo
 test("language is your own; kids and nemlig.com are the kitchen's", async () => {
   const { app, call } = await loggedIn();
   const ronja = await loggedIn("ronja", startingUsers[1]!.password, app);
-  expect(await (await call("/api/profile")).json()).toEqual({ language: "en", kids: true, nemlig: { on: false, day: 6, organic: false } });
+  expect(await (await call("/api/profile")).json()).toEqual({ language: "en", kids: true, nemlig: { on: false, day: 6, organic: "none" } });
 
-  const changed = await call("/api/profile", "PUT", { language: "da", nemlig: { on: true, day: 6, organic: true } });
-  expect(await changed.json()).toEqual({ language: "da", kids: true, nemlig: { on: true, day: 6, organic: true } });
+  const changed = await call("/api/profile", "PUT", { language: "da", nemlig: { on: true, day: 6, organic: "produce" } });
+  expect(await changed.json()).toEqual({ language: "da", kids: true, nemlig: { on: true, day: 6, organic: "produce" } });
   const theirs = (await (await ronja.call("/api/profile")).json()) as Profile;
-  expect(theirs).toEqual({ language: "en", kids: true, nemlig: { on: true, day: 6, organic: true } });
+  expect(theirs).toEqual({ language: "en", kids: true, nemlig: { on: true, day: 6, organic: "produce" } });
   expect(await (await call("/api/me")).json()).toMatchObject({ language: "da", kitchen: { nemligOn: true } });
 
   expect((await call("/api/profile", "PUT", { language: "fr" })).status).toBe(400);
   expect((await call("/api/profile", "PUT", { nemlig: { day: 7 } })).status).toBe(400);
+  expect((await call("/api/profile", "PUT", { nemlig: { organic: "some" } })).status).toBe(400);
+  // An older app's yes or no still works.
+  expect(((await (await call("/api/profile", "PUT", { nemlig: { organic: true } })).json()) as Profile).nemlig.organic).toBe("all");
+  expect(((await (await call("/api/profile", "PUT", { nemlig: { organic: false } })).json()) as Profile).nemlig.organic).toBe("none");
 });
 
 test("a kitchen without kids can say it has a child, and keeps that after a restart", async () => {
@@ -34,10 +38,10 @@ test("a kitchen without kids can say it has a child, and keeps that after a rest
     { username: "isabel", password: randomUUID() },
     { username: "christopher", password: randomUUID() },
   ];
-  await ensureHousehold(app.database, people, { name: "Isabel's", kids: false });
+  await ensureHousehold(app.database, people, { name: "Isabel's", kids: [], language: "en" });
   const { call } = await loggedIn("isabel", people[0]!.password, app);
   expect(((await (await call("/api/profile", "PUT", { kids: true })).json()) as Profile).kids).toBe(true);
-  await ensureHousehold(app.database, people, { name: "Isabel's", kids: false });
+  await ensureHousehold(app.database, people, { name: "Isabel's", kids: [], language: "en" });
   const week = (await (await call("/api/plan/weeks/2026-03-02")).json()) as WeekView;
   expect(week.children.map((child) => child.name)).toEqual(["Baby"]);
   expect(((await (await call("/api/profile")).json()) as Profile).kids).toBe(true);

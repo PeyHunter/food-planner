@@ -30,6 +30,7 @@ import type { AppDependencies } from "./app.ts";
 import { addPortions, freezerCounts, takePortion, type Queries } from "./freezer.ts";
 import { kitchenMember, recipeSummaries, type MemberEnv } from "./recipes.ts";
 import { childDays, children, ingredients, planDays, planSides, recipeLines, recipes, rules } from "./schema.ts";
+import { sameGroceryAs } from "./same-grocery.ts";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const childKinds: ChildDayKind[] = ["empty", "same-as-dinner", "recipe"];
@@ -378,6 +379,7 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
           shopSection: ingredients.shopSection,
           packAmount: ingredients.packAmount,
           packUnit: ingredients.packUnit,
+          pieceGrams: ingredients.pieceGrams,
           alwaysAtHome: ingredients.alwaysAtHome,
         },
       })
@@ -386,7 +388,7 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
       .innerJoin(recipes, eq(recipes.id, recipeLines.recipeId))
       .where(eq(recipes.kitchenId, kitchenId))
       .orderBy(asc(recipeLines.recipeId), asc(recipeLines.position));
-    const [{ kids, recipeRows, summaries, days, plan, ordered }, lineRows] = await Promise.all([loadPlan(kitchenId, monday), lineQuery]);
+    const [{ kids, recipeRows, summaries, days, plan, ordered }, lineRows, aliases] = await Promise.all([loadPlan(kitchenId, monday), lineQuery, sameGroceryAs(database, kitchenId)]);
     const ranges = new Map(recipeRows.map((row) => [row.id, row]));
     const linesOf = Map.groupBy(lineRows, (line) => line.recipeId);
     return {
@@ -399,7 +401,7 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
         lines: (linesOf.get(summary.id) ?? []).map(({ amount, unit, ingredient }) => ({
           amount,
           unit: unit as Unit | null,
-          ingredient: { ...ingredient, shopSection: ingredient.shopSection as ShopSection, packUnit: ingredient.packUnit as Unit | null },
+          ingredient: aliases.get(ingredient.id) ?? { ...ingredient, shopSection: ingredient.shopSection as ShopSection, packUnit: ingredient.packUnit as Unit | null },
         })),
       })),
       children: kids.map((kid) => ({

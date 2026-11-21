@@ -6,8 +6,13 @@ A meal planner and recipe book for Peyton and Ronja (and their baby, Runi Lee). 
 
 - Two accounts, `peyton` and `ronja`, created at startup from env `PEYTON_PASSWORD` / `RONJA_PASSWORD` (create if missing, never overwrite a changed password). No sign-up page.
 - Both share one **Kitchen**: every recipe, plan, rule and list belongs to the kitchen, not a person. Record who added what.
-- Kitchens without kids, one or two logins each: `isabel` + `christopher`, `magnus` + `mads`, and `marieke` on her own (env `<NAME>_PASSWORD`, a kitchen is made only when all its passwords are set; list in `kidFreeKitchenLogins`, src/server/main.ts). They have no kids: no Runi & kids tab, no child meals or child rules, no kid tags or age ranges in the recipe form. Each kitchen only sees its own recipes, weeks and lists.
+- Kitchens without kids, one or two logins each: `isabel` + `christopher`, `magnus` + `mads`, and `marieke` on her own (env `<NAME>_PASSWORD`, a kitchen is made only when all its passwords are set; every kitchen is listed in `kitchenConfigs`, src/server/kitchens-config.ts, as `{ logins, kids, language }`). They have no kids: no Runi & kids tab, no child meals or child rules, no kid tags or age ranges in the recipe form. Each kitchen only sees its own recipes, weeks and lists.
+- A kitchen with kids for `valdemar` + `anna`, with their children Vilje and Konrad (not Runi Lee), in Danish. Birthdays are unknown at start: they are left empty and the Runi & kids tab asks for them. New logins are added with `scripts/add-logins.sh <name>...` on k3s-1 (seals only the named passwords into the existing sealed secret).
+- **Starter recipes**: a new kitchen gets 15 everyday Danish family dinners (3 fish, some vegetarian, metric) once, in its language. An empty recipe list shows an "Add 15 starter recipes" button. Their ingredients reuse the kitchen's by name.
+- **AI usage**: every Claude API call is saved in `ai_calls` (kitchen, user, feature, model, tokens, cost in dollars from one price table in src/server/ai-calls.ts). `scripts/usage-report.sql` shows the last 30 days per kitchen and login.
 - Stay logged in for a long time (cookie session, like LP-Collection's 400-day sessions).
+- **Safer logins** (docs/security-and-nemlig.md): passkeys (Face ID / fingerprint) added on Profile and used on the login screen; the password stays as a fallback. At most 10 failed logins per name and per address in 15 minutes (kept in Postgres). Profile lists **Devices** (log out one, or everywhere else), **Passkeys** and the last 20 **Activity** entries. Changing passkeys, and later anything nemlig.com, asks "Confirm it's you" (passkey, or password when you have none) unless you did so in the last 5 minutes (`requireRecentAuth` in src/server/step-up.ts).
+- Per-person secrets (the nemlig.com login) are sealed with AES-256-GCM in `secrets` (src/server/secrets.ts); the key is `APP_SECRET_KEY`, made once with `scripts/add-app-key.sh` on k3s-1. Without it the app runs and the nemlig.com login stays off. The app never asks for or stores card details.
 
 ## Recipes
 
@@ -21,7 +26,7 @@ A meal planner and recipe book for Peyton and Ronja (and their baby, Runi Lee). 
 ## Ingredients
 
 - One shared ingredient list per kitchen, so "carrot" and "carrots" are the same thing. Typing suggests existing ones; new ones get added.
-- Each ingredient has a **shop section**: Vegetables, Dairy, Meat & fish, Dry goods, Frozen, Other (list order).
+- Each ingredient has a **shop section**: Vegetables, Bread, Dairy, Meat & fish, Dry goods, Tins & jars, Spices & sauces, Frozen, Drinks, Other (list order). A new ingredient gets a guess from a table of common Danish and English groceries (src/shared/groceries.ts); the recipe form shows the guess and offers "Did you mean" fixes for names it does not know.
 - Optional **pack size** (amount + unit, e.g. 1 kg, 1 l, 5 pcs), filled in the first time it matters.
 - Optional **always at home** flag (salt, oil, pepper): never on the shopping list.
 
@@ -62,7 +67,7 @@ From the user after seeing the designs. Full notes in `docs/design-feedback-2026
 - **Look**: Sticker pop (design 4): white dot grid, chunky ink outlines, bright coloured day tiles, tilted sticker tags.
 - **Browse** uses design 3's "Flip through the book" layout in the Sticker pop style: a stack of recipe pages, big dish photo, page counter ("p. 12 / 48"), swipe to the next page, type filter chips, a big "Add to week" button.
 - **Week** shows more per day, like design 3: a **rules card at the top** with Adults and each child side by side (a tick or "1/2" per rule, and "2 to go" when rules are not met), and per day the dish photo, main type and tags, people count, "next up" on today, and the child's meal line.
-- **Children** are data, not a hard-coded row. A `children` table (name, birthday). Runi Lee is created at startup; her birthday is set in the app. The app shows each child's age ("Runi Lee, 7 months").
+- **Children** are data, not a hard-coded row. A `children` table (name, birthday). Each kitchen's children are created with it (Runi Lee for Peyton and Ronja); birthdays are set in the app. The app shows each child's age ("Runi Lee, 7 months").
 - **"Runi & kids" tab** (bottom nav): pick a child, see age, birthday, her recipes and her rules. Child recipes carry an **age range in months** (e.g. 6–12). The tab lists recipes that fit the child's current age, so the same recipes work again for the next child at that age.
 - **Rules are clear and editable** per adults and per child (e.g. "Runi Lee: Fish at least 2 a week"). Defaults as in Week plan above.
 - **Rule check with swaps**: when the planned week misses a rule (no fish for Runi), the week screen says so in plain words and suggests swaps from recipes already in the book ("Swap Tuesday for Salmon mash to get fish 2/2"). One tap accepts. Plain deterministic code, no AI.
@@ -84,6 +89,6 @@ Same stack as LP-Collection (`~/lp-collection`): TypeScript, React + Vite, a Nod
 
 Deploy like tech-update (`~/tech-update/deploy`, `.github/workflows`): Argo CD app `food-planner` (already in k3s-gitops) syncs this repo's `deploy/` folder into namespace `food-planner`. Traefik ingress with cert-manager, and external-dns makes the DNS record. CI builds the image and bumps the tag in `deploy/kustomization.yaml`.
 
-Secret `food-planner-secrets` (already sealed and live) has keys `POSTGRES_PASSWORD`, `SESSION_SECRET`, `PEYTON_PASSWORD`, `RONJA_PASSWORD`, `ANTHROPIC_API_KEY`. Never commit secrets: the repo is public.
+Secret `food-planner-secrets` (already sealed and live) has keys `POSTGRES_PASSWORD`, `SESSION_SECRET`, `PEYTON_PASSWORD`, `RONJA_PASSWORD`, `ANTHROPIC_API_KEY`, and (optional) `APP_SECRET_KEY`. Never commit secrets: the repo is public.
 
 The cluster is small (k3s-1 has 2 CPU and 3.7 GiB with ~63% RAM used). Keep requests low. Storage is local-path. kubectl only works over `ssh peyton@100.96.98.57` with `export KUBECONFIG=$HOME/.kube/config`. Reading cluster secrets is refused by auto mode, so don't try.

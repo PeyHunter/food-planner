@@ -1,27 +1,49 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { locale, t } from "../i18n.ts";
+import { currentLanguage, locale, t } from "../i18n.ts";
 import { shopSections, type ShopSection } from "../../shared/recipes.ts";
 import { restOfWeek, type ShoppingItem, type ShoppingView } from "../../shared/shopping.ts";
 import { formatAmount, units, type Unit } from "../../shared/units.ts";
 import { addDays, mondayOf, weekDates } from "../../shared/week.ts";
 import { saveIngredient, today } from "../recipes/api.ts";
-import { nemligSearchUrl, type Profile } from "../../shared/profile.ts";
+import type { Profile } from "../../shared/profile.ts";
+import { amountLabel } from "../../shared/nemlig.ts";
 import { getProfile } from "../profile/api.ts";
 import { addExtra, boughtAll, bringBack, clearTicked, getShopping, removeExtra, setTick } from "./api.ts";
+import { hasSend, NemligSend } from "./NemligSend.tsx";
 import "./shopping.css";
 
 const pollMs = 3000;
 const dayLetter = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString(locale(), { weekday: "short", timeZone: "UTC" });
 const dayName = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString(locale(), { weekday: "long", timeZone: "UTC" });
-const amountText = (amount: number, unit: Unit) => (unit === "pcs" ? formatAmount(amount) : `${formatAmount(amount, unit)} ${t(unit)}`);
+const amountText = (amount: number, unit: Unit) => amountLabel(amount, unit, currentLanguage());
+
+/** The days picked for a week, kept on the phone so a reload (or a nemlig.com send) keeps them. Default: the rest of this week, or all of another. */
+const daysKey = (monday: string) => `shopping-days:${monday}`;
+function pickedDays(monday: string) {
+  try {
+    const kept: unknown = JSON.parse(localStorage.getItem(daysKey(monday)) ?? "null");
+    if (Array.isArray(kept) && kept.every((day) => weekDates(monday).includes(day))) return kept as string[];
+  } catch {
+    // Nothing kept; use the default.
+  }
+  return monday === mondayOf(today()) ? restOfWeek(today()) : weekDates(monday);
+}
+function keepDays(monday: string, days: string[]) {
+  try {
+    localStorage.setItem(daysKey(monday), JSON.stringify(days));
+  } catch {
+    // Not kept; the choice lasts until the page closes.
+  }
+}
 
 /** A tick the server may not have seen yet. `doneAt` is when the save finished. */
 type Pending = { ticked: boolean; doneAt?: number };
 
 export function ShoppingScreen() {
   const thisMonday = mondayOf(today());
-  const [monday, setMonday] = useState(thisMonday);
-  const [days, setDays] = useState(() => restOfWeek(today()));
+  // A nemlig.com send left open next week brings you back to next week.
+  const [monday, setMonday] = useState(() => (!hasSend(thisMonday) && hasSend(addDays(thisMonday, 7)) ? addDays(thisMonday, 7) : thisMonday));
+  const [days, setDays] = useState(() => pickedDays(monday));
   const [view, setView] = useState<ShoppingView>();
   const [problem, setProblem] = useState<string>();
   const [editing, setEditing] = useState<string>();
@@ -29,11 +51,13 @@ export function ShoppingScreen() {
   const [, redraw] = useState(0);
   const latest = useRef(0);
   const [nemlig, setNemlig] = useState<Profile["nemlig"]>();
-  const [nemligList, setNemligList] = useState(false);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     getProfile().then((profile) => setNemlig(profile.nemlig), () => setNemlig(undefined));
   }, []);
+  // Opening the send again after a reload: it carries on where it was.
+  useEffect(() => setSending(hasSend(monday)), [monday]);
 
   const load = useCallback(async () => {
     const request = ++latest.current;
@@ -82,15 +106,20 @@ export function ShoppingScreen() {
 
   const pickWeek = (next: string) => {
     setMonday(next);
-    setDays(next === thisMonday ? restOfWeek(today()) : weekDates(next));
+    setDays(pickedDays(next));
     setView(undefined);
     pending.current.clear();
   };
-  const toggleDay = (date: string) => setDays((shown) => (shown.includes(date) ? shown.filter((day) => day !== date) : [...shown, date].sort()));
+  const toggleDay = (date: string) => {
+    const next = days.includes(date) ? days.filter((day) => day !== date) : [...days, date].sort();
+    keepDays(monday, next);
+    setDays(next);
+  };
 
   const shown = view?.monday === monday ? view : undefined;
   const anyTicked = !!shown && (shown.sections.some((section) => section.lines.some((line) => isTicked(line.key, line.ticked))) || shown.extras.some((extra) => isTicked(extra.key, extra.ticked)));
   const empty = !!shown && shown.sections.length === 0 && shown.extras.length === 0;
+  const leftToBuy = !!shown && (shown.sections.some((section) => section.lines.some((line) => !isTicked(line.key, line.ticked))) || shown.extras.some((extra) => !isTicked(extra.key, extra.ticked)));
   const allKeys = shown ? [...shown.sections.flatMap((section) => section.lines.map((line) => line.key)), ...shown.extras.map((extra) => extra.key)] : [];
 
   return (
@@ -114,17 +143,28 @@ export function ShoppingScreen() {
           </button>
         ))}
       </div>
+      {monday === thisMonday && weekDates(monday)[0]! < today() && <p className="hint days-hint">{t("Days before today start off. Tap one to add it.")}</p>}
       {problem && <p role="alert">{problem}</p>}
-      {nemlig?.on && shown && !empty && (
-        <button type="button" className="btn small white nemlig-switch" aria-pressed={nemligList} onClick={() => setNemligList(!nemligList)}>
-          {nemligList ? t("Back to the shop list") : t("nemlig.com list")}
+      {nemlig && leftToBuy && (
+        <button type="button" className="btn sun send-nemlig" onClick={() => setSending(true)}>
+          <span aria-hidden="true">🛒</span> {t("Send list to nemlig.com")} <span aria-hidden="true">→</span>
         </button>
       )}
-      {nemlig?.on && nemligList && shown && (
-        <NemligList view={shown} organic={nemlig.organic} isTicked={isTicked} />
+      {sending && nemlig && shown && (
+        <NemligSend
+          monday={monday}
+          view={shown}
+          nemlig={nemlig}
+          isTicked={isTicked}
+          onNemlig={setNemlig}
+          onTickOff={async (keys) => {
+            await Promise.all(keys.map((key) => tick(key, true)));
+          }}
+          onClose={() => setSending(false)}
+        />
       )}
       {empty && <p className="card note">{t("Nothing to buy for these days. Plan some dinners on the Week tab, or add something below.")}</p>}
-      {!nemligList && shown?.sections.map(({ section, lines }) => {
+      {shown?.sections.map(({ section, lines }) => {
         const ordered = [...lines].sort((a, b) => Number(isTicked(a.key, a.ticked)) - Number(isTicked(b.key, b.ticked)));
         return (
           <section key={section} className="aisle" aria-label={section}>
@@ -157,7 +197,7 @@ export function ShoppingScreen() {
           </section>
         );
       })}
-      {shown && !nemligList && (
+      {shown && (
         <section className="aisle extras" aria-label="Extras">
           <h3>{t("Extras")}</h3>
           {shown.extras.length > 0 && (
@@ -244,7 +284,11 @@ function Line({
           <strong>{ingredient.name}</strong>
           {pack && (
             <>
-              <span className="buy">{t(line.packs === 1 ? "Buy 1 pack ({pack})" : "Buy {n} packs ({pack} each)", { n: line.packs ?? 0, pack })}</span>
+              <span className="buy">
+                {packAmount === 1 && packUnit === "pcs"
+                  ? t("Buy {amount}", { amount: amountText(line.packs ?? 0, "pcs") })
+                  : t(line.packs === 1 ? "Buy 1 pack ({pack})" : "Buy {n} packs ({pack} each)", { n: line.packs ?? 0, pack })}
+              </span>
               <span className="need">
                 {t("You need {amount}", { amount: need ?? "" })}
                 {line.spare && ` · ${t("{amount} left over", { amount: amountText(line.spare.amount, line.spare.unit) })}`}
@@ -333,40 +377,5 @@ function AddExtra({ onAdd }: { onAdd: (name: string) => Promise<void> }) {
         {t("Add")}
       </button>
     </form>
-  );
-}
-
-/** Each item still to buy, as a link to nemlig.com's search, so it can go in the nemlig basket. */
-function NemligList({ view, organic, isTicked }: { view: ShoppingView; organic: boolean; isTicked: (key: string, fromServer: boolean) => boolean }) {
-  const items = [
-    ...view.sections.flatMap((section) =>
-      section.lines
-        .filter((line) => !isTicked(line.key, line.ticked))
-        .map((line) => ({
-          key: line.key,
-          name: line.ingredient.name,
-          amount: line.packs !== null ? t(line.packs === 1 ? "1 pack" : "{n} packs", { n: line.packs }) : line.amount !== null && line.unit !== null ? amountText(line.amount, line.unit) : "",
-        })),
-    ),
-    ...view.extras.filter((extra) => !isTicked(extra.key, extra.ticked)).map((extra) => ({ key: extra.key, name: extra.name, amount: "" })),
-  ];
-  return (
-    <section className="aisle nemlig" aria-label="nemlig.com">
-      <h3>nemlig.com {organic && <span className="sticker mint">{t("Organic")}</span>}</h3>
-      <p className="note">{t("Tap an item to find it on nemlig.com and put it in your basket.")}</p>
-      <ul>
-        {items.map((item) => (
-          <li key={item.key} className="item">
-            <a className="tick" href={nemligSearchUrl(item.name, organic)} target="_blank" rel="noreferrer">
-              <span className="what">
-                <strong>{item.name}</strong>
-                {item.amount && <small>{item.amount}</small>}
-              </span>
-              <span aria-hidden="true">↗</span>
-            </a>
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }

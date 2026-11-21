@@ -1,6 +1,9 @@
 import { expect, test } from "vitest";
 import type { Ingredient, IngredientRow, Recipe } from "../src/shared/recipes.ts";
 import { createTestApp, startingUsers } from "./support/test-app.ts";
+import { eq } from "drizzle-orm";
+import { applyCatalogPacks, reguessOtherShopSections } from "../src/server/recipes.ts";
+import { ingredients } from "../src/server/schema.ts";
 
 async function kitchenWithIngredients() {
   const app = await createTestApp();
@@ -32,7 +35,8 @@ test("the Ingredients screen lists every ingredient with its settings, and can s
   const { call, list } = await kitchenWithIngredients();
 
   expect(await list()).toEqual([
-    expect.objectContaining({ name: "Cream", shopSection: "Dairy", packAmount: null, packUnit: null, alwaysAtHome: false, recipes: 1 }),
+    // Known groceries start with the shop's usual pack.
+    expect.objectContaining({ name: "Cream", shopSection: "Dairy", packAmount: 250, packUnit: "ml", alwaysAtHome: false, recipes: 1 }),
     expect.objectContaining({ name: "salt" }),
     expect.objectContaining({ name: "Spaghetti" }),
   ]);
@@ -54,7 +58,7 @@ test("an ingredient's shop section, pack size and always-at-home flag can be set
   expect(now.map((ingredient) => [ingredient.name, ingredient.shopSection, ingredient.packAmount, ingredient.packUnit, ingredient.alwaysAtHome])).toEqual([
     ["Cream", "Frozen", 2.5, "dl", false],
     ["salt", "Dry goods", null, null, true],
-    ["Spaghetti", "Dry goods", null, null, false],
+    ["Spaghetti", "Dry goods", 500, "g", false],
   ]);
   const recipe = (await (await call(`/api/recipes/${recipeId}`)).json()) as Recipe;
   expect(recipe.lines.find((line) => line.ingredient.name === "Cream")?.ingredient.shopSection).toBe("Frozen");
@@ -69,16 +73,16 @@ test("new ingredients get a guessed shop section, and a user's choice is never o
     feeds: 2,
     types: ["Fish"],
     tags: [],
-    lines: ["cream", "Salmon", "Sweet potatoes", "Frozen peas", "Saffron"].map((ingredient) => ({ amount: 1, unit: "pcs", ingredient, note: "" })),
+    lines: ["cream", "Salmon", "Sweet potatoes", "Frozen peas", "Spirulina"].map((ingredient) => ({ amount: 1, unit: "pcs", ingredient, note: "" })),
     steps: [],
   });
   expect((await list()).map((ingredient) => [ingredient.name, ingredient.shopSection])).toEqual([
     ["Cream", "Other"],
     ["Frozen peas", "Frozen"],
-    ["Saffron", "Other"],
     ["Salmon", "Meat & fish"],
-    ["salt", "Dry goods"],
+    ["salt", "Spices & sauces"],
     ["Spaghetti", "Dry goods"],
+    ["Spirulina", "Other"],
     ["Sweet potatoes", "Vegetables"],
   ]);
 });
@@ -161,4 +165,40 @@ test("ingredients need a login and stay in their kitchen", async () => {
   expect((await list()).map((ingredient) => ingredient.name)).not.toContain("Cream");
   expect((await call(`/api/ingredients/${cream!.id}`, "PUT", settings)).status).toBe(404);
   expect((await call("/api/ingredients/not-an-id", "PUT", settings)).status).toBe(404);
+});
+
+test("at start, ingredients still in Other get a fresh guess, and ones the user moved stay put", async () => {
+  const { app, call, list } = await kitchenWithIngredients();
+  const cream = (await list()).find((ingredient) => ingredient.name === "Cream")!;
+  await app.query(`update ingredients set shop_section = 'Other' where name in ('Spaghetti', 'salt')`);
+  await call(`/api/ingredients/${cream.id}`, "PUT", { shopSection: "Frozen", packAmount: null, packUnit: null, alwaysAtHome: false });
+
+  expect(await reguessOtherShopSections(app.database)).toBe(2);
+  expect(await reguessOtherShopSections(app.database)).toBe(0);
+  expect(Object.fromEntries((await list()).map((ingredient) => [ingredient.name, ingredient.shopSection]))).toEqual({ Cream: "Frozen", salt: "Spices & sauces", Spaghetti: "Dry goods" });
+});
+
+test("startup gives old ingredients the catalog's pack sizes, but never changes one a person typed", async () => {
+  const { app, call, list } = await kitchenWithIngredients();
+  const { db } = app.database;
+  // Ingredients from before the catalog: no pack size and no source.
+  await db.update(ingredients).set({ packAmount: null, packUnit: null, pieceGrams: null, packSource: null });
+  const [cream, , spaghetti] = await list();
+  await call(`/api/ingredients/${spaghetti!.id}`, "PUT", { shopSection: "Dry goods", packAmount: 1, packUnit: "kg", alwaysAtHome: false });
+
+  expect(await applyCatalogPacks(app.database)).toBe(2);
+  expect((await list()).map((one) => [one.name, one.packAmount, one.packUnit])).toEqual([
+    ["Cream", 250, "ml"],
+    ["salt", 1, "kg"],
+    ["Spaghetti", 1, "kg"],
+  ]);
+  // An older catalog's size is replaced by the current one; a second run has nothing to do.
+  await db.update(ingredients).set({ packAmount: 1, packUnit: "l", packSource: "catalog:0" }).where(eq(ingredients.id, cream!.id));
+  expect(await applyCatalogPacks(app.database)).toBe(1);
+  expect((await list())[0]).toMatchObject({ packAmount: 250, packUnit: "ml" });
+  expect(await applyCatalogPacks(app.database)).toBe(0);
+  // A size typed before pack sources existed has no source, and is kept too.
+  await db.update(ingredients).set({ packAmount: 2, packUnit: "l", packSource: null }).where(eq(ingredients.id, cream!.id));
+  expect(await applyCatalogPacks(app.database)).toBe(0);
+  expect((await list())[0]).toMatchObject({ packAmount: 2, packUnit: "l" });
 });

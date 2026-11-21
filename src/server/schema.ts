@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, date, doublePrecision, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { bigint, boolean, check, date, doublePrecision, index, integer, numeric, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 const at = (name: string) => timestamp(name, { withTimezone: true, mode: "date" });
 
@@ -17,11 +17,14 @@ export const kitchens = pgTable("kitchens", {
   name: text("name").notNull(),
   /** False for a kitchen without children: no Runi & kids tab, no child rules or meals. */
   kids: boolean("kids").notNull().default(true),
-  /** Getting ready for nemlig.com home delivery. Nothing is sent to nemlig yet. */
+  /** Sends the shopping list to nemlig.com: the app opens nemlig's pages, the user fills the basket there. */
   nemligOn: boolean("nemlig_on").notNull().default(false),
   /** 0 is Monday, 6 is Sunday. */
   nemligDay: integer("nemlig_day").notNull().default(6),
-  nemligOrganic: boolean("nemlig_organic").notNull().default(false),
+  /** "none", "produce" (fruit and veg) or "all". */
+  nemligOrganic: text("nemlig_organic").notNull().default("none"),
+  /** When the starter recipes were put in at creation. Kitchens made before they existed count as done. */
+  starterAddedAt: at("starter_added_at"),
 });
 
 export const kitchenMembers = pgTable(
@@ -42,9 +45,80 @@ export const sessions = pgTable("sessions", {
   userId: uuid("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  /** Shown on Profile > Devices; the token hash never leaves the server. */
+  id: uuid("id").notNull().unique().defaultRandom(),
   createdAt: at("created_at").notNull(),
   expiresAt: at("expires_at").notNull(),
+  /** Updated at most once an hour, so a request doesn't write. */
+  lastUsedAt: at("last_used_at").notNull().defaultNow(),
+  userAgent: text("user_agent").notNull().default(""),
+  /** When this device last proved who it is (login or "Confirm it's you"), and how: "password" or "passkey". */
+  authenticatedAt: at("authenticated_at").notNull().defaultNow(),
+  authMethod: text("auth_method").notNull().default("password"),
 });
+
+/** WebAuthn credentials (Face ID, fingerprint, security keys). */
+export const passkeys = pgTable(
+  "passkeys",
+  {
+    /** The credential ID, base64url. */
+    id: text("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** COSE public key, base64url. */
+    publicKey: text("public_key").notNull(),
+    counter: bigint("counter", { mode: "number" }).notNull().default(0),
+    transports: text("transports").array().notNull().default(sql`'{}'::text[]`),
+    /** Where it was added, e.g. "Safari on iPhone". */
+    name: text("name").notNull(),
+    createdAt: at("created_at").notNull(),
+    lastUsedAt: at("last_used_at"),
+  },
+  (table) => [index("passkeys_user").on(table.userId)],
+);
+
+/** One row per failed login; `key` is "name:<username>" or "ip:<address>". Old rows are cleared as new ones come. */
+export const loginFailures = pgTable(
+  "login_failures",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    key: text("key").notNull(),
+    failedAt: at("failed_at").notNull(),
+  },
+  (table) => [index("login_failures_key_time").on(table.key, table.failedAt)],
+);
+
+/** Per-person secrets such as a nemlig.com login, sealed with AES-256-GCM (src/server/secrets.ts). Binary parts are base64. */
+export const secrets = pgTable(
+  "secrets",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    ciphertext: text("ciphertext").notNull(),
+    iv: text("iv").notNull(),
+    tag: text("tag").notNull(),
+    createdAt: at("created_at").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.kind] })],
+);
+
+/** What happened to a login: passkeys added, devices logged out, nemlig.com actions. Shown on Profile > Activity. */
+export const auditLog = pgTable(
+  "audit_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    action: text("action").notNull(),
+    detail: text("detail").notNull().default(""),
+    at: at("at").notNull(),
+  },
+  (table) => [index("audit_log_user_at").on(table.userId, table.at)],
+);
 
 const kitchenId = () =>
   uuid("kitchen_id")
@@ -65,7 +139,14 @@ export const ingredients = pgTable(
     shopSection: text("shop_section").notNull().default("Other"),
     packAmount: doublePrecision("pack_amount"),
     packUnit: text("pack_unit"),
+    /** Grams in one piece ("1 onion" is about 150 g), so counted lines can fill packs sold by weight and back. */
+    pieceGrams: doublePrecision("piece_grams"),
+    /** Who set the pack size: "catalog:<version>" from the shop catalog, "user" once a person edits it, null before either. */
+    packSource: text("pack_source"),
     alwaysAtHome: boolean("always_at_home").notNull().default(false),
+    /** The nemlig.com search word or product link the kitchen picked for this ingredient, kept for next week. */
+    nemligWord: text("nemlig_word"),
+    nemligLink: text("nemlig_link"),
     createdBy: createdBy(),
     createdAt: at("created_at").notNull().defaultNow(),
   },
@@ -263,4 +344,22 @@ export const freezerPortions = pgTable(
     updatedAt: at("updated_at").notNull().defaultNow(),
   },
   (table) => [primaryKey({ columns: [table.kitchenId, table.recipeId] }), check("freezer_portions_count", sql`${table.count} >= 0`)],
+);
+
+/** One row per Claude API call, for the usage report (scripts/usage-report.sql). */
+export const aiCalls = pgTable(
+  "ai_calls",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kitchenId: kitchenId(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    /** photo, link or vegetarian. */
+    feature: text("feature").notNull(),
+    model: text("model").notNull(),
+    inputTokens: integer("input_tokens").notNull(),
+    outputTokens: integer("output_tokens").notNull(),
+    costUsd: numeric("cost_usd", { precision: 12, scale: 6 }).notNull(),
+    createdAt: at("created_at").notNull().defaultNow(),
+  },
+  (table) => [index("ai_calls_created").on(table.createdAt)],
 );
