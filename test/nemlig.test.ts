@@ -124,17 +124,50 @@ describe("buildSendList", () => {
 
   test("says the packs to buy when the pack size is known, else what is needed", () => {
     const items = buildSendList(view, { organic: "none" });
-    expect(items.map((one) => buyOf(one, "en"))).toEqual(["", "", "Buy 2 packs (500 g each)", "", "", ""]);
-    expect(items.map((one) => buyOf(one, "da"))).toEqual(["", "", "Køb 2 pakker (500 g hver)", "", "", ""]);
+    expect(items.map((one) => buyOf(one, "en"))).toEqual(["", "", "2 packs · 500 g", "", "", ""]);
+    expect(items.map((one) => buyOf(one, "da"))).toEqual(["", "", "2 pakker · 500 g", "", "", ""]);
     expect(items.map((one) => needOf(one, "en"))).toEqual(["600 g", "3 pcs", "600 g", "", "", ""]);
     expect(items.map((one) => needOf(one, "da"))).toEqual(["600 g", "3 stk", "600 g", "", "", ""]);
   });
 });
 
+test("a thing sold one at a time is bought in pieces, not in packs of 1", () => {
+  const lemon = { ...ingredient("l", "lemons"), packAmount: 1, packUnit: "pcs" as const };
+  const items = buildSendList({ ...view, sections: [{ section: "Vegetables", lines: [item(lemon, { packs: 3, amount: 300 })] }], extras: [] }, { organic: "none" });
+  expect(buyOf(items[0]!, "en")).toBe("3 pcs");
+  expect(buyOf(items[0]!, "da")).toBe("3 stk");
+  expect(copyText(items)).toBe("3 stk citroner");
+});
+
+describe("the catalog's nemlig.com product", () => {
+  const beef = { ...ingredient("b", "hakket oksekød", "Meat & fish"), packAmount: 500, packUnit: "g" as const };
+  const beefView = (packAmount: number): ShoppingView => ({
+    ...view,
+    sections: [{ section: "Meat & fish", lines: [item({ ...beef, packAmount }, { packs: 1, amount: 400 })] }],
+    extras: [],
+  });
+
+  test("Find opens the product itself when the kitchen kept the catalog's pack size", () => {
+    const [found] = buildSendList(beefView(500), { organic: "none" });
+    expect(found!.productId).toBe("5063170");
+    expect(itemUrl(found!)).toBe("https://www.nemlig.com/produkt/5063170");
+    expect(buyOf(found!, "en")).toBe("1 pack · 500 g");
+    expect(buyOf(found!, "da")).toBe("1 pakke · 500 g");
+  });
+
+  test("a typed pack size, a saved word or link, or organic searches instead", () => {
+    expect(buildSendList(beefView(1000), { organic: "none" })[0]!.productId).toBeNull();
+    expect(buildSendList(beefView(500), { organic: "all" })[0]!.productId).toBeNull();
+    const saved = buildSendList(beefView(500), { organic: "none", remembered: { b: { word: "hakket oksekød 4-7%", link: null } } })[0]!;
+    expect(saved.productId).toBeNull();
+    expect(itemUrl(saved)).toBe(`https://www.nemlig.com/?search=${encodeURIComponent("hakket oksekød 4-7%")}`);
+  });
+});
+
 test("the search link adds økologisk once", () => {
-  expect(itemUrl({ word: "mælk", link: null, organic: true })).toBe(`https://www.nemlig.com/?search=${encodeURIComponent("økologisk mælk")}`);
-  expect(itemUrl({ word: "økologisk mælk", link: null, organic: true })).toBe(`https://www.nemlig.com/?search=${encodeURIComponent("økologisk mælk")}`);
-  expect(itemUrl({ word: "mælk", link: null, organic: false })).toBe("https://www.nemlig.com/?search=m%C3%A6lk");
+  expect(itemUrl({ word: "mælk", link: null, productId: null, organic: true })).toBe(`https://www.nemlig.com/?search=${encodeURIComponent("økologisk mælk")}`);
+  expect(itemUrl({ word: "økologisk mælk", link: null, productId: null, organic: true })).toBe(`https://www.nemlig.com/?search=${encodeURIComponent("økologisk mælk")}`);
+  expect(itemUrl({ word: "mælk", link: null, productId: null, organic: false })).toBe("https://www.nemlig.com/?search=m%C3%A6lk");
 });
 
 test("the copied list is Danish, one line per item with its amount", () => {

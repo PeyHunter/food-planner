@@ -501,12 +501,15 @@ const frozenWords = new Set(["frozen", "frost", "frosne", "frossen", "frosset", 
 // Said anywhere in the name, these put it with the tins: "hakkede tomat dåse" is not a fresh tomato.
 const tinWords = new Set(fold("dåse dåser dåsen can cans canned tin tins tinned").split(" "));
 const driedWords = new Set(fold("dried dry tørret tørrede").split(" "));
+// Danish shops sell these mostly in tins, so a bean on its own, or in a mix with lentils, is a tin unless it says dried.
+const beans = ["bean", "chickpea", "kidney bean", "black bean", "white bean", "baked bean"];
 // Fresh herbs, chillies and mushrooms sit with the vegetables, but dried ones are in the spice rack or with the dry goods.
 const driedSection: Record<string, ShopSection> = {
   ...Object.fromEntries(
     ["parsley", "coriander", "basil", "dill", "chive", "mint", "thyme", "rosemary", "sage", "tarragon", "herb", "chilli"].map((herb) => [herb, "Spices & sauces"]),
   ),
   mushroom: "Dry goods",
+  ...Object.fromEntries(beans.map((bean) => [bean, "Dry goods"])),
 };
 // What comes after these is what the thing is in or for, not the thing: "sardines packed in olive oil", "æg til mayo".
 const asides = new Set(["in", "with", "packed", "til"]);
@@ -666,7 +669,10 @@ export function guessShopSection(name: string): ShopSection {
   if (words.some((word) => frozenWords.has(word))) return "Frozen";
   if (words.some((word) => tinWords.has(word))) return "Tins & jars";
   const grocery = recognise(name)?.grocery;
-  const dried = grocery && words.some((word) => driedWords.has(word)) ? driedSection[grocery.en[0]!] : undefined;
+  const isDried = words.some((word) => driedWords.has(word));
+  const dried = grocery && isDried ? driedSection[grocery.en[0]!] : undefined;
+  // "Bønner / linser (mix)" reads as lentils, the last word, but is a tin of mixed beans.
+  if (!isDried && grocery?.en[0] === "lentil" && words.some((word) => beans.includes(exact([word])?.en[0] ?? ""))) return "Tins & jars";
   return dried ?? grocery?.section ?? "Other";
 }
 
@@ -705,14 +711,18 @@ export function danishName(name: string): string | undefined {
 export function groceryOf(name: string): Grocery | undefined {
   const words = wordsOf(name);
   const frozen = words.some((word) => frozenWords.has(word));
+  const dried = words.some((word) => driedWords.has(word));
+  const tinned = words.some((word) => tinWords.has(word));
   for (const phrase of [words, words.filter((word) => !descriptors.has(word) && !frozenWords.has(word))]) {
     if (!phrase.length) continue;
     const head = phrase.slice(0, -1).join(" ");
     const found = inflections(phrase.at(-1)!)
       .map((form) => byName.get(head ? `${head} ${form}` : form))
       .find(Boolean);
-    // "Frozen peas" is not a bag of fresh peas.
-    if (found) return frozen && found.section !== "Frozen" ? undefined : found;
+    // "Frozen peas" is not a bag of fresh peas, "hakkede tomat dåse" not fresh tomatoes, "dried black beans" not a tin, "tørret timian" not a fresh bunch.
+    if (!found) continue;
+    const wrong = (frozen && found.section !== "Frozen") || (tinned && found.section !== "Tins & jars") || (dried && found.en[0]! in driedSection);
+    return wrong ? undefined : found;
   }
   return undefined;
 }

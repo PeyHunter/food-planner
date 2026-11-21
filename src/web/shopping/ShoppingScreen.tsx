@@ -284,7 +284,11 @@ function Line({
           <strong>{ingredient.name}</strong>
           {pack && (
             <>
-              <span className="buy">{t(line.packs === 1 ? "Buy 1 pack ({pack})" : "Buy {n} packs ({pack} each)", { n: line.packs ?? 0, pack })}</span>
+              <span className="buy">
+                {packAmount === 1 && packUnit === "pcs"
+                  ? t("Buy {amount}", { amount: amountText(line.packs ?? 0, "pcs") })
+                  : t(line.packs === 1 ? "Buy 1 pack ({pack})" : "Buy {n} packs ({pack} each)", { n: line.packs ?? 0, pack })}
+              </span>
               <span className="need">
                 {t("You need {amount}", { amount: need ?? "" })}
                 {line.spare && ` · ${t("{amount} left over", { amount: amountText(line.spare.amount, line.spare.unit) })}`}

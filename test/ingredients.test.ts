@@ -197,4 +197,8 @@ test("startup gives old ingredients the catalog's pack sizes, but never changes 
   expect(await applyCatalogPacks(app.database)).toBe(1);
   expect((await list())[0]).toMatchObject({ packAmount: 250, packUnit: "ml" });
   expect(await applyCatalogPacks(app.database)).toBe(0);
+  // A size typed before pack sources existed has no source, and is kept too.
+  await db.update(ingredients).set({ packAmount: 2, packUnit: "l", packSource: null }).where(eq(ingredients.id, cream!.id));
+  expect(await applyCatalogPacks(app.database)).toBe(0);
+  expect((await list())[0]).toMatchObject({ packAmount: 2, packUnit: "l" });
 });

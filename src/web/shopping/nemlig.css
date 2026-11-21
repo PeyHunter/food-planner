@@ -72,6 +72,7 @@
 .ns-item-tools{display:flex;flex-wrap:wrap;justify-content:end;gap:.4rem}
 .ns-item-tools .btn{min-block-size:2.75rem;white-space:nowrap}
 .ns-amount.need{background:var(--paper)}
+.ns-need{color:var(--muted);font-size:.8rem;font-weight:700}
 .ns-organic{padding:.05em .5em;border:var(--line-thin) solid var(--ink);border-radius:999px;background:var(--mint);font-weight:800;font-size:.75rem;text-transform:uppercase;letter-spacing:.03em}
 .ns-in{color:color-mix(in oklch,var(--mint) 45%,var(--ink));font-weight:800;font-size:.85rem}
 /* Narrow phones: the buttons go under the name. */

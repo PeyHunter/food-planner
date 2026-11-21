@@ -297,8 +297,6 @@ const rows: Record<string, Row> = {
   allspice: [20, "g", null, "allehånde"],
   "bay leaf": [50, "g", null, "laurbærblade"],
   oregano: [15, "g", null, "oregano"],
-  "dried thyme": [15, "g", null, "timian tørret"],
-  "dried basil": [10, "g", null, "basilikum tørret"],
   "chilli flake": [28, "g", null, "chiliflager"],
   "chilli powder": [40, "g", null, "cayennepeber"],
   "garlic powder": [49, "g", null, "hvidløgspulver"],

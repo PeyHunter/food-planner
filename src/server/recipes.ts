@@ -482,15 +482,15 @@ export function catalogPack(name: string) {
 }
 
 /**
- * Puts the catalog's pack sizes on ingredients nobody sized by hand: ones from before the catalog, and ones from an older catalog.
- * A size someone typed (pack source "user") is never changed.
+ * Puts the catalog's pack sizes on ingredients nobody sized by hand: unsized ones from before the catalog, and ones from an older catalog.
+ * A size someone typed is never changed, whether marked "user" or typed before pack sources existed.
  */
 export async function applyCatalogPacks({ db }: Database) {
   const current = `catalog:${packsVersion}`;
   const rows = await db
     .select({ id: ingredients.id, name: ingredients.name })
     .from(ingredients)
-    .where(or(isNull(ingredients.packSource), and(sql`${ingredients.packSource} like 'catalog:%'`, sql`${ingredients.packSource} <> ${current}`)));
+    .where(or(and(isNull(ingredients.packSource), isNull(ingredients.packAmount)), and(sql`${ingredients.packSource} like 'catalog:%'`, sql`${ingredients.packSource} <> ${current}`)));
   let sized = 0;
   for (const { id, name } of rows) {
     const pack = catalogPack(name);
@@ -498,7 +498,7 @@ export async function applyCatalogPacks({ db }: Database) {
     await db
       .update(ingredients)
       .set(pack)
-      .where(and(eq(ingredients.id, id), or(isNull(ingredients.packSource), sql`${ingredients.packSource} like 'catalog:%'`)));
+      .where(and(eq(ingredients.id, id), or(and(isNull(ingredients.packSource), isNull(ingredients.packAmount)), sql`${ingredients.packSource} like 'catalog:%'`)));
     sized++;
   }
   return sized;

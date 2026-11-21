@@ -114,6 +114,9 @@ export const moreGroceries: Partial<Record<ShopSection, More[]>> = {
     ["canned potato", "kartofler i glas", [425, "g", null, "kartofler i glas"]],
   ],
   "Spices & sauces": [
+    // The section rule already files any dried herb here; these two have their own jar size.
+    ["dried thyme", "tørret timian, timian tørret", [15, "g", null, "timian tørret"]],
+    ["dried basil", "tørret basilikum, basilikum tørret", [10, "g", null, "basilikum tørret"]],
     ["fennel seed", "fennikelfrø"],
     ["five spice", "five spice, femkrydderi"],
     ["sichuan pepper", "sichuanpeber"],

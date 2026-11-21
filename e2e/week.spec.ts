@@ -234,7 +234,8 @@ test("Create week fills only the empty days, ticks the rules, and undo puts them
 });
 
 test("Reduce waste suggests a dish for the leftover carrots, and accepting it lowers the leftover on the list", async ({ page }) => {
-  const stamp = Date.now();
+  // Letters only: the shop catalog reads past digits, so "Onions 1795…" would be the kitchen's onions, not a new ingredient.
+  const stamp = Date.now().toString(4).replace(/[0-3]/g, (digit) => "qwxz"[Number(digit)]!);
   const carrots = `Carrots ${stamp}`;
   const soup = `Carrot soup ${stamp}`;
   await page.goto("/");

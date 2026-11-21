@@ -22,6 +22,14 @@ test("whole names find their pack; guesses and frozen versions don't", () => {
   expect(groceryOf("onions")?.pack?.unit).toBe("kg");
   expect(groceryOf("Hakkede tomater")?.pack).toMatchObject({ amount: 400, unit: "g" });
   expect(groceryOf("fresh basil")?.en[0]).toBe("basil");
+  // A tin of beans is 400 g net; dried beans are not that tin, and dried thyme is not a fresh bunch.
+  expect(groceryOf("kikærter")?.pack).toMatchObject({ amount: 400, unit: "g" });
+  expect(groceryOf("tørrede kikærter")?.pack).toMatchObject({ amount: 500, unit: "g" });
+  expect(groceryOf("dried black beans")).toBeUndefined();
+  expect(groceryOf("Hakkede tomat dåse")).toBeUndefined();
+  expect(groceryOf("dåse kikærter")?.pack).toMatchObject({ amount: 400, unit: "g" });
+  expect(groceryOf("tørret timian")?.pack).toMatchObject({ amount: 15, unit: "g" });
+  expect(groceryOf("tørret rosmarin")).toBeUndefined();
   expect(groceryOf("garlic powder")?.en[0]).not.toBe("garlic");
   expect(groceryOf("hvidløgspulver")?.en[0]).not.toBe("garlic");
   expect(groceryOf("frozen spinach")?.pack?.amount).not.toBe(100);
