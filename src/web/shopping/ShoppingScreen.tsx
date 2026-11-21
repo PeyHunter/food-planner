@@ -17,6 +17,25 @@ const dayLetter = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateSt
 const dayName = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString(locale(), { weekday: "long", timeZone: "UTC" });
 const amountText = (amount: number, unit: Unit) => amountLabel(amount, unit, currentLanguage());
 
+/** The days picked for a week, kept on the phone so a reload (or a nemlig.com send) keeps them. Default: the rest of this week, or all of another. */
+const daysKey = (monday: string) => `shopping-days:${monday}`;
+function pickedDays(monday: string) {
+  try {
+    const kept: unknown = JSON.parse(localStorage.getItem(daysKey(monday)) ?? "null");
+    if (Array.isArray(kept) && kept.every((day) => weekDates(monday).includes(day))) return kept as string[];
+  } catch {
+    // Nothing kept; use the default.
+  }
+  return monday === mondayOf(today()) ? restOfWeek(today()) : weekDates(monday);
+}
+function keepDays(monday: string, days: string[]) {
+  try {
+    localStorage.setItem(daysKey(monday), JSON.stringify(days));
+  } catch {
+    // Not kept; the choice lasts until the page closes.
+  }
+}
+
 /** A tick the server may not have seen yet. `doneAt` is when the save finished. */
 type Pending = { ticked: boolean; doneAt?: number };
 
@@ -24,7 +43,7 @@ export function ShoppingScreen() {
   const thisMonday = mondayOf(today());
   // A nemlig.com send left open next week brings you back to next week.
   const [monday, setMonday] = useState(() => (!hasSend(thisMonday) && hasSend(addDays(thisMonday, 7)) ? addDays(thisMonday, 7) : thisMonday));
-  const [days, setDays] = useState(() => (monday === thisMonday ? restOfWeek(today()) : weekDates(monday)));
+  const [days, setDays] = useState(() => pickedDays(monday));
   const [view, setView] = useState<ShoppingView>();
   const [problem, setProblem] = useState<string>();
   const [editing, setEditing] = useState<string>();
@@ -87,11 +106,15 @@ export function ShoppingScreen() {
 
   const pickWeek = (next: string) => {
     setMonday(next);
-    setDays(next === thisMonday ? restOfWeek(today()) : weekDates(next));
+    setDays(pickedDays(next));
     setView(undefined);
     pending.current.clear();
   };
-  const toggleDay = (date: string) => setDays((shown) => (shown.includes(date) ? shown.filter((day) => day !== date) : [...shown, date].sort()));
+  const toggleDay = (date: string) => {
+    const next = days.includes(date) ? days.filter((day) => day !== date) : [...days, date].sort();
+    keepDays(monday, next);
+    setDays(next);
+  };
 
   const shown = view?.monday === monday ? view : undefined;
   const anyTicked = !!shown && (shown.sections.some((section) => section.lines.some((line) => isTicked(line.key, line.ticked))) || shown.extras.some((extra) => isTicked(extra.key, extra.ticked)));
@@ -120,6 +143,7 @@ export function ShoppingScreen() {
           </button>
         ))}
       </div>
+      {monday === thisMonday && weekDates(monday)[0]! < today() && <p className="hint days-hint">{t("Days before today start off. Tap one to add it.")}</p>}
       {problem && <p role="alert">{problem}</p>}
       {nemlig && leftToBuy && (
         <button type="button" className="btn sun send-nemlig" onClick={() => setSending(true)}>

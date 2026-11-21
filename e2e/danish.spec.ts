@@ -27,7 +27,6 @@ test("in Danish: a dinner out, a salad next to the main dish, send to nemlig.com
   await expect(page.getByRole("heading", { name: "Profil" })).toBeVisible();
   await page.getByRole("switch", { name: "Vi handler hos nemlig.com" }).check();
   await page.getByRole("radio", { name: "Alt", exact: true }).check();
-  await expect(page.getByRole("radio", { name: "søndag" })).toBeChecked();
   await page.screenshot({ path: `${shots}/profile-da.png`, fullPage: true });
 
   // Next week, so no day is in the past: Monday salmon + salad, Tuesday out.

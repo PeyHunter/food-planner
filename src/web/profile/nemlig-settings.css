@@ -1,15 +1,13 @@
-/* Delivery day chips and the organic choice: native radios drawn as sticker chips. */
+/* The organic choice: native radios drawn as sticker chips. */
 .nemlig-settings{display:grid;gap:1rem}
 .nemlig-settings fieldset{display:grid;gap:.45rem;margin:0;padding:0;border:0}
 .nemlig-settings legend{padding:0;margin-block-end:.45rem;font-weight:800}
 .nemlig-settings .hint{color:var(--muted);font-size:.85rem}
-.nemlig-days{display:grid;grid-template-columns:repeat(7,1fr);gap:.3rem}
 .nemlig-organic{display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem}
-.nemlig-days label,.nemlig-organic label{position:relative;display:block;cursor:pointer}
-.nemlig-days input,.nemlig-organic input{position:absolute;inset:0;margin:0;opacity:0;cursor:pointer}
-.nemlig-days span,.nemlig-organic span{display:grid;place-items:center;min-block-size:2.9rem;padding:.2rem;border:var(--line) solid var(--ink);border-radius:.9rem;background:var(--paper);
+.nemlig-organic label{position:relative;display:block;cursor:pointer}
+.nemlig-organic input{position:absolute;inset:0;margin:0;opacity:0;cursor:pointer}
+.nemlig-organic span{display:grid;place-items:center;min-block-size:2.9rem;padding:.2rem;border:var(--line) solid var(--ink);border-radius:.9rem;background:var(--paper);
   font-weight:800;font-size:.85rem;text-align:center;line-height:1.1}
-.nemlig-days span{text-transform:capitalize}
 .nemlig-organic span{border-radius:999px;font-size:.9rem;padding-inline:.4rem}
-.nemlig-days input:checked+span,.nemlig-organic input:checked+span{background:var(--sun);box-shadow:var(--pop-sm);translate:-1px -1px}
-.nemlig-days input:focus-visible+span,.nemlig-organic input:focus-visible+span{outline:3px solid var(--tomato);outline-offset:2px}
+.nemlig-organic input:checked+span{background:var(--sun);box-shadow:var(--pop-sm);translate:-1px -1px}
+.nemlig-organic input:focus-visible+span{outline:3px solid var(--tomato);outline-offset:2px}

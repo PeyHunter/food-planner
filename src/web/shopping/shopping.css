@@ -7,6 +7,7 @@
 .shopping .chips{padding-block-end:.2rem}
 
 .shopping .day-chips{display:grid;grid-template-columns:repeat(7,1fr);gap:.35rem}
+.shopping .days-hint{margin:0;color:var(--muted);font-size:.85rem;font-weight:700}
 .shopping .day-chip{min-block-size:2.9rem;padding:0;border:var(--line-thin) solid var(--ink);border-radius:.9rem;background:var(--paper);font-weight:800;font-size:.85rem}
 .shopping .day-chip[aria-pressed=true]{background:var(--mint);box-shadow:var(--pop-sm)}
 .shopping .day-chip:active{translate:1px 1px;box-shadow:none}

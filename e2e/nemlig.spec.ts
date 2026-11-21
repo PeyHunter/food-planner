@@ -57,10 +57,10 @@ test("send the list to nemlig.com: first-time setup, check the list, fill the ba
   await expect(page.getByRole("listitem").filter({ has: page.getByRole("checkbox", { name: /Courgettes/ }) })).toContainText("2 pcs");
   await page.getByRole("button", { name: "Send list to nemlig.com" }).click();
 
-  // Setup, step 1: an account.
+  // Setup, step 1: an account. Only Close, no Back that does the same.
   const sheet = page.getByRole("dialog");
   await expect(sheet.getByRole("heading", { name: "Set up nemlig.com" })).toBeVisible();
-  await expect(sheet.getByRole("button", { name: "Back" })).toBeVisible();
+  await expect(sheet.getByRole("button", { name: "Back" })).toHaveCount(0);
   await expect(sheet.getByRole("button", { name: "Close" })).toBeVisible();
   await expect(sheet.getByText("Step 1 of 3")).toBeVisible();
   if (shots) await page.screenshot({ path: `${shots}/1-account.png` });
@@ -68,11 +68,11 @@ test("send the list to nemlig.com: first-time setup, check the list, fill the ba
   expect(await opened(page)).toEqual([["https://www.nemlig.com/", "nemlig"]]);
   await sheet.getByRole("button", { name: "I have one now" }).click();
 
-  // Step 2: delivery day and organic. Back goes to step 1 and forward again.
+  // Step 2: organic (no delivery day: nemlig.com asks for that when you pay). Back goes to step 1 and forward again.
   await expect(sheet.getByText("Step 2 of 3")).toBeVisible();
+  await expect(sheet.getByText("Delivery day", { exact: true })).toHaveCount(0);
   await sheet.getByRole("button", { name: "Back" }).click();
   await sheet.getByRole("button", { name: "Yes, I have one" }).click();
-  await sheet.getByRole("radio", { name: "Friday" }).check();
   await sheet.getByRole("radio", { name: "Fruit & veg" }).check();
   if (shots) await page.screenshot({ path: `${shots}/2-settings.png` });
   await sheet.getByRole("button", { name: "Next" }).click();
@@ -82,58 +82,67 @@ test("send the list to nemlig.com: first-time setup, check the list, fill the ba
   if (shots) await page.screenshot({ path: `${shots}/3-ready.png` });
   await sheet.getByRole("button", { name: "Send my list" }).click();
   await expect(sheet.getByRole("heading", { name: "Check the list" })).toBeVisible();
-  expect(((await (await page.request.get("/api/profile")).json()) as { nemlig: unknown }).nemlig).toEqual({ on: true, day: 4, organic: "produce" });
+  expect(((await (await page.request.get("/api/profile")).json()) as { nemlig: { organic: string; on: boolean } }).nemlig).toMatchObject({ on: true, organic: "produce" });
 
-  // Check the list: Danish search words, organic for fruit and veg only, packs and amounts.
+  // Check the list: Danish search words, organic for fruit and veg only, packs to buy and amounts needed.
   const row = (name: string) => sheet.getByRole("listitem").filter({ hasText: name });
-  await expect(row("Chicken breasts")).toContainText("2 packs");
-  await expect(row("Chicken breasts")).toContainText("kyllingebryst");
+  await expect(row("Chicken breasts")).toContainText("Buy 2 packs (500 g each)");
+  await expect(row("Chicken breasts")).toContainText("kyllingefilet");
   await expect(row("Courgettes")).toContainText("økologisk squash");
-  await expect(row("Hakkede tomat dåse")).toContainText("2 pcs");
+  await expect(row("Courgettes")).toContainText("Organic");
+  await expect(row("Hakkede tomat dåse")).toContainText("You need 2 pcs");
   await expect(row("Milk")).toContainText("mælk");
   await expect(row("Milk")).not.toContainText("økologisk");
   if (shots) await page.screenshot({ path: `${shots}/4-check.png` });
 
-  // Change a word: remembered for next week.
+  // Change a word: remembered for next week. The start button steps aside so it never covers Save.
   await sheet.getByRole("button", { name: "Change the search for Chicken breasts" }).click();
-  await sheet.getByLabel("Search word").fill("kyllingefilet");
+  await expect(sheet.getByRole("button", { name: /Start adding/ })).toHaveCount(0);
+  await sheet.getByLabel("Search word").fill("kyllingebrystfilet");
   if (shots) await page.screenshot({ path: `${shots}/5-edit-word.png` });
   await sheet.getByRole("button", { name: "Save" }).click();
-  await expect(row("Chicken breasts")).toContainText("kyllingefilet");
-  expect(await (await page.request.get("/api/nemlig/remembered")).json()).toEqual({ [chicken!.id]: { word: "kyllingefilet", link: null } });
+  await expect(row("Chicken breasts")).toContainText("kyllingebrystfilet");
+  expect(await (await page.request.get("/api/nemlig/remembered")).json()).toEqual({ [chicken!.id]: { word: "kyllingebrystfilet", link: null } });
 
   // Leave milk out of this send.
   await sheet.getByRole("button", { name: "Leave Milk out" }).click();
   await expect(sheet.getByText("Left out: Milk.")).toBeVisible();
+  await expect(sheet.getByText("It does not fill the nemlig.com basket.")).toBeVisible();
   await sheet.getByRole("button", { name: "Copy the list" }).click();
   await expect(sheet.getByRole("button", { name: "Copied ✓" })).toBeVisible();
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("2 stk økologisk squash\n2 pakker kyllingefilet\n2 stk Hakkede tomat dåse");
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("2 stk økologisk squash\n2 x 500 g kyllingebrystfilet\n2 stk Hakkede tomat dåse");
 
-  // Fill the basket, one at a time, in one reused nemlig tab.
-  await sheet.getByRole("button", { name: "Fill the basket (3)" }).click();
-  await expect(sheet.getByText("1 of 3")).toBeVisible();
-  await expect(sheet.getByRole("heading", { name: "økologisk squash" })).toBeVisible();
-  await sheet.getByRole("button", { name: "Find on nemlig.com" }).click();
+  // Fill the basket: every item on one page, in one reused nemlig tab; what is in the basket sinks.
+  await sheet.getByRole("button", { name: "Start adding to nemlig.com (3)" }).click();
+  await expect(sheet.getByText("0 of 3 in your basket.")).toBeVisible();
+  const items = sheet.locator(".ns-item strong");
+  await expect(items).toHaveText(["Courgettes", "Chicken breasts", "Hakkede tomat dåse"]);
+  await sheet.getByRole("button", { name: "Find Courgettes on nemlig.com" }).click();
   expect((await opened(page)).at(-1)).toEqual([search("økologisk squash"), "nemlig"]);
   if (shots) await page.screenshot({ path: `${shots}/6-fill.png` });
-  await sheet.getByRole("button", { name: "In the basket" }).click();
+  await sheet.getByRole("button", { name: "Courgettes is in the basket" }).click();
+  await expect(sheet.getByText("1 of 3 in your basket.")).toBeVisible();
+  await expect(items).toHaveText(["Chicken breasts", "Hakkede tomat dåse", "Courgettes"]);
+  await expect(sheet.getByRole("button", { name: "Courgettes is in the basket" })).toHaveAttribute("aria-pressed", "true");
 
-  await expect(sheet.getByText("2 of 3")).toBeVisible();
-  // Back to the item before, and forward again.
+  // Back to the check list: done stays done there, and carrying on keeps it.
   await sheet.getByRole("button", { name: "Back" }).click();
-  await expect(sheet.getByText("1 of 3")).toBeVisible();
-  await sheet.getByRole("button", { name: "In the basket" }).click();
-  await sheet.getByRole("button", { name: "Find on nemlig.com" }).click();
-  expect((await opened(page)).at(-1)).toEqual([search("kyllingefilet"), "nemlig"]);
+  await expect(row("Courgettes")).toContainText("In your basket");
+  await sheet.getByRole("button", { name: "Carry on adding (2 left)" }).click();
+  await expect(sheet.getByText("1 of 3 in your basket.")).toBeVisible();
+  await sheet.getByRole("button", { name: "Find Chicken breasts on nemlig.com" }).click();
+  expect((await opened(page)).at(-1)).toEqual([search("kyllingebrystfilet"), "nemlig"]);
 
-  // A reload carries on at the same item, on the same week.
+  // A reload carries on with the same ticks, the same week and the same days.
   await page.reload();
-  await expect(page.getByRole("dialog").getByText("2 of 3")).toBeVisible();
-  await sheet.getByRole("button", { name: "In the basket" }).click();
-  await expect(sheet.getByText("3 of 3")).toBeVisible();
-  await sheet.getByRole("button", { name: "Find on nemlig.com" }).click();
+  await expect(page.getByRole("dialog").getByText("1 of 3 in your basket.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Monday", exact: true })).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("button", { name: "Friday", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await sheet.getByRole("button", { name: "Chicken breasts is in the basket" }).click();
+  await expect(sheet.getByText("2 of 3 in your basket.")).toBeVisible();
+  await sheet.getByRole("button", { name: "Find Hakkede tomat dåse on nemlig.com" }).click();
   expect((await opened(page)).at(-1)).toEqual([search("Hakkede tomat dåse"), "nemlig"]);
-  await sheet.getByRole("button", { name: "Skip" }).click();
+  await sheet.getByRole("button", { name: "Next, 1 not added" }).click();
 
   // Done: open nemlig.com to pay, and tick off what went in.
   await expect(sheet.getByRole("heading", { name: "2 of 3 in your basket." })).toBeVisible();

@@ -1,4 +1,4 @@
-import { danishName, guessShopSection, recognise, type Grocery } from "./groceries.ts";
+import { danishName, guessShopSection, recognise } from "./groceries.ts";
 import { translate } from "./i18n.ts";
 import { nemligSearchUrl, type Language, type Organic } from "./profile.ts";
 import type { ShopSection } from "./recipes.ts";
@@ -15,8 +15,10 @@ export type SendItem = {
   /** Null for an extra ("milk"), which has no ingredient to remember a word on. */
   ingredientId: string | null;
   name: string;
-  /** Whole packs when a pack size is known, else the amount; null for "salt, to taste" or an extra. */
-  measure: { packs: number } | { amount: number; unit: Unit } | null;
+  /** What the dinners need; null for "salt, to taste" or an extra. */
+  need: { amount: number; unit: Unit } | null;
+  /** Whole packs to buy, when the shopping list knows the pack size. */
+  pack: { packs: number; amount: number; unit: Unit } | null;
   /** What goes in nemlig's search box, without the organic word. */
   word: string;
   link: string | null;
@@ -36,17 +38,32 @@ export function amountLabel(amount: number, unit: Unit, language: Language) {
 const lower = (text: string) => text.trim().toLowerCase();
 
 /**
- * The word to search nemlig.com for. A Danish name we know is used as typed ("flåede tomater" stays);
- * otherwise the grocery's own nemlig word if it has one, else its Danish name, else the name itself.
+ * Words that find the right thing on nemlig.com where the plain Danish name finds too much
+ * ("løg" also finds hvidløg and løgringe, "ris" finds rismel and riskiks). Keyed by the grocery's first English name.
+ */
+const nemligWords: Record<string, string> = {
+  onion: "gule løg",
+  rice: "jasminris",
+  tortilla: "tortilla wraps",
+  coriander: "frisk koriander",
+  "chicken breast": "kyllingefilet",
+  "soy sauce": "soja",
+  lime: "lime",
+};
+
+/**
+ * The word to search nemlig.com for. A Danish name more exact than the plain one is used as typed ("flåede tomater" stays);
+ * otherwise the grocery's nemlig word if it has one, else its Danish name, else the name itself.
  */
 export function searchWord(name: string): string {
   const found = recognise(name);
   if (!found?.exact) return danishName(name) ?? name.trim();
   const { grocery } = found;
   const typed = lower(name);
+  const better = nemligWords[grocery.en[0]!];
   const saysDanish = grocery.da.some((da) => typed.includes(lower(da))) && !grocery.en.some((en) => typed.includes(lower(en)));
-  if (saysDanish) return name.trim();
-  return (grocery as Grocery & { nemlig?: string }).nemlig ?? grocery.da[0] ?? name.trim();
+  if (saysDanish) return better && grocery.da.some((da) => lower(da) === typed) ? better : name.trim();
+  return better ?? grocery.da[0] ?? name.trim();
 }
 
 /** Fruit and veg sit in Vegetables, so "produce" means that section. */
@@ -86,12 +103,15 @@ export function buildSendList(
       .filter((line) => !ticked(line.key, line.ticked) && !line.ingredient.alwaysAtHome)
       .map((line): SendItem => {
         const kept = remembered[line.ingredient.id];
-        const measure = line.packs !== null ? { packs: line.packs } : line.amount !== null && line.unit !== null ? { amount: line.amount, unit: line.unit } : null;
+        const need = line.amount !== null && line.unit !== null ? { amount: line.amount, unit: line.unit } : null;
+        const { packAmount, packUnit } = line.ingredient;
+        const pack = line.packs !== null && packAmount !== null && packUnit !== null ? { packs: line.packs, amount: packAmount, unit: packUnit } : null;
         return {
           key: line.key,
           ingredientId: line.ingredient.id,
           name: line.ingredient.name,
-          measure,
+          need,
+          pack,
           word: kept?.word ?? searchWord(line.ingredient.name),
           link: kept?.link ?? null,
           organic: isOrganic(organic, section),
@@ -104,7 +124,8 @@ export function buildSendList(
       key: extra.key,
       ingredientId: null,
       name: extra.name,
-      measure: null,
+      need: null,
+      pack: null,
       word: searchWord(extra.name),
       link: null,
       organic: isOrganic(organic, guessShopSection(extra.name)),
@@ -112,18 +133,21 @@ export function buildSendList(
   return [...lines, ...extras];
 }
 
-/** "2 packs", "600 g", "3 pcs", or "" when there is no amount. */
-export function amountOf(item: Pick<SendItem, "measure">, language: Language) {
-  const { measure } = item;
-  if (!measure) return "";
-  if ("packs" in measure) return translate(language, measure.packs === 1 ? "1 pack" : "{n} packs", { n: measure.packs });
-  return amountLabel(measure.amount, measure.unit, language);
+/** "600 g", "3 pcs", or "" when there is no amount: what the dinners need. */
+export const needOf = ({ need }: Pick<SendItem, "need">, language: Language) => (need ? amountLabel(need.amount, need.unit, language) : "");
+
+/** What to put in the basket: "Buy 2 packs (500 g each)" when the pack size is known, else "" (the screen says what is needed). */
+export function buyOf({ pack }: Pick<SendItem, "pack">, language: Language) {
+  if (!pack) return "";
+  const size = amountLabel(pack.amount, pack.unit, language);
+  return translate(language, pack.packs === 1 ? "Buy 1 pack ({pack})" : "Buy {n} packs ({pack} each)", { n: pack.packs, pack: size });
 }
 
 /** The word with "økologisk" in front when the item is organic, as nemlig's search gets it. */
 export const fullWord = (item: Pick<SendItem, "word" | "organic">) => (item.organic && !/økolog/i.test(item.word) ? `økologisk ${item.word}` : item.word);
 
-/** The list as plain Danish text, one line per item with its amount, for nemlig's own list tools. */
+/** The list as plain Danish text, one line per item: packs to buy when known ("2 x 500 g"), else the amount needed. */
 export function copyText(items: SendItem[]) {
-  return items.map((item) => [amountOf(item, "da"), fullWord(item)].filter(Boolean).join(" ")).join("\n");
+  const amount = (item: SendItem) => (item.pack ? `${item.pack.packs} x ${amountLabel(item.pack.amount, item.pack.unit, "da")}` : needOf(item, "da"));
+  return items.map((item) => [amount(item), fullWord(item)].filter(Boolean).join(" ")).join("\n");
 }

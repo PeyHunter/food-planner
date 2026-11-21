@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { amountLabel, amountOf, buildSendList, copyText, itemUrl, nemligLink, searchWord } from "../src/shared/nemlig.ts";
+import { amountLabel, buildSendList, buyOf, copyText, itemUrl, needOf, nemligLink, searchWord } from "../src/shared/nemlig.ts";
 import type { ShoppingIngredient, ShoppingItem, ShoppingView } from "../src/shared/shopping.ts";
 import type { ShopSection } from "../src/shared/recipes.ts";
 
@@ -26,7 +26,7 @@ const item = (ingredientOf: ShoppingIngredient, more: Partial<ShoppingItem> = {}
 });
 
 const carrots = ingredient("c", "Carrots");
-const chicken = ingredient("k", "chicken breasts", "Meat & fish");
+const chicken = { ...ingredient("k", "chicken breasts", "Meat & fish"), packAmount: 500, packUnit: "g" as const };
 const tomatoes = ingredient("t", "flåede tomater", "Tins & jars");
 const onion = ingredient("o", "Onion");
 const view: ShoppingView = {
@@ -47,11 +47,23 @@ const view: ShoppingView = {
 
 describe("searchWord", () => {
   test.each([
-    ["chicken breasts", "kyllingebryst"],
+    ["chicken breasts", "kyllingefilet"],
     ["Carrots", "gulerødder"],
     ["flåede tomater", "flåede tomater"],
     ["Hakkede tomat dåse", "Hakkede tomat dåse"],
-    ["kyllingebryst", "kyllingebryst"],
+    ["kyllingebryst", "kyllingefilet"],
+    ["onions", "gule løg"],
+    ["løg", "gule løg"],
+    ["rødløg", "rødløg"],
+    ["rice", "jasminris"],
+    ["ris", "jasminris"],
+    ["basmatiris", "basmatiris"],
+    ["tortillas", "tortilla wraps"],
+    ["fresh coriander", "frisk koriander"],
+    ["koriander", "frisk koriander"],
+    ["stødt koriander", "stødt koriander"],
+    ["soy sauce", "soja"],
+    ["lime", "lime"],
     ["zzqx gadget", "zzqx gadget"],
     ["brocoli", "broccoli"],
   ])("%s searches for %s", (name, word) => {
@@ -63,7 +75,7 @@ describe("buildSendList", () => {
   test("takes every item not ticked, lines first, then extras, in list order", () => {
     const items = buildSendList(view, { organic: "none" });
     expect(items.map((one) => one.name)).toEqual(["Carrots", "Onion", "chicken breasts", "flåede tomater", "milk", "apples"]);
-    expect(items.map((one) => one.word)).toEqual(["gulerødder", "løg", "kyllingebryst", "flåede tomater", "mælk", "æbler"]);
+    expect(items.map((one) => one.word)).toEqual(["gulerødder", "gule løg", "kyllingefilet", "flåede tomater", "mælk", "æbler"]);
     expect(items.every((one) => !one.organic && one.link === null)).toBe(true);
   });
 
@@ -95,10 +107,12 @@ describe("buildSendList", () => {
     expect(itemUrl(carrot)).toBe("https://www.nemlig.com/gulerod-123");
   });
 
-  test("amounts read with packs, units and pieces", () => {
+  test("says the packs to buy when the pack size is known, else what is needed", () => {
     const items = buildSendList(view, { organic: "none" });
-    expect(items.map((one) => amountOf(one, "en"))).toEqual(["600 g", "3 pcs", "2 packs", "", "", ""]);
-    expect(items.map((one) => amountOf(one, "da"))).toEqual(["600 g", "3 stk", "2 pakker", "", "", ""]);
+    expect(items.map((one) => buyOf(one, "en"))).toEqual(["", "", "Buy 2 packs (500 g each)", "", "", ""]);
+    expect(items.map((one) => buyOf(one, "da"))).toEqual(["", "", "Køb 2 pakker (500 g hver)", "", "", ""]);
+    expect(items.map((one) => needOf(one, "en"))).toEqual(["600 g", "3 pcs", "600 g", "", "", ""]);
+    expect(items.map((one) => needOf(one, "da"))).toEqual(["600 g", "3 stk", "600 g", "", "", ""]);
   });
 });
 
@@ -110,7 +124,7 @@ test("the search link adds økologisk once", () => {
 
 test("the copied list is Danish, one line per item with its amount", () => {
   const items = buildSendList(view, { organic: "produce" });
-  expect(copyText(items)).toBe(["600 g økologisk gulerødder", "3 stk økologisk løg", "2 pakker kyllingebryst", "flåede tomater", "mælk", "økologisk æbler"].join("\n"));
+  expect(copyText(items)).toBe(["600 g økologisk gulerødder", "3 stk økologisk gule løg", "2 x 500 g kyllingefilet", "flåede tomater", "mælk", "økologisk æbler"].join("\n"));
 });
 
 test("pieces never stand alone", () => {

@@ -70,9 +70,7 @@ export function ProfileScreen({ onBack, onLogOut }: { onBack: () => void; onLogO
             </label>
             {profile.nemlig.on && (
               <NemligSettings
-                day={profile.nemlig.day}
                 organic={profile.nemlig.organic}
-                onDay={(day) => void save({ nemlig: { day } })}
                 onOrganic={(organic) => void save({ nemlig: { organic } })}
               />
             )}

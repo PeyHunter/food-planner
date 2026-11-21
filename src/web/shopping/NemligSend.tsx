@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { amountOf, buildSendList, copyText, fullWord, itemUrl, maxLink, maxWord, nemligHome, nemligLink, type Remembered, type SendItem } from "../../shared/nemlig.ts";
+import { buildSendList, buyOf, copyText, fullWord, itemUrl, maxLink, maxWord, nemligHome, nemligLink, needOf, type Remembered, type SendItem } from "../../shared/nemlig.ts";
 import type { Organic, Profile } from "../../shared/profile.ts";
 import type { ShoppingView } from "../../shared/shopping.ts";
 import { currentLanguage, t } from "../i18n.ts";
@@ -20,19 +20,23 @@ type Saved = {
   extraWords: Record<string, string>;
   /** The items being put in the basket, fixed when "Fill the basket" starts. */
   items: SendItem[];
-  at: number;
+  /** Keys already in the nemlig.com basket; kept when going back, so nothing is added twice. */
   added: string[];
   tickOff: boolean;
   /** False after Close: the progress stays for next time, but a reload does not pop the sheet up again. */
   open: boolean;
 };
 
-const fresh = (): Saved => ({ stage: "check", removed: [], extraWords: {}, items: [], at: 0, added: [], tickOff: true, open: true });
+const fresh = (): Saved => ({ stage: "check", removed: [], extraWords: {}, items: [], added: [], tickOff: true, open: true });
 const storageKey = (monday: string) => `nemlig-send:${monday}`;
 function load(monday: string): Saved | undefined {
   try {
     const text = localStorage.getItem(storageKey(monday));
-    return text ? { ...fresh(), ...(JSON.parse(text) as Partial<Saved>) } : undefined;
+    if (!text) return undefined;
+    const saved = { ...fresh(), ...(JSON.parse(text) as Partial<Saved>) };
+    // Sends saved before packs were counted have `measure` instead of `need` and `pack`.
+    saved.items = saved.items.map((item) => ({ ...item, need: item.need ?? null, pack: item.pack ?? null }));
+    return saved;
   } catch {
     return undefined;
   }
@@ -69,7 +73,7 @@ export function NemligSend({ monday, view, nemlig, isTicked, onNemlig, onTickOff
   const ref = useRef<HTMLDialogElement>(null);
   const [saved, setSaved] = useState<Saved>(() => load(monday) ?? fresh());
   const [stage, setStage] = useState<Stage>(() => (!nemlig.on ? "account" : saved.stage !== "check" && saved.items.length === 0 ? "check" : saved.stage));
-  const [settings, setSettings] = useState({ day: nemlig.day, organic: nemlig.organic });
+  const [organic, setOrganic] = useState(nemlig.organic);
   const [remembered, setRemembered] = useState<Record<string, Remembered>>();
   const [problem, setProblem] = useState<string>();
   const [busy, setBusy] = useState(false);
@@ -122,7 +126,7 @@ export function NemligSend({ monday, view, nemlig, isTicked, onNemlig, onTickOff
   const saveSetup = async () => {
     setBusy(true);
     try {
-      const profile = await saveProfile({ nemlig: { on: true, day: settings.day, organic: settings.organic } });
+      const profile = await saveProfile({ nemlig: { on: true, organic } });
       onNemlig(profile.nemlig);
       go("check");
     } catch (error) {
@@ -141,20 +145,14 @@ export function NemligSend({ monday, view, nemlig, isTicked, onNemlig, onTickOff
     setRemembered((before) => ({ ...before, [item.ingredientId!]: kept }));
   };
 
+  // What is already in the basket stays there: going back and starting again carries on with the rest.
   const startFill = () => {
-    update({ items, at: 0, added: [], stage: "fill" });
+    update({ items, added: saved.added.filter((key) => items.some((item) => item.key === key)), stage: "fill" });
     setStage("fill");
   };
 
   const fill = saved.items;
-  const current = fill[saved.at];
-  const answer = (inBasket: boolean) => {
-    if (!current) return;
-    const added = saved.added.filter((key) => key !== current.key);
-    const next = saved.at + 1;
-    update({ added: inBasket ? [...added, current.key] : added, at: next, stage: next >= fill.length ? "done" : "fill" });
-    if (next >= fill.length) setStage("done");
-  };
+  const toggleAdded = (key: string) => update({ added: saved.added.includes(key) ? saved.added.filter((one) => one !== key) : [...saved.added, key] });
 
   const back = (() => {
     switch (stage) {
@@ -167,12 +165,9 @@ export function NemligSend({ monday, view, nemlig, isTicked, onNemlig, onTickOff
       case "check":
         return undefined;
       case "fill":
-        return () => (saved.at > 0 ? update({ at: saved.at - 1 }) : go("check"));
+        return () => go("check");
       case "done":
-        return () => {
-          update({ at: Math.max(0, fill.length - 1) });
-          go("fill");
-        };
+        return () => go("fill");
     }
   })();
 
@@ -183,9 +178,13 @@ export function NemligSend({ monday, view, nemlig, isTicked, onNemlig, onTickOff
   return (
     <dialog ref={ref} className="nemlig-send" aria-label={title} onCancel={(event) => (event.preventDefault(), close())}>
       <header className="ns-head">
-        <button type="button" className="btn small white" onClick={back ?? close}>
-          <span aria-hidden="true">←</span> {t("Back")}
-        </button>
+        {back ? (
+          <button type="button" className="btn small white" onClick={back}>
+            <span aria-hidden="true">←</span> {t("Back")}
+          </button>
+        ) : (
+          <span />
+        )}
         <h2>{title}</h2>
         <button type="button" className="ns-close" aria-label={t("Close")} onClick={close}>
           ×
@@ -204,9 +203,9 @@ export function NemligSend({ monday, view, nemlig, isTicked, onNemlig, onTickOff
       {stage === "account" && <Account onNext={() => go("settings")} />}
       {stage === "settings" && (
         <Body foot={<Primary onClick={() => go("ready")}>{t("Next")}</Primary>}>
-          <h3 className="ns-big">{t("When and how?")}</h3>
-          <NemligSettings day={settings.day} organic={settings.organic} onDay={(day) => setSettings({ ...settings, day })} onOrganic={(organic: Organic) => setSettings({ ...settings, organic })} />
-          <p className="ns-note">{t("You pick the exact delivery time on nemlig.com when you pay.")}</p>
+          <h3 className="ns-big">{t("Organic?")}</h3>
+          <NemligSettings organic={organic} onOrganic={(choice: Organic) => setOrganic(choice)} />
+          <p className="ns-note">{t("You pick the delivery day and time on nemlig.com when you pay.")}</p>
         </Body>
       )}
       {stage === "ready" && (
@@ -226,7 +225,7 @@ export function NemligSend({ monday, view, nemlig, isTicked, onNemlig, onTickOff
           </div>
           <ol className="ns-how">
             <li>{t("Check the list and fix any search words.")}</li>
-            <li>{t("Go through it one item at a time and put each in your nemlig.com basket.")}</li>
+            <li>{t("Open each item on nemlig.com, add it there, and tick it here.")}</li>
             <li>{t("Pick a delivery time and pay on nemlig.com.")}</li>
           </ol>
         </Body>
@@ -235,6 +234,7 @@ export function NemligSend({ monday, view, nemlig, isTicked, onNemlig, onTickOff
       {stage === "check" && (
         <Check
           items={items}
+          added={saved.added}
           removed={removed}
           loading={remembered === undefined}
           onRemove={(key) => update({ removed: [...saved.removed, key] })}
@@ -244,7 +244,7 @@ export function NemligSend({ monday, view, nemlig, isTicked, onNemlig, onTickOff
         />
       )}
 
-      {stage === "fill" && current && <Fill item={current} at={saved.at} total={fill.length} added={saved.added.includes(current.key)} onAnswer={answer} />}
+      {stage === "fill" && <Fill items={fill} added={saved.added} onToggle={toggleAdded} onNext={() => go("done")} />}
 
       {stage === "done" && (
         <Body
@@ -324,7 +324,7 @@ function Account({ onNext }: { onNext: () => void }) {
         </button>
       </div>
       <p className="ns-tip">
-        <strong>{t("Tip:")}</strong> {t("Log in on nemlig.com in this browser once. Then every item opens straight into your own basket.")}
+        <strong>{t("Tip:")}</strong> {t("Log in on nemlig.com once in the browser this app opens (Safari on an iPhone). Then every item opens straight into your own basket.")}
       </p>
     </Body>
   );
@@ -332,6 +332,7 @@ function Account({ onNext }: { onNext: () => void }) {
 
 type CheckProps = {
   items: SendItem[];
+  added: string[];
   removed: SendItem[];
   loading: boolean;
   onRemove: (key: string) => void;
@@ -340,7 +341,7 @@ type CheckProps = {
   onFill: () => void;
 };
 
-function Check({ items, removed, loading, onRemove, onPutBack, onSave, onFill }: CheckProps) {
+function Check({ items, added, removed, loading, onRemove, onPutBack, onSave, onFill }: CheckProps) {
   const [editing, setEditing] = useState<string>();
   const [copied, setCopied] = useState<"yes" | "no">();
   const copy = async () => {
@@ -351,12 +352,16 @@ function Check({ items, removed, loading, onRemove, onPutBack, onSave, onFill }:
       setCopied("no");
     }
   };
+  const left = items.filter((item) => !added.includes(item.key)).length;
   return (
     <Body
       foot={
-        <Primary onClick={onFill} disabled={loading || items.length === 0}>
-          {t("Fill the basket")} ({items.length}) <span aria-hidden="true">→</span>
-        </Primary>
+        // Hidden while a word is edited, so it never covers Save (or sits over the phone keyboard).
+        editing === undefined && (
+          <Primary onClick={onFill} disabled={loading || items.length === 0}>
+            {left < items.length ? t("Carry on adding ({n} left)", { n: left }) : t("Start adding to nemlig.com ({n})", { n: items.length })} <span aria-hidden="true">→</span>
+          </Primary>
+        )
       }
     >
       <p>{t("This is what we look for on nemlig.com. Change a word if it finds the wrong thing.")}</p>
@@ -374,21 +379,11 @@ function Check({ items, removed, loading, onRemove, onPutBack, onSave, onFill }:
               }}
             />
           ) : (
-            <li key={item.key} className="ns-row">
+            <li key={item.key} className={`ns-row${added.includes(item.key) ? " done" : ""}`}>
               <div className="ns-what">
                 <strong>{item.name}</strong>
-                {amountOf(item, currentLanguage()) && <span className="ns-amount">{amountOf(item, currentLanguage())}</span>}
-                <span className="ns-word">
-                  {item.link ? (
-                    <>
-                      <span aria-hidden="true">🔗</span> {t("Your nemlig.com product")}
-                    </>
-                  ) : (
-                    <>
-                      <span aria-hidden="true">🔍</span> {fullWord(item)}
-                    </>
-                  )}
-                </span>
+                <ItemFacts item={item} />
+                {added.includes(item.key) && <span className="ns-in">✓ {t("In your basket")}</span>}
               </div>
               <div className="ns-row-tools">
                 <button type="button" className="btn small white" aria-label={t("Change the search for {name}", { name: item.name })} onClick={() => setEditing(item.key)}>
@@ -415,7 +410,7 @@ function Check({ items, removed, loading, onRemove, onPutBack, onSave, onFill }:
           <button type="button" className="btn small white" onClick={() => void copy()}>
             {copied === "yes" ? t("Copied ✓") : t("Copy the list")}
           </button>
-          <small>{t("For nemlig.com's own list tools, in Danish.")}</small>
+          <small>{t("Copies the list as Danish text, to paste in a note or a message. It does not fill the nemlig.com basket.")}</small>
           {copied === "no" && <textarea readOnly aria-label={t("The list as text")} value={copyText(items)} rows={Math.min(items.length, 8)} onFocus={(event) => event.target.select()} />}
         </div>
       )}
@@ -423,8 +418,36 @@ function Check({ items, removed, loading, onRemove, onPutBack, onSave, onFill }:
   );
 }
 
+/** What to buy (packs when known, else the amount needed) and the search word, under an item's name. */
+function ItemFacts({ item }: { item: SendItem }) {
+  const language = currentLanguage();
+  const buy = buyOf(item, language);
+  const need = needOf(item, language);
+  return (
+    <>
+      {buy ? <span className="ns-amount">{buy}</span> : need && <span className="ns-amount need">{t("You need {amount}", { amount: need })}</span>}
+      {item.organic && <span className="ns-organic">{t("Organic")}</span>}
+      <span className="ns-word">
+        {item.link ? (
+          <>
+            <span aria-hidden="true">🔗</span> {t("Your nemlig.com product")}
+          </>
+        ) : (
+          <>
+            <span aria-hidden="true">🔍</span> {fullWord(item)}
+          </>
+        )}
+      </span>
+    </>
+  );
+}
+
 function WordEditor({ item, onSave, onCancel }: { item: SendItem; onSave: (word: string, link: string | null) => Promise<void>; onCancel: () => void }) {
   const [problem, setProblem] = useState<string>();
+  const row = useRef<HTMLLIElement>(null);
+  useEffect(() => {
+    row.current?.scrollIntoView({ block: "center" });
+  }, []);
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -440,7 +463,7 @@ function WordEditor({ item, onSave, onCancel }: { item: SendItem; onSave: (word:
     }
   };
   return (
-    <li className="ns-row editing">
+    <li ref={row} className="ns-row editing">
       <form className="ns-edit" aria-label={t("Search for {name}", { name: item.name })} onSubmit={submit}>
         <strong>{item.name}</strong>
         <label>
@@ -468,43 +491,62 @@ function WordEditor({ item, onSave, onCancel }: { item: SendItem; onSave: (word:
   );
 }
 
-function Fill({ item, at, total, added, onAnswer }: { item: SendItem; at: number; total: number; added: boolean; onAnswer: (inBasket: boolean) => void }) {
-  const [opened, setOpened] = useState(false);
-  useEffect(() => setOpened(false), [item.key]);
-  const amount = amountOf(item, currentLanguage());
+type FillProps = { items: SendItem[]; added: string[]; onToggle: (key: string) => void; onNext: () => void };
+
+/** Every item on one page: "Find" opens it on nemlig.com, "In basket" ticks it, and ticked items sink to the bottom. */
+function Fill({ items, added, onToggle, onNext }: FillProps) {
+  const [opened, setOpened] = useState<string[]>([]);
+  const open = items.filter((item) => !added.includes(item.key));
+  const done = items.filter((item) => added.includes(item.key));
+  const guessing = open.some((item) => !item.pack && item.need);
   return (
     <Body
       foot={
-        <div className="ns-answer">
-          <button type="button" className="btn white" onClick={() => onAnswer(false)}>
-            {t("Skip")}
-          </button>
-          <button type="button" className={opened || added ? "btn mint ns-primary" : "btn white"} onClick={() => onAnswer(true)}>
-            <span aria-hidden="true">✓</span> {t("In the basket")}
-          </button>
-        </div>
+        <Primary onClick={onNext}>
+          {open.length === 0 ? t("Next") : t("Next, {n} not added", { n: open.length })} <span aria-hidden="true">→</span>
+        </Primary>
       }
     >
-      <div className="ns-progress" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={at} aria-label={t("Progress")}>
-        <span style={{ inlineSize: `${(at / total) * 100}%` }} />
+      <div className="ns-progress" role="progressbar" aria-valuemin={0} aria-valuemax={items.length} aria-valuenow={done.length} aria-label={t("Progress")}>
+        <span style={{ inlineSize: `${(done.length / Math.max(items.length, 1)) * 100}%` }} />
       </div>
-      <article className="ns-card" aria-live="polite">
-        <span className="ns-count sticker lilac tilt-l">{t("{n} of {total}", { n: at + 1, total })}</span>
-        <h3>{fullWord(item)}</h3>
-        <p className="ns-card-amount">{amount || t("No amount")}</p>
-        {item.name.toLowerCase() !== item.word.toLowerCase() && <p className="ns-card-name">{t("On your list: {name}", { name: item.name })}</p>}
-        <button
-          type="button"
-          className="btn sun ns-find"
-          onClick={() => {
-            setOpened(true);
-            openNemlig(itemUrl(item));
-          }}
-        >
-          {t("Find on nemlig.com")} <span aria-hidden="true">↗</span>
-        </button>
-        <p className="ns-note">{t("Put it in the basket there, then come back here.")}</p>
-      </article>
+      <p className="ns-lead">
+        <strong>{t("{n} of {total} in your basket.", { n: done.length, total: items.length })}</strong> {t("Tap Find to open an item on nemlig.com, add it there, then tick it here.")}
+      </p>
+      {guessing && <p className="ns-note">{t("Without a pack size, take the smallest pack that covers what you need. Set a pack size on the shopping list and we count the packs for you.")}</p>}
+      <ul className="ns-fill">
+        {[...open, ...done].map((item) => {
+          const isDone = added.includes(item.key);
+          const wasOpened = opened.includes(item.key);
+          return (
+            <li key={item.key} className={`ns-item${isDone ? " done" : ""}`}>
+              <div className="ns-what">
+                <strong>{item.name}</strong>
+                <ItemFacts item={item} />
+              </div>
+              <div className="ns-item-tools">
+                {!isDone && (
+                  <button
+                    type="button"
+                    className={`btn small ${wasOpened ? "white" : "sun"}`}
+                    aria-label={t("Find {name} on nemlig.com", { name: item.name })}
+                    onClick={() => {
+                      setOpened((before) => [...before, item.key]);
+                      openNemlig(itemUrl(item));
+                    }}
+                  >
+                    {t("Find")} <span aria-hidden="true">↗</span>
+                  </button>
+                )}
+                <button type="button" className={`btn small ${isDone || wasOpened ? "mint" : "white"}`} aria-pressed={isDone} aria-label={t("{name} is in the basket", { name: item.name })} onClick={() => onToggle(item.key)}>
+                  <span aria-hidden="true">✓</span> {t("In basket")}
+                </button>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="ns-note">{t("Your ticks are saved on this phone.")}</p>
     </Body>
   );
 }
