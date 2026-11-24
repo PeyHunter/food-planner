@@ -95,7 +95,7 @@ test("Profile is in the header on every tab, English | Dansk switches at once, B
 
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await language.getByRole("radio", { name: "Dansk" }).click();
-  await expect(nav.getByRole("button")).toHaveText([/Opskrifter$/, /Uge$/, /Indkøb$/, /(Runi Lee|Børn)$/]);
+  await expect(nav.getByRole("button")).toHaveText([/Hjem$/, /Opskrifter$/, /Uge$/, /Indkøb$/, /(Runi Lee|Børn)$/]);
   // The page says it is Danish, so the browser spellchecks Danish.
   await expect(page.locator("html")).toHaveAttribute("lang", "da");
   await expect(header.getByRole("link", { name: "Profil" })).toBeVisible();
@@ -105,9 +105,9 @@ test("Profile is in the header on every tab, English | Dansk switches at once, B
   await page.getByRole("radiogroup", { name: "Sprog" }).getByRole("radio", { name: "English" }).click();
   await expect(nav.getByRole("button", { name: "Week" })).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
-  // Profile was reloaded, so Back has no tab to return to and goes to Week.
+  // Profile was reloaded, so Back has no tab to return to and goes to Home.
   await page.getByRole("button", { name: "Back" }).click();
-  await expect(nav.getByRole("button", { name: "Week" })).toHaveAttribute("aria-current", "page");
+  await expect(nav.getByRole("button", { name: "Home" })).toHaveAttribute("aria-current", "page");
 
   await nav.getByRole("button", { name: "Shopping" }).click();
   await header.getByRole("link", { name: "Profile" }).click();

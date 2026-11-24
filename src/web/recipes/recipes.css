@@ -327,6 +327,109 @@
   }
 }
 
+/* Inline carousel: swipe the main photo and the gallery without opening the viewer. */
+.recipes .photo-swipe {
+  display: grid;
+  border: var(--r-line);
+  border-radius: 1.6rem;
+  background: var(--r-sun);
+  box-shadow: var(--r-pop);
+  overflow: clip;
+}
+
+.recipes .photo-swipe-stage {
+  position: relative;
+  display: grid;
+}
+
+.recipes .photo-swipe-track {
+  display: flex;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.recipes .photo-swipe-track::-webkit-scrollbar {
+  display: none;
+}
+
+.recipes .photo-slide {
+  flex: 0 0 100%;
+  min-inline-size: 0;
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  cursor: zoom-in;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+}
+
+.recipes .photo-slide img {
+  display: block;
+  inline-size: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+@media (min-width: 60rem) {
+  .recipes .photo-slide img {
+    aspect-ratio: auto;
+    block-size: min(55svh, 30rem);
+  }
+}
+
+.recipes .photo-swipe .age-sticker {
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline-end: 0;
+  z-index: 2;
+  margin: 0.8rem;
+  background: var(--lilac);
+  font-weight: 800;
+  pointer-events: none;
+}
+
+.recipes .photo-swipe-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.45rem 0.8rem;
+  border-block-start: var(--r-line);
+  background: var(--r-paper);
+}
+
+.recipes .photo-swipe-count {
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.recipes .photo-dots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+.recipes .photo-dot {
+  inline-size: 0.65rem;
+  block-size: 0.65rem;
+  padding: 0;
+  border: var(--r-line);
+  border-radius: 50%;
+  background: var(--r-paper);
+  cursor: pointer;
+}
+
+.recipes .photo-dot[aria-current="true"] {
+  background: var(--r-ink);
+}
+
 .recipes .made {
   margin: -0.4rem 0 0;
   color: var(--r-muted);

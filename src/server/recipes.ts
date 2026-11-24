@@ -548,8 +548,8 @@ export async function reguessOtherShopSections({ db }: Database) {
 export async function recipeSummaries({ db }: Database, rows: { id: string; title: string; feeds: number }[]): Promise<RecipeSummary[]> {
   if (!rows.length) return [];
   const ids = rows.map((row) => row.id);
-  const [times, types, tags, mains, lastCooks] = await Promise.all([
-    db.select({ id: recipes.id, minutes: recipes.minutes }).from(recipes).where(inArray(recipes.id, ids)),
+  const [details, types, tags, mains, lastCooks] = await Promise.all([
+    db.select({ id: recipes.id, minutes: recipes.minutes, ageFromMonths: recipes.ageFromMonths, ageToMonths: recipes.ageToMonths }).from(recipes).where(inArray(recipes.id, ids)),
     db.select().from(recipeTypes).where(inArray(recipeTypes.recipeId, ids)),
     db.select().from(recipeTags).where(inArray(recipeTags.recipeId, ids)).orderBy(asc(recipeTags.tag)),
     db
@@ -562,20 +562,25 @@ export async function recipeSummaries({ db }: Database, rows: { id: string; titl
       .where(inArray(cooks.recipeId, ids))
       .groupBy(cooks.recipeId),
   ]);
-  return rows.map((row) => ({
-    ...row,
-    minutes: times.find((time) => time.id === row.id)?.minutes ?? null,
-    types: sortCategories(types.filter((type) => type.recipeId === row.id).map((type) => type.type)),
-    tags: tags.filter((tag) => tag.recipeId === row.id).map((tag) => tag.tag),
-    mainPhoto: (() => {
-      const main = mains.find((photo) => photo.recipeId === row.id);
-      return main ? toPhoto(main) : null;
-    })(),
-    ...(() => {
-      const cooked = lastCooks.find((cook) => cook.recipeId === row.id);
-      return { lastMadeOn: cooked?.last ?? null, timesMade: cooked?.count ?? 0 };
-    })(),
-  }));
+  return rows.map((row) => {
+    const detail = details.find((each) => each.id === row.id);
+    return {
+      ...row,
+      minutes: detail?.minutes ?? null,
+      ageFromMonths: detail?.ageFromMonths ?? null,
+      ageToMonths: detail?.ageToMonths ?? null,
+      types: sortCategories(types.filter((type) => type.recipeId === row.id).map((type) => type.type)),
+      tags: tags.filter((tag) => tag.recipeId === row.id).map((tag) => tag.tag),
+      mainPhoto: (() => {
+        const main = mains.find((photo) => photo.recipeId === row.id);
+        return main ? toPhoto(main) : null;
+      })(),
+      ...(() => {
+        const cooked = lastCooks.find((cook) => cook.recipeId === row.id);
+        return { lastMadeOn: cooked?.last ?? null, timesMade: cooked?.count ?? 0 };
+      })(),
+    };
+  });
 }
 
 export type Tx = Parameters<Parameters<Database["db"]["transaction"]>[0]>[0];

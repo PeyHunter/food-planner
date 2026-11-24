@@ -23,6 +23,7 @@ export const danish: Record<string, string> = {
   Drinks: "Drikkevarer",
   pcs: "stk",
   bag: "pose",
+  Home: "Hjem",
   Recipes: "Opskrifter",
   Week: "Uge",
   Shopping: "Indkøb",
@@ -55,6 +56,13 @@ export const danish: Record<string, string> = {
   "We have a baby or child": "Vi har en baby eller et barn",
   "Shows the kids tab, child meals and child rules. You can name the child on the kids tab.": "Viser børnefanen, børnemåltider og børneregler. Du kan give barnet et navn på børnefanen.",
   "Get our groceries from nemlig.com": "Vi handler hos nemlig.com",
+
+  // Home
+  "What shall we cook?": "Hvad skal vi lave?",
+  "Plan the week": "Planlæg ugen",
+  "All recipes": "Alle opskrifter",
+  "Your recipe book is empty.": "Din opskriftsbog er tom.",
+  Ideas: "Idéer",
 
   // Book and recipes
   "What's for dinner?": "Hvad skal vi have?",

@@ -79,6 +79,17 @@ From the user after seeing the designs. Full notes in `docs/design-feedback-2026
 3. **Photo to recipe**: take a photo of a written recipe, the Anthropic API (key in `ANTHROPIC_API_KEY`) fills in title, description, ingredients, steps for review before saving. When a recipe book page has a printed picture of the dish, that picture is cut out and becomes the main photo; the pages go in the gallery.
 4. **Freezer**: log "6 portions in the freezer" after a freezable cook; plan a night as "from the freezer" (decrements, adds nothing to the shopping list).
 
+## Notes 2026-11-24 (overrides anything above that disagrees)
+
+- **Home is the front page** and the default after login. It scrolls: a 2-3 column grid of every recipe, then an "Ideas" rail of dish photos. Ideas are adult food only: no child-only recipes or recipes tagged `for Runi`.
+- **Suggestions sit under the weekday cards** on the Week screen, closed by default on every load.
+- **Categories are open**: a kitchen can add its own (for example `rygbrødsmadder`), and they work in filters and rules beside the five built-in types.
+- **What can I make?** under Recipes: type the ingredients in the kitchen and see recipes ranked by what is missing.
+- **Recipe photos swipe inline** on the recipe page: the main photo and the gallery are one horizontal strip. A tap still opens the full-screen viewer.
+- **Each child has her own freezer.** The Kids tab shows what is in it, what can be frozen for her (her freezable recipes), and a button to put a portion in. A child's week meal can be taken "from her freezer", which takes one portion out and adds nothing to the shopping list.
+- **Two more kitchens without kids**: Anna D + Mathias and Anna A + Jacob, two logins each, made at startup when their passwords are set.
+- **Breakfast and lunch** are planned, not built. `docs/plans/meal-types.md` has the data, API, UI, shopping and rules path.
+
 ## Design
 
 Before building screens: at least 5 competing designs (arena), each using the good-css skill (copy `~/lp-collection/.claude/skills/good-css` into this repo). Style: light, modern, slightly playful. Each design covers Browse, Recipe and Week. Put screenshots of all of them side by side in one Artifact page. The manager picks the winner (the user delegated this) and records why in `docs/adr/`. The user may ask for a swap later.

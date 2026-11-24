@@ -28,7 +28,7 @@ test("photos open full-screen in the app: ← Back, ✕ and Escape close it, arr
   const id = await addRecipe(page, `Viewer fish ${Date.now()}`);
   await page.goto(`/#/recipes/${id}`);
 
-  await page.getByRole("button", { name: "Open the photo" }).click();
+  await page.getByRole("region", { name: "Photos" }).getByRole("button", { name: "Open photo 1" }).click();
   const viewer = page.getByRole("dialog");
   await expect(viewer).toBeVisible();
   await expect(viewer.getByRole("button", { name: "← Back" })).toBeVisible();
@@ -36,7 +36,7 @@ test("photos open full-screen in the app: ← Back, ✕ and Escape close it, arr
   await viewer.getByRole("button", { name: "Close" }).click();
   await expect(viewer).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Open photo 1" }).click();
+  await page.locator(".gallery").getByRole("button", { name: "Open photo 1" }).click();
   await expect(viewer.getByText("2 / 3")).toBeVisible();
   await page.keyboard.press("ArrowRight");
   await expect(viewer.getByText("3 / 3")).toBeVisible();
@@ -44,7 +44,7 @@ test("photos open full-screen in the app: ← Back, ✕ and Escape close it, arr
   await page.keyboard.press("Escape");
   await expect(viewer).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Open photo 2" }).click();
+  await page.locator(".gallery").getByRole("button", { name: "Open photo 2" }).click();
   await expect(viewer.getByText("3 / 3")).toBeVisible();
   await viewer.getByRole("button", { name: "← Back" }).click();
   await expect(viewer).toHaveCount(0);

@@ -26,7 +26,7 @@ test("peyton logs in on an iPhone, stays logged in, and logs out", async ({ page
   await expect(page.getByRole("button", { name: "Log in" })).toBeVisible();
 });
 
-test("after logging out, the next person starts on Week, not on the last person's page", async ({ page }) => {
+test("after logging out, the next person starts on Home, not on the last person's page", async ({ page }) => {
   await page.goto("/");
   await page.getByLabel("Name").fill("peyton");
   await page.getByLabel("Password").fill(e2ePasswords.peyton);
@@ -39,8 +39,8 @@ test("after logging out, the next person starts on Week, not on the last person'
   await page.getByLabel("Password").fill(e2ePasswords.ronja);
   await page.getByRole("button", { name: "Log in" }).click();
   await expect(page.getByRole("heading", { name: "Hi Ronja" })).toBeVisible();
-  await expect(page).toHaveURL(/#\/week$/);
-  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Week" })).toHaveAttribute("aria-current", "page");
+  await expect(page).toHaveURL(/#\/home$/);
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Home" })).toHaveAttribute("aria-current", "page");
 });
 
 test("ronja logs in to the same kitchen", async ({ page, request }) => {

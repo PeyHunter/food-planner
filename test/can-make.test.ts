@@ -7,6 +7,8 @@ const summary = (title: string): RecipeSummary => ({
   title,
   feeds: 4,
   minutes: null,
+  ageFromMonths: null,
+  ageToMonths: null,
   types: ["Vegetarian"],
   tags: [],
   mainPhoto: null,

@@ -30,6 +30,8 @@ export type RecipeSummary = {
   feeds: number;
   /** Total cooking time in minutes, or null when unknown. */
   minutes: number | null;
+  ageFromMonths: number | null;
+  ageToMonths: number | null;
   types: MainType[];
   tags: string[];
   mainPhoto: Photo | null;
@@ -49,8 +51,6 @@ export type Cook = { id: string; madeOn: string; by: string; photos: Photo[] };
 export type Recipe = RecipeSummary & {
   /** A few lines about the dish, e.g. the intro from a recipe book. Empty if none. */
   description: string;
-  ageFromMonths: number | null;
-  ageToMonths: number | null;
   lines: RecipeLine[];
   steps: string[];
   photos: Photo[];

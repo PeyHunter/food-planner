@@ -46,7 +46,7 @@ export function WeekScreen() {
   const [problem, setProblem] = useState<string>();
   const [picking, setPicking] = useState<Picking>();
   const [editingRules, setEditingRules] = useState(false);
-  const [open, toggle] = useSuggestionsOpen();
+  const [open, setOpen] = useState(false);
   const loads = useRef(0);
 
   const load = useCallback(async () => {
@@ -97,8 +97,23 @@ export function WeekScreen() {
       {problem && <p role="alert">{problem}</p>}
       {shown && (
         <>
+          <ol className="days">
+            {shown.days.map((day, index) => (
+              <DayCard
+                key={day.date}
+                day={day}
+                index={index}
+                people={people.count(day)}
+                kids={shown.children}
+                onPick={(childId) => setPicking({ date: day.date, childId })}
+                onAddSide={() => setPicking({ date: day.date, childId: null, side: true })}
+                onRemoveSide={(position) => void act(() => removeSide(day.date, position))}
+                onPeople={(step) => people.change(day, step)}
+              />
+            ))}
+          </ol>
           <div className="week-bar">
-            <button type="button" className="btn small sun" aria-expanded={open} aria-controls="week-suggestions" onClick={() => toggle(!open)}>
+            <button type="button" className="btn small sun" aria-expanded={open} aria-controls="week-suggestions" onClick={() => setOpen(!open)}>
               {t("Suggestions")}
               {shown.suggestions.length > 0 && (
                 <span className="sticker tomato badge" aria-label={`${shown.suggestions.length} ideas to meet the rules`}>
@@ -139,21 +154,6 @@ export function WeekScreen() {
               <ReduceWaste monday={monday} onDone={load} setProblem={setProblem} />
             </div>
           </div>
-          <ol className="days">
-            {shown.days.map((day, index) => (
-              <DayCard
-                key={day.date}
-                day={day}
-                index={index}
-                people={people.count(day)}
-                kids={shown.children}
-                onPick={(childId) => setPicking({ date: day.date, childId })}
-                onAddSide={() => setPicking({ date: day.date, childId: null, side: true })}
-                onRemoveSide={(position) => void act(() => removeSide(day.date, position))}
-                onPeople={(step) => people.change(day, step)}
-              />
-            ))}
-          </ol>
           {picking && shown.days.some((day) => day.date === picking.date) && (
             <Picker
               picking={picking}
@@ -171,28 +171,6 @@ export function WeekScreen() {
       )}
     </section>
   );
-}
-
-const openKey = "week.suggestions.open";
-
-/** Open or closed is remembered on this phone; storage can be blocked, so it falls back to closed. */
-function useSuggestionsOpen() {
-  const [open, setOpen] = useState(() => {
-    try {
-      return localStorage.getItem(openKey) === "1";
-    } catch {
-      return false;
-    }
-  });
-  const toggle = (next: boolean) => {
-    setOpen(next);
-    try {
-      localStorage.setItem(openKey, next ? "1" : "0");
-    } catch {
-      // Not remembered; it still works for this visit.
-    }
-  };
-  return [open, toggle] as const;
 }
 
 const peopleSaveDelay = 250;
@@ -520,6 +498,7 @@ function DayCard({ day, index, people, kids, onPick, onPeople, onAddSide, onRemo
               <span aria-hidden="true">🧒</span>
               <b>{kid.name}</b>
               <span className="meal">{text}</span>
+              {meal?.fromFreezer && <span className="sticker sky tilt-r from-freezer">{t("❄ From the freezer")}</span>}
               {meal?.kind === "same-as-dinner" && <span className="plus">+½</span>}
             </button>
           );
@@ -571,7 +550,7 @@ function Picker({ picking, view, who, onClose, onChoose }: PickerProps) {
   const recipes = type ? searched?.filter((recipe) => recipe.types.includes(type)) : searched;
   // Tapping what is already chosen takes it away again.
   const chosenId = (recipeId: string) =>
-    side ? day.sides.some((entry) => entry.recipe.id === recipeId) : childId === null ? !day.fromFreezer && day.dinner?.id === recipeId : meal?.kind === "recipe" && meal.recipe?.id === recipeId;
+    side ? day.sides.some((entry) => entry.recipe.id === recipeId) : childId === null ? !day.fromFreezer && day.dinner?.id === recipeId : meal?.kind === "recipe" && !meal.fromFreezer && meal.recipe?.id === recipeId;
   const choose = (recipeId: string) => {
     if (side) {
       const chosen = day.sides.find((entry) => entry.recipe.id === recipeId);
@@ -660,6 +639,34 @@ function Picker({ picking, view, who, onClose, onChoose }: PickerProps) {
                     aria-label={`From the freezer: ${recipe.title}`}
                     aria-pressed={chosen}
                     onClick={() => onChoose(() => (chosen ? setDinner(date, null) : setDinner(date, recipe.id, true)))}
+                  >
+                    <Plate recipe={recipe} />
+                    <span className="dish-text">
+                      <strong>{recipe.title}</strong>
+                      <span className="sticker sky">{t("{n} left", { n: count })}</span>
+                    </span>
+                    <Tick />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+      {childId !== null && !side && (view.childFreezer[childId]?.length ?? 0) > 0 && (
+        <section className="freezer-pick kid-freezer-pick" aria-label={t("From {name}'s freezer", { name: who })}>
+          <h3>{t("❄ From {name}'s freezer", { name: who })}</h3>
+          <p className="hint">{t("Takes one portion out. Nothing goes on the shopping list.")}</p>
+          <ul className="pick-list">
+            {view.childFreezer[childId]!.map(({ recipe, count }) => {
+              const chosen = meal?.fromFreezer === true && meal.recipe?.id === recipe.id;
+              return (
+                <li key={recipe.id}>
+                  <button
+                    type="button"
+                    aria-label={t("From {name}'s freezer: {title}", { name: who, title: recipe.title })}
+                    aria-pressed={chosen}
+                    onClick={() => onChoose(() => (chosen ? setChildDay(date, childId, "empty") : setChildDay(date, childId, "recipe", recipe.id, true)))}
                   >
                     <Plate recipe={recipe} />
                     <span className="dish-text">

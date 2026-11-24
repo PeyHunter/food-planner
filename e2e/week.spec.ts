@@ -24,6 +24,7 @@ test("plan a fish dinner, set Wednesday to 5, mash it for Runi and take a swap",
   await page.getByLabel("Name").fill("peyton");
   await page.getByLabel("Password").fill(e2ePasswords.peyton);
   await page.getByRole("button", { name: "Log in" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Week" }).click();
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Week" })).toHaveAttribute("aria-current", "page");
 
   // Recipes come in through the API; adding them in the form is covered by recipe.spec.ts.
@@ -75,6 +76,8 @@ test("plan a fish dinner, set Wednesday to 5, mash it for Runi and take a swap",
   await page.getByRole("dialog", { name: "Runi Lee on Wednesday" }).getByRole("button", { name: "Same as dinner, mashed" }).click();
   await expect(wednesday.getByRole("button", { name: /Runi Lee/ })).toContainText("Same as dinner, mashed");
   await expect(wednesday.getByRole("group", { name: "People on Wednesday" })).toContainText("+½");
+  // Coming back from the recipe remounted the week, so open the closed-by-default suggestions again.
+  await openSuggestions(page);
   await expect(page.getByLabel("Runi Lee: Fish at least 2 a week: 1 so far, not met yet")).toBeVisible();
   await expect(page.getByRole("button", { name: /^Suggestions/ }).getByLabel(/ideas to meet the rules$/)).toBeVisible();
 
@@ -102,8 +105,8 @@ test("plan a fish dinner, set Wednesday to 5, mash it for Runi and take a swap",
   await page.reload();
   await page.getByRole("button", { name: "Next week" }).click();
   await expect(page.getByRole("listitem", { name: "Wednesday" }).getByText(salmon)).toBeVisible();
-  // Open stays open after a reload.
-  await expect(page.getByRole("button", { name: /^Suggestions/ })).toHaveAttribute("aria-expanded", "true");
+  // Suggestions start closed again on every load, even after they were opened.
+  await expect(page.getByRole("button", { name: /^Suggestions/ })).toHaveAttribute("aria-expanded", "false");
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: process.env.WEEK_SHOT ?? "test-results/week.png", fullPage: true });
 });
@@ -115,6 +118,7 @@ test("quick taps on people all count, stickers fit, and mashing needs a dinner",
   await page.getByLabel("Password").fill(e2ePasswords.ronja);
   await page.getByRole("button", { name: "Log in" }).click();
   await expect(page.getByRole("heading", { name: "Hi Ronja" })).toBeVisible();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Week" }).click();
   const made = await page.request.post("/api/recipes", { data: recipe(veg, ["Vegetables", "Vegetarian", "Chicken"], ["freezable", "kid-friendly"]) });
   expect(made.ok()).toBe(true);
 
@@ -174,6 +178,7 @@ test("Create week fills only the empty days, ticks the rules, and undo puts them
   await page.getByLabel("Name").fill("peyton");
   await page.getByLabel("Password").fill(e2ePasswords.peyton);
   await page.getByRole("button", { name: "Log in" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Week" }).click();
   await expect(page.getByText("Next up")).toBeVisible();
 
   // Four weeks ahead: no other test plans that week, and no day is past.
@@ -243,6 +248,7 @@ test("Reduce waste suggests a dish for the leftover carrots, and accepting it lo
   await page.getByLabel("Name").fill("peyton");
   await page.getByLabel("Password").fill(e2ePasswords.peyton);
   await page.getByRole("button", { name: "Log in" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Week" }).click();
   await expect(page.getByText("Next up")).toBeVisible();
 
   // Next week, so the shopping list can show it and no day is past. 400 g of a 1 kg bag on Monday leaves 600 g.
