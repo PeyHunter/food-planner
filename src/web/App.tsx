@@ -12,7 +12,7 @@ import { RecipesScreen } from "./recipes/RecipesScreen.tsx";
 import { ShoppingScreen } from "./shopping/ShoppingScreen.tsx";
 import { WeekScreen } from "./week/WeekScreen.tsx";
 
-type Me = { username: string; language: Language; kitchen: { id: string; name: string; kids: boolean; nemligOn: boolean } | null };
+type Me = { username: string; displayName: string | null; language: Language; kitchen: { id: string; name: string; kids: boolean; nemligOn: boolean } | null };
 type State = { kind: "loading" } | { kind: "logged-out" } | { kind: "logged-in"; me: Me } | { kind: "offline" };
 
 const capitalise = (name: string) => name.charAt(0).toUpperCase() + name.slice(1);
@@ -168,7 +168,7 @@ function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
     window.history.replaceState(null, "", "#/week");
     onLoggedOut();
   };
-  const name = capitalise(me.username);
+  const name = me.displayName ?? capitalise(me.username);
   const onProfile = current.id === "profile";
 
   return (

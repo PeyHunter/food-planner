@@ -704,16 +704,15 @@ function Tick() {
   );
 }
 
-const ruleWhats = [...mainTypes, "Freezable", "kid-friendly"];
-
 function RulesEditor({ view, onChange, onClose }: { view: WeekView; onChange: (change: () => Promise<unknown>) => Promise<void>; onClose: () => void }) {
   const hasKids = useKids();
+  const ruleWhats = [...view.categories, "Freezable", "kid-friendly"];
   return (
     <Sheet title={t("Edit rules")} onClose={onClose}>
       <p className="hint">{hasKids ? t("Each rule counts the dinners (or the child's meals) in one week.") : t("Each rule counts the dinners in one week.")}</p>
       <ul className="rule-rows">
         {view.rules.map((rule, index) => (
-          <RuleRow key={rule.id} rule={rule} n={index + 1} kids={view.children} onChange={onChange} />
+          <RuleRow key={rule.id} rule={rule} n={index + 1} kids={view.children} options={ruleWhats} onChange={onChange} />
         ))}
       </ul>
       <button type="button" className="btn small sun" onClick={() => onChange(() => addRule({ childId: null, op: "at-least", n: 1, what: "Fish" }))}>
@@ -723,7 +722,7 @@ function RulesEditor({ view, onChange, onClose }: { view: WeekView; onChange: (c
   );
 }
 
-function RuleRow({ rule, n, kids, onChange }: { rule: WeekRule; n: number; kids: Child[]; onChange: (change: () => Promise<unknown>) => Promise<void> }) {
+function RuleRow({ rule, n, kids, options, onChange }: { rule: WeekRule; n: number; kids: Child[]; options: string[]; onChange: (change: () => Promise<unknown>) => Promise<void> }) {
   // Kept here too, so a second change made before the week reloads doesn't undo the first.
   const [draft, setDraft] = useState<RuleInput>({ childId: rule.childId, op: rule.op, n: rule.n, what: rule.what });
   const save = (patch: Partial<RuleInput>) => {
@@ -732,8 +731,8 @@ function RuleRow({ rule, n, kids, onChange }: { rule: WeekRule; n: number; kids:
     void onChange(() => updateRule(rule.id, next));
   };
   const hasKids = useKids();
-  const offered = hasKids ? ruleWhats : ruleWhats.filter((what) => !kidTags.includes(what));
-  const whats = offered.includes(draft.what) ? offered : [...offered, draft.what];
+  const allowed = hasKids ? options : options.filter((what) => !kidTags.includes(what));
+  const whats = allowed.includes(draft.what) ? allowed : [...allowed, draft.what];
   return (
     <li>
       {hasKids && (

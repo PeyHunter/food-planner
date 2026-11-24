@@ -5,7 +5,7 @@ import { translate } from "../shared/i18n.ts";
 import type { Language } from "../shared/profile.ts";
 import { createWeek, type CreateWeekInput } from "../shared/create-week.ts";
 import { reduceWaste, type ReduceWaste } from "../shared/reduce-waste.ts";
-import type { ShopSection } from "../shared/recipes.ts";
+import { mainTypes, sortCategories, type ShopSection } from "../shared/recipes.ts";
 import { isBabyOnly, suggestSwaps } from "../shared/rule-swaps.ts";
 import { checkRules, ruleOps, ruleSentence, type ChildMeal, type PlanDay, type Rule, type RuleOp } from "../shared/rules.ts";
 import {
@@ -29,7 +29,7 @@ import type { Unit } from "../shared/units.ts";
 import type { AppDependencies } from "./app.ts";
 import { addPortions, freezerCounts, takePortion, type Queries } from "./freezer.ts";
 import { kitchenMember, recipeSummaries, type MemberEnv } from "./recipes.ts";
-import { childDays, children, ingredients, planDays, planSides, recipeLines, recipes, rules } from "./schema.ts";
+import { childDays, children, ingredients, planDays, planSides, recipeLines, recipeTypes, recipes, rules } from "./schema.ts";
 import { sameGroceryAs } from "./same-grocery.ts";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -71,7 +71,7 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
   async function loadPlan(kitchenId: string, monday: string) {
     const dates = weekDates(monday);
     const sunday = dates[6]!;
-    const [kids, recipeRows, dayRows, ruleRows, freezerRows, sideRows] = await Promise.all([
+    const [kids, recipeRows, dayRows, ruleRows, freezerRows, sideRows, categoryRows] = await Promise.all([
       db
         .select({ id: children.id, name: children.name, birthday: children.birthday, sameAsDinnerByDefault: children.sameAsDinnerByDefault })
         .from(children)
@@ -95,7 +95,13 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
         .from(planSides)
         .where(and(eq(planSides.kitchenId, kitchenId), between(planSides.date, monday, sunday)))
         .orderBy(asc(planSides.date), asc(planSides.position)),
+      db
+        .select({ type: recipeTypes.type })
+        .from(recipeTypes)
+        .innerJoin(recipes, eq(recipes.id, recipeTypes.recipeId))
+        .where(eq(recipes.kitchenId, kitchenId)),
     ]);
+    const categories = sortCategories([...mainTypes, ...categoryRows.map((row) => row.type)]);
     const childRows = kids.length
       ? await db
           .select()
@@ -173,17 +179,18 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
         return recipe ? [{ recipe, count: row.count }] : [];
       })
       .sort((a, b) => a.recipe.title.localeCompare(b.recipe.title));
-    return { kids, recipeRows, summaries, forChildren, babyOnly, days, plan, ordered, childNames, freezer };
+    return { kids, recipeRows, summaries, forChildren, babyOnly, days, plan, ordered, childNames, freezer, categories };
   }
 
   async function loadWeek(kitchenId: string, monday: string, today: string, language: Language = "en"): Promise<WeekView> {
-    const { kids, summaries, forChildren, babyOnly, days, plan, ordered, childNames, freezer } = await loadPlan(kitchenId, monday);
+    const { kids, summaries, forChildren, babyOnly, days, plan, ordered, childNames, freezer, categories } = await loadPlan(kitchenId, monday);
     const statuses = checkRules(ordered, plan);
 
     return {
       monday,
       days,
       children: kids as Child[],
+      categories,
       rules: statuses.map((status) => ({ ...status, sentence: ruleSentence(status, status.childId ? childNames[status.childId]! : translate(language, "Adults"), language) })),
       suggestions: suggestSwaps({
         rules: ordered,

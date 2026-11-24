@@ -84,6 +84,30 @@ spec:
                   name: food-planner-secrets
                   key: MADS_PASSWORD
                   optional: true
+            - name: ANNAD_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: food-planner-secrets
+                  key: ANNAD_PASSWORD
+                  optional: true
+            - name: MATHIAS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: food-planner-secrets
+                  key: MATHIAS_PASSWORD
+                  optional: true
+            - name: ANNAA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: food-planner-secrets
+                  key: ANNAA_PASSWORD
+                  optional: true
+            - name: JACOB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: food-planner-secrets
+                  key: JACOB_PASSWORD
+                  optional: true
             - name: MARIEKE_PASSWORD
               valueFrom:
                 secretKeyRef:

@@ -1,7 +1,18 @@
 import type { Unit } from "./units.ts";
 
 export const mainTypes = ["Fish", "Meat", "Chicken", "Vegetarian", "Vegetables"] as const;
-export type MainType = (typeof mainTypes)[number];
+/** The five built-in types, or any category a kitchen makes for itself. */
+export type MainType = (typeof mainTypes)[number] | (string & {});
+
+export const isBuiltInType = (type: string) => (mainTypes as readonly string[]).includes(type);
+
+/** Built-in types in their usual order, then custom categories alphabetically. Duplicates are dropped. */
+export function sortCategories(types: string[]): string[] {
+  const unique = [...new Set(types)];
+  const builtIns = mainTypes.filter((type) => unique.includes(type));
+  const custom = unique.filter((type) => !isBuiltInType(type)).sort((a, b) => a.localeCompare(b));
+  return [...builtIns, ...custom];
+}
 
 export const builtInTags = ["freezable", "kid-friendly", "for Runi"] as const;
 /** Tags that only make sense in a kitchen with children. */

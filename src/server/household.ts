@@ -4,7 +4,7 @@ import type { Database } from "./db.ts";
 import { hashPassword } from "./passwords.ts";
 import { children, kitchenMembers, kitchens, rules, users } from "./schema.ts";
 
-export type StartingUser = { username: string; password: string };
+export type StartingUser = { username: string; password: string; displayName?: string };
 /** kids: the children's names, given to the kitchen when it is made; empty means a kitchen without kids. language: new logins start in it. */
 export type StartingKitchen = { name: string; kids: string[]; language: Language };
 
@@ -17,7 +17,7 @@ export async function ensureHousehold(database: Database, people: StartingUser[]
   const kitchenId = await db.transaction(async (tx) => {
     for (const person of people) {
       const [existing] = await tx.select({ id: users.id }).from(users).where(eq(users.username, person.username));
-      if (!existing) await tx.insert(users).values({ username: person.username, passwordHash: await hashPassword(person.password), language: kitchen.language });
+      if (!existing) await tx.insert(users).values({ username: person.username, passwordHash: await hashPassword(person.password), language: kitchen.language, displayName: person.displayName ?? null });
     }
     const members = await tx
       .select({ id: users.id })

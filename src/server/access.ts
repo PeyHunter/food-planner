@@ -55,7 +55,7 @@ export function createAccessRoutes(dependencies: AppDependencies) {
       .innerJoin(kitchens, eq(kitchens.id, kitchenMembers.kitchenId))
       .where(eq(kitchenMembers.userId, user.id))
       .limit(1);
-    return c.json({ username: user.username, language: user.language === "da" ? "da" : "en", kitchen: kitchen ?? null });
+    return c.json({ username: user.username, displayName: user.displayName ?? null, language: user.language === "da" ? "da" : "en", kitchen: kitchen ?? null });
   });
 
   routes.post("/api/logout", async (c) => {

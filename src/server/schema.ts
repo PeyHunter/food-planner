@@ -6,6 +6,8 @@ const at = (name: string) => timestamp(name, { withTimezone: true, mode: "date" 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   username: text("username").notNull().unique(),
+  /** Shown in the header when set, so a login can stay short ("annad" shows "Hi Anna D"). */
+  displayName: text("display_name"),
   passwordHash: text("password_hash").notNull(),
   /** "en" or "da". */
   language: text("language").notNull().default("en"),

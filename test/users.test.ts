@@ -86,6 +86,38 @@ test("isabel and christopher get their own kitchen with no children and only adu
   expect(week.children).toEqual([]);
 });
 
+test("anna d and mathias get a kid-free kitchen and annad shows Anna D", async () => {
+  const app = await createTestApp();
+  const family = [
+    { username: "annad", password: randomUUID(), displayName: "Anna D" },
+    { username: "mathias", password: randomUUID() },
+  ];
+  const kitchen = { name: "Anna D and Mathias's kitchen", kids: [] as string[], language: "en" as const };
+  await ensureHousehold(app.database, family, kitchen);
+  // A display name is only used when the login is first made.
+  await ensureHousehold(
+    app.database,
+    family.map((person) => ({ ...person, displayName: person.username === "annad" ? "Changed" : undefined })),
+    kitchen,
+  );
+
+  const members = await app.query<{ username: string; kitchen_id: string; kids: boolean }>(
+    "select u.username, m.kitchen_id, k.kids from users u join kitchen_members m on m.user_id = u.id join kitchens k on k.id = m.kitchen_id order by u.username",
+  );
+  const kitchenOf = Object.fromEntries(members.map((row) => [row.username, row]));
+  expect(kitchenOf.annad!.kitchen_id).toBe(kitchenOf.mathias!.kitchen_id);
+  expect(kitchenOf.annad!.kitchen_id).not.toBe(kitchenOf.peyton!.kitchen_id);
+  expect(kitchenOf.annad!.kids).toBe(false);
+  expect(await app.query("select * from children where kitchen_id = $1", [kitchenOf.annad!.kitchen_id])).toHaveLength(0);
+
+  const cookie = (await app.logIn("annad", family[0]!.password)).cookie!;
+  const me = await (await app.request("/api/me", { headers: { cookie } })).json();
+  expect(me.username).toBe("annad");
+  expect(me.displayName).toBe("Anna D");
+  expect(me.kitchen.name).toBe("Anna D and Mathias's kitchen");
+  expect(me.kitchen.kids).toBe(false);
+});
+
 test("set-password gives an existing login a new password", async () => {
   const app = await createTestApp();
   const run = promisify(execFile);

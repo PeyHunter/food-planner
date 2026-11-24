@@ -1,4 +1,5 @@
 import type { Ingredient, IngredientRow, IngredientSettings, IngredientSuggestion, PhotoRecipeDraft, Recipe, RecipeInput, RecipeSummary, ShareLink, SharedRecipe } from "../../shared/recipes.ts";
+import type { CanMake } from "../../shared/can-make.ts";
 import { childRecipeTag, type FreezerItem } from "../../shared/week.ts";
 import { locale, t } from "../i18n.ts";
 
@@ -35,6 +36,9 @@ export const getFreezer = () => call<FreezerItem[]>("/api/freezer");
 /** A negative `add` takes portions out. */
 export const addToFreezer = (recipeId: string, add: number) => call<{ count: number }>(`/api/freezer/${recipeId}`, json("POST", { add }));
 export const suggestIngredients = (q: string) => call<IngredientSuggestion[]>(`/api/ingredients?q=${encodeURIComponent(q)}`);
+/** Every built-in type first, then custom categories used in this kitchen. */
+export const listCategories = () => call<string[]>("/api/categories");
+export const findMakeable = (have: string[]) => call<CanMake[]>("/api/recipes/can-make", json("POST", { have }));
 
 export const turnShareOn = (id: string) => call<ShareLink>(`/api/recipes/${id}/share`, { method: "POST" });
 export const turnShareOff = (id: string) => call<ShareLink>(`/api/recipes/${id}/share`, { method: "DELETE" });

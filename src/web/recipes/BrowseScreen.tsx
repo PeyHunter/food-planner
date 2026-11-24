@@ -101,6 +101,9 @@ export function BrowseScreen() {
       <div className="book-head">
         <p className="kicker">{t("What's for dinner?")}</p>
         <div className="book-actions">
+          <a className="btn small white" href="#/recipes/can-make">
+            {t("What can I make?")}
+          </a>
           <a className="btn small white" href="#/recipes/list" aria-label={t("List and search")}>
             {t("☰ List")}
           </a>

@@ -148,10 +148,53 @@ test("bad recipes are refused in plain words", async () => {
   expect(await problem({ ...fishPie, title: " " })).toBe("Give the recipe a name.");
   expect(await problem({ ...fishPie, feeds: 0 })).toBe("Feeds must be a whole number from 1 to 100.");
   expect(await problem({ ...fishPie, feeds: 2.5 })).toBe("Feeds must be a whole number from 1 to 100.");
-  expect(await problem({ ...fishPie, types: ["Pizza"] })).toBe("Pick at least one main type.");
+  expect(await problem({ ...fishPie, types: [] })).toBe("Pick at least one category.");
   expect(await problem({ ...fishPie, lines: [{ amount: 1, unit: "cup", ingredient: "Rice" }] })).toBe("Pick a unit for Rice.");
   expect(await problem({ ...fishPie, lines: [{ amount: -1, unit: "g", ingredient: "Rice" }] })).toBe("The amount for Rice must be a number above 0.");
   expect(await problem({ ...fishPie, lines: [{ amount: 1, unit: "g", ingredient: "" }] })).toBe("Every ingredient line needs an ingredient.");
+});
+
+test("custom categories are trimmed, deduped and listed after the built-in types", async () => {
+  const { call, create } = await loggedIn();
+  const id = await create({ ...fishPie, title: "Rye", types: [" rygbrødsmadder ", "Vegetarian", "rygbrødsmadder"] });
+  const recipe = (await (await call(`/api/recipes/${id}`)).json()) as Recipe;
+  expect(recipe.types).toEqual(["Vegetarian", "rygbrødsmadder"]);
+
+  await create({ ...fishPie, title: "Tapas", types: ["tapas"] });
+  const categories = (await (await call("/api/categories")).json()) as string[];
+  expect(categories).toEqual(["Fish", "Meat", "Chicken", "Vegetarian", "Vegetables", "rygbrødsmadder", "tapas"]);
+});
+
+test("what can I make lists recipes ranked by what is missing", async () => {
+  const { call, create } = await loggedIn();
+  await create({
+    ...fishPie,
+    title: "Carrot butter",
+    lines: [
+      { amount: 1, unit: "pcs", ingredient: "Carrot", note: "" },
+      { amount: 1, unit: "pcs", ingredient: "Butter", note: "" },
+    ],
+  });
+  await create({
+    ...fishPie,
+    title: "Salt butter",
+    lines: [
+      { amount: 1, unit: "pcs", ingredient: "Salt", note: "" },
+      { amount: 1, unit: "pcs", ingredient: "Butter", note: "" },
+    ],
+  });
+  await create({ ...fishPie, title: "Empty", lines: [] });
+
+  const response = await call("/api/recipes/can-make", "POST", { have: ["carrots", "Butter"] });
+  expect(response.status).toBe(200);
+  const results = (await response.json()) as { recipe: { title: string }; have: string[]; missing: string[] }[];
+  expect(results.map((result) => result.recipe.title)).toEqual(["Carrot butter", "Salt butter"]);
+  expect(results[0]).toMatchObject({ have: ["carrots", "Butter"], missing: [] });
+  expect(results[1]!.missing).toEqual(["Salt"]);
+
+  expect((await call("/api/recipes/can-make", "POST", { have: [] })).status).toBe(400);
+  expect((await call("/api/recipes/can-make", "POST", { have: ["x".repeat(81)] })).status).toBe(400);
+  expect((await call("/api/recipes/can-make", "POST", { have: ["x", "y", "z", 1] })).status).toBe(400);
 });
 
 test("deleting a recipe removes it", async () => {

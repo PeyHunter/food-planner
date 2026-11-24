@@ -6,8 +6,9 @@ import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { createMiddleware } from "hono/factory";
-import { kidTags, mainTypes, shopSections, type Cook, type Ingredient, type IngredientRow, type IngredientSettings, type MainType, type Photo, type Recipe, type RecipeInput, type RecipeSummary, type ShareLink, type SharedRecipe, type ShopSection, sharePhotoMedia } from "../shared/recipes.ts";
+import { kidTags, mainTypes, shopSections, sortCategories, type Cook, type Ingredient, type IngredientRow, type IngredientSettings, type Photo, type Recipe, type RecipeInput, type RecipeSummary, type ShareLink, type SharedRecipe, type ShopSection, sharePhotoMedia } from "../shared/recipes.ts";
 import { isUnit } from "../shared/units.ts";
+import { canMake } from "../shared/can-make.ts";
 import { childRecipeTag } from "../shared/week.ts";
 import { currentSession, type Session } from "./access.ts";
 import type { AppDependencies } from "./app.ts";
@@ -90,6 +91,33 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
       .where(and(eq(recipes.kitchenId, kitchenId), matches))
       .orderBy(asc(sql`lower(${recipes.title})`));
     return c.json(await summaries(rows));
+  });
+
+  routes.get("/api/categories", member, async (c) => {
+    const rows = await db
+      .select({ type: recipeTypes.type })
+      .from(recipeTypes)
+      .innerJoin(recipes, eq(recipes.id, recipeTypes.recipeId))
+      .where(eq(recipes.kitchenId, c.get("member").kitchenId));
+    return c.json(sortCategories([...mainTypes, ...rows.map((row) => row.type)]));
+  });
+
+  routes.post("/api/recipes/can-make", member, async (c) => {
+    const have = parseHave(await c.req.json().catch(() => undefined));
+    if ("error" in have) return c.json(have, 400);
+    const { kitchenId } = c.get("member");
+    const rows = await db.select({ id: recipes.id, title: recipes.title, feeds: recipes.feeds }).from(recipes).where(eq(recipes.kitchenId, kitchenId));
+    const [summaries, lineRows] = await Promise.all([
+      recipeSummaries(database, rows),
+      db
+        .select({ recipeId: recipeLines.recipeId, name: ingredients.name })
+        .from(recipeLines)
+        .innerJoin(ingredients, eq(ingredients.id, recipeLines.ingredientId))
+        .innerJoin(recipes, eq(recipes.id, recipeLines.recipeId))
+        .where(eq(recipes.kitchenId, kitchenId)),
+    ]);
+    const byRecipe = Map.groupBy(lineRows, (line) => line.recipeId);
+    return c.json(canMake(summaries.map((recipe) => ({ recipe, ingredients: (byRecipe.get(recipe.id) ?? []).map((line) => line.name) })), have));
   });
 
   routes.get("/api/recipes/:id", member, async (c) => {
@@ -474,8 +502,6 @@ const toIngredient = (row: { id: string; name: string; shopSection: string; pack
   alwaysAtHome: row.alwaysAtHome,
 });
 
-const sortTypes = (types: string[]) => mainTypes.filter((type) => types.includes(type));
-
 /** The shop's usual pack for a name the catalog knows, as ingredient columns; nothing for a name it doesn't. */
 export function catalogPack(name: string) {
   const pack = groceryOf(name)?.pack;
@@ -539,7 +565,7 @@ export async function recipeSummaries({ db }: Database, rows: { id: string; titl
   return rows.map((row) => ({
     ...row,
     minutes: times.find((time) => time.id === row.id)?.minutes ?? null,
-    types: sortTypes(types.filter((type) => type.recipeId === row.id).map((type) => type.type)),
+    types: sortCategories(types.filter((type) => type.recipeId === row.id).map((type) => type.type)),
     tags: tags.filter((tag) => tag.recipeId === row.id).map((tag) => tag.tag),
     mainPhoto: (() => {
       const main = mains.find((photo) => photo.recipeId === row.id);
@@ -615,6 +641,16 @@ function months(value: unknown): number | null | undefined {
   return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 240 ? (value as number) : undefined;
 }
 
+/** The 1 to 50 ingredient names sent to "What can I make?", trimmed. */
+export function parseHave(body: unknown): string[] | { error: string } {
+  const rawHave = body && typeof body === "object" ? (body as Record<string, unknown>).have : undefined;
+  if (!Array.isArray(rawHave) || rawHave.length < 1 || rawHave.length > 50) return { error: "List 1 to 50 ingredients you have." };
+  const have = rawHave.map(text);
+  if (have.some((name) => !name)) return { error: "Every ingredient needs a name." };
+  if (have.some((name) => name.length > 80)) return { error: "Keep each ingredient name short." };
+  return have;
+}
+
 export function parseInput(body: unknown): RecipeInput | { error: string } {
   if (!body || typeof body !== "object") return { error: "Send the recipe as JSON." };
   const raw = body as Record<string, unknown>;
@@ -627,8 +663,9 @@ export function parseInput(body: unknown): RecipeInput | { error: string } {
   if (!Number.isInteger(feeds) || (feeds as number) < 1 || (feeds as number) > 100) return { error: "Feeds must be a whole number from 1 to 100." };
   const minutes = raw.minutes === null || raw.minutes === undefined || raw.minutes === "" ? null : raw.minutes;
   if (minutes !== null && !(Number.isInteger(minutes) && (minutes as number) >= 1 && (minutes as number) <= maxMinutes)) return { error: "Time must be a whole number of minutes." };
-  const types = sortTypes(list(raw.types).filter((type): type is MainType => mainTypes.includes(type as MainType)));
-  if (!types.length) return { error: "Pick at least one main type." };
+  const types = sortCategories(list(raw.types).map(text).filter(Boolean));
+  if (!types.length) return { error: "Pick at least one category." };
+  if (types.some((type) => type.length > 40)) return { error: "Keep each category short." };
   const tags = [...new Set(list(raw.tags).map(text).filter(Boolean))];
   if (tags.some((tag) => tag.length > 40)) return { error: "Keep each tag short." };
   const ageFromMonths = months(raw.ageFromMonths);

@@ -29,6 +29,8 @@ export type WeekView = {
   monday: string;
   days: WeekDay[];
   children: Child[];
+  /** Every category in the kitchen: built-in types first, then custom ones alphabetically. */
+  categories: string[];
   rules: WeekRule[];
   suggestions: Suggestion[];
   /** Recipes meant for a child: tag "for Runi" or an age range. */
