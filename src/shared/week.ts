@@ -9,7 +9,7 @@ export const awayKinds = ["out", "takeout", "other"] as const;
 export type AwayKind = (typeof awayKinds)[number];
 export type Away = { kind: AwayKind; note: string };
 export type ChildDayKind = "empty" | "same-as-dinner" | "recipe";
-export type ChildDay = { childId: string; kind: ChildDayKind; recipe: RecipeSummary | null };
+export type ChildDay = { childId: string; kind: ChildDayKind; recipe: RecipeSummary | null; fromFreezer: boolean };
 export type WeekDay = {
   date: string;
   people: number;
@@ -29,12 +29,16 @@ export type WeekView = {
   monday: string;
   days: WeekDay[];
   children: Child[];
+  /** Every category in the kitchen: built-in types first, then custom ones alphabetically. */
+  categories: string[];
   rules: WeekRule[];
   suggestions: Suggestion[];
   /** Recipes meant for a child: tag "for Runi" or an age range. */
   childRecipes: RecipeSummary[];
   /** Dishes with portions in the freezer, for planning a night "from the freezer". */
   freezer: FreezerItem[];
+  /** Each child's own freezer, keyed by child id; only dishes with portions left. */
+  childFreezer: Record<string, FreezerItem[]>;
 };
 
 export type FreezerItem = { recipe: RecipeSummary; count: number };

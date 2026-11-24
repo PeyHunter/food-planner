@@ -2,16 +2,14 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { currentLanguage, locale, t } from "../i18n.ts";
 import { ageInWords, ageRangeLabel } from "../../shared/child-age.ts";
 import type { ChildRecipe, ChildRecipes, ChildView } from "../../shared/children.ts";
-import { mainTypes } from "../../shared/recipes.ts";
 import type { RuleOp } from "../../shared/rules.ts";
-import { childRecipeTag, mondayOf, type WeekRule } from "../../shared/week.ts";
+import { childRecipeTag, mondayOf, type FreezerItem, type WeekRule } from "../../shared/week.ts";
 import { today } from "../recipes/api.ts";
 import { addRule, deleteRule, getWeek, updateRule, type RuleInput } from "../week/api.ts";
-import { addChild, getChildRecipes, getChildren, updateChild } from "./api.ts";
+import { addChild, addChildFreezerPortion, getChildFreezer, getChildRecipes, getChildren, updateChild } from "./api.ts";
 import { kidsTabLabel, tagLabel } from "./labels.ts";
 import "./kids.css";
 
-const ruleWhats = [...mainTypes, "Freezable", "kid-friendly"];
 const longDate = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString(locale(), { day: "numeric", month: "long", year: "numeric" });
 const ruleText = (rule: Pick<RuleInput, "op" | "n" | "what">) =>
   t(rule.op === "at-least" ? "{what} at least {n} a week" : "{what} at most {n} a week", { what: t(rule.what), n: rule.n });
@@ -142,10 +140,99 @@ function ChildPage({ kid, kidNames, onChanged }: { kid: ChildView; kidNames: str
           </section>
         </>
       )}
+      <FreezerCard kid={kid} recipes={recipes} />
       {/* Her recipes come first; her details and rules sit below them. */}
       <AboutCard kid={kid} onChanged={onChanged} />
       <RulesCard kid={kid} />
     </>
+  );
+}
+
+function FreezerCard({ kid, recipes }: { kid: ChildView; recipes?: ChildRecipes }) {
+  const [items, setItems] = useState<FreezerItem[]>();
+  const [problem, setProblem] = useState<string>();
+
+  const load = useCallback(async () => {
+    try {
+      setItems(await getChildFreezer(kid.id));
+      setProblem(undefined);
+    } catch (error) {
+      setProblem((error as Error).message);
+    }
+  }, [kid.id]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const change = async (recipeId: string, add: number) => {
+    try {
+      await addChildFreezerPortion(kid.id, recipeId, add);
+      await load();
+    } catch (error) {
+      setProblem((error as Error).message);
+      await load();
+    }
+  };
+
+  const inFreezer = new Set(items?.map((item) => item.recipe.id));
+  const freezable = recipes ? [...recipes.hers, ...recipes.fitsAge].filter((recipe) => recipe.tags.includes("freezable")) : undefined;
+  const canAdd = freezable?.filter((recipe) => !inFreezer.has(recipe.id)) ?? [];
+
+  return (
+    <section className="card kid-freezer" aria-labelledby="kid-freezer-title">
+      <h2 id="kid-freezer-title">{t("{name}'s freezer", { name: kid.name })}</h2>
+      {problem && <p role="alert">{problem}</p>}
+      {items && items.length === 0 && <p className="hint">{t("Nothing in {name}'s freezer yet.", { name: kid.name })}</p>}
+      {items && items.length > 0 && (
+        <ul className="kid-freezer-list">
+          {items.map(({ recipe, count }) => (
+            <li key={recipe.id}>
+              <a href={`#/recipes/${recipe.id}`} className="kid-freezer-dish">
+                {recipe.mainPhoto ? <img src={recipe.mainPhoto.url} alt="" loading="lazy" /> : <span className="plate" aria-hidden="true" />}
+                <strong>{recipe.title}</strong>
+                <span className="sticker sky tilt-r" aria-hidden="true">
+                  ❄
+                </span>
+              </a>
+              <div className="stepper" role="group" aria-label={t("Portions of {title}", { title: recipe.title })}>
+                <button type="button" aria-label={t("One less {title}", { title: recipe.title })} disabled={count === 0} onClick={() => void change(recipe.id, -1)}>
+                  −
+                </button>
+                <output aria-live="polite">
+                  {count} {count === 1 ? t("portion") : t("portions")}
+                </output>
+                <button type="button" aria-label={t("One more {title}", { title: recipe.title })} onClick={() => void change(recipe.id, 1)}>
+                  +
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="kid-freezer-add">
+        <h3>{t("Can be frozen for {name}", { name: kid.name })}</h3>
+        {freezable && canAdd.length === 0 && <p className="hint">{t("No freezable recipes to add right now.")}</p>}
+        {canAdd.length > 0 && (
+          <ul className="kid-freezer-choices">
+            {canAdd.map((recipe) => (
+              <li key={recipe.id}>
+                <a href={`#/recipes/${recipe.id}`}>
+                  {recipe.mainPhoto ? <img src={recipe.mainPhoto.url} alt="" loading="lazy" /> : <span className="plate" aria-hidden="true" />}
+                  <strong>{recipe.title}</strong>
+                  <span className="sticker sky tilt-r" aria-hidden="true">
+                    ❄
+                  </span>
+                </a>
+                <button type="button" className="btn small white" onClick={() => void change(recipe.id, 1)}>
+                  {t("Put one portion in")}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -225,6 +312,7 @@ function AboutCard({ kid, onChanged }: { kid: ChildView; onChanged: () => Promis
 
 function RulesCard({ kid }: { kid: ChildView }) {
   const [rules, setRules] = useState<WeekRule[]>();
+  const [categories, setCategories] = useState<string[]>([]);
   const [editing, setEditing] = useState(false);
   const [problem, setProblem] = useState<string>();
 
@@ -232,6 +320,7 @@ function RulesCard({ kid }: { kid: ChildView }) {
     try {
       const week = await getWeek(mondayOf(today()));
       setRules(week.rules.filter((rule) => rule.childId === kid.id));
+      setCategories(week.categories);
       setProblem(undefined);
     } catch (error) {
       setProblem((error as Error).message);
@@ -263,7 +352,7 @@ function RulesCard({ kid }: { kid: ChildView }) {
       {problem && <p role="alert">{problem}</p>}
       {rules && !rules.length && <p className="hint">{t("No rules yet.")}</p>}
       <ul className="big-rules">
-        {rules?.map((rule) => (editing ? <RuleEditor key={rule.id} rule={rule} onChange={act} /> : <BigRule key={rule.id} rule={rule} />))}
+        {rules?.map((rule) => (editing ? <RuleEditor key={rule.id} rule={rule} categories={categories} onChange={act} /> : <BigRule key={rule.id} rule={rule} />))}
       </ul>
       {editing && (
         <button type="button" className="btn small lilac" onClick={() => act(() => addRule({ childId: kid.id, op: "at-least", n: 1, what: "Fish" }))}>
@@ -295,7 +384,7 @@ function BigRule({ rule }: { rule: WeekRule }) {
   );
 }
 
-function RuleEditor({ rule, onChange }: { rule: WeekRule; onChange: (change: () => Promise<unknown>) => Promise<void> }) {
+function RuleEditor({ rule, categories, onChange }: { rule: WeekRule; categories: string[]; onChange: (change: () => Promise<unknown>) => Promise<void> }) {
   // Kept here too, so a second change made before the rules reload doesn't undo the first.
   const [draft, setDraft] = useState<RuleInput>({ childId: rule.childId, op: rule.op, n: rule.n, what: rule.what });
   const save = (patch: Partial<RuleInput>) => {
@@ -303,7 +392,8 @@ function RuleEditor({ rule, onChange }: { rule: WeekRule; onChange: (change: () 
     setDraft(next);
     void onChange(() => updateRule(rule.id, next));
   };
-  const whats = ruleWhats.includes(draft.what) ? ruleWhats : [...ruleWhats, draft.what];
+  const options = [...categories, "Freezable", "kid-friendly"];
+  const whats = options.includes(draft.what) ? options : [...options, draft.what];
   const text = ruleText(draft);
   return (
     <li className="rule-edit">

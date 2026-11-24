@@ -6,6 +6,8 @@ const at = (name: string) => timestamp(name, { withTimezone: true, mode: "date" 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   username: text("username").notNull().unique(),
+  /** Shown in the header when set, so a login can stay short ("annad" shows "Hi Anna D"). */
+  displayName: text("display_name"),
   passwordHash: text("password_hash").notNull(),
   /** "en" or "da". */
   language: text("language").notNull().default("en"),
@@ -286,6 +288,8 @@ export const childDays = pgTable(
     date: date("date", { mode: "string" }).notNull(),
     kind: text("kind").notNull(),
     recipeId: uuid("recipe_id").references(() => recipes.id, { onDelete: "set null" }),
+    /** The meal is a portion taken from her own freezer: it adds nothing to the shopping list. */
+    fromFreezer: boolean("from_freezer").notNull().default(false),
   },
   (table) => [primaryKey({ columns: [table.childId, table.date] })],
 );
@@ -344,6 +348,21 @@ export const freezerPortions = pgTable(
     updatedAt: at("updated_at").notNull().defaultNow(),
   },
   (table) => [primaryKey({ columns: [table.kitchenId, table.recipeId] }), check("freezer_portions_count", sql`${table.count} >= 0`)],
+);
+
+/** Portions of a dish in one child's own freezer. Planning her meal "from the freezer" takes one out. */
+export const childFreezerPortions = pgTable(
+  "child_freezer_portions",
+  {
+    childId: uuid("child_id")
+      .notNull()
+      .references(() => children.id, { onDelete: "cascade" }),
+    recipeId: recipeId(),
+    count: integer("count").notNull().default(0),
+    updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+    updatedAt: at("updated_at").notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.childId, table.recipeId] }), check("child_freezer_portions_count", sql`${table.count} >= 0`)],
 );
 
 /** One row per Claude API call, for the usage report (scripts/usage-report.sql). */

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { compress } from "hono/compress";
 import { secureHeaders } from "hono/secure-headers";
 import { createAccessRoutes } from "./access.ts";
+import { createChildFreezerRoutes } from "./child-freezer.ts";
 import { createChildRoutes } from "./children.ts";
 import type { Database } from "./db.ts";
 import { createFreezerRoutes } from "./freezer.ts";
@@ -83,6 +84,7 @@ export function createApp(dependencies: AppDependencies) {
   app.route("/", createVeggieRecipeRoutes(dependencies));
   app.route("/", createWeekRoutes(dependencies));
   app.route("/", createChildRoutes(dependencies));
+  app.route("/", createChildFreezerRoutes(dependencies));
   app.route("/", createShoppingRoutes(dependencies));
   app.route("/", createFreezerRoutes(dependencies));
   app.route("/", createProfileRoutes(dependencies));

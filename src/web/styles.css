@@ -59,7 +59,7 @@ input{font:inherit;font-size:max(16px,1rem)}
 .top .profile-link[aria-current=page]{background:var(--sun)}
 .top .profile-link:active{translate:1.5px 1.5px;box-shadow:none}
 @media (min-width:22rem){.top .profile-link .word{display:inline}}
-/* The logo and "Hi name" take you to the front page (Week). */
+/* The logo and "Hi name" take you to the front page (Home). */
 .top .home{display:flex;align-items:center;gap:.75rem;min-block-size:2.75rem;color:inherit;text-decoration:none;border-radius:1rem}
 .logo{flex:none;inline-size:3rem;block-size:3rem;border:var(--line) solid var(--ink);border-radius:50%;background:var(--sun);box-shadow:var(--pop-sm);object-fit:cover}
 

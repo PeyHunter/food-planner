@@ -1,6 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Language } from "../shared/profile.ts";
+import type { RecipeInput } from "../shared/recipes.ts";
 import { starterRecipeInputs } from "../shared/starter-recipes.ts";
 import type { AppDependencies } from "./app.ts";
 import type { Database } from "./db.ts";
@@ -13,17 +14,17 @@ async function lockKitchen(tx: Tx, kitchenId: string) {
   return row!;
 }
 
-async function addAll(tx: Tx, kitchenId: string, userId: string | null, language: Language, kids: boolean) {
-  for (const input of starterRecipeInputs(language, kids)) await insertRecipe(tx, kitchenId, userId, input);
+async function addAll(tx: Tx, kitchenId: string, userId: string | null, language: Language, kids: boolean, extras: RecipeInput[] = []) {
+  for (const input of [...starterRecipeInputs(language, kids), ...extras]) await insertRecipe(tx, kitchenId, userId, input);
   await tx.update(kitchens).set({ starterAddedAt: sql`coalesce(${kitchens.starterAddedAt}, now())` }).where(eq(kitchens.id, kitchenId));
 }
 
-/** Gives a new kitchen the starter recipes the first time; later calls do nothing. Returns whether it added them. */
-export async function addStarterRecipesOnce({ db }: Database, kitchenId: string, language: Language) {
+/** Gives a new kitchen the starter recipes (and any extras for this kitchen) the first time; later calls do nothing. */
+export async function addStarterRecipesOnce({ db }: Database, kitchenId: string, language: Language, extras: RecipeInput[] = []) {
   return db.transaction(async (tx) => {
     const kitchen = await lockKitchen(tx, kitchenId);
     if (kitchen.starterAddedAt) return false;
-    await addAll(tx, kitchenId, null, language, kitchen.kids);
+    await addAll(tx, kitchenId, null, language, kitchen.kids, extras);
     return true;
   });
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import type { Language } from "../shared/profile.ts";
 import { switchLanguage, t } from "./i18n.ts";
+import { HomeTab } from "./home/HomeTab.tsx";
 import { getChildren } from "./kids/api.ts";
 import { kidsTabLabel } from "./kids/labels.ts";
 import { KidsScreen } from "./kids/KidsScreen.tsx";
@@ -12,7 +13,7 @@ import { RecipesScreen } from "./recipes/RecipesScreen.tsx";
 import { ShoppingScreen } from "./shopping/ShoppingScreen.tsx";
 import { WeekScreen } from "./week/WeekScreen.tsx";
 
-type Me = { username: string; language: Language; kitchen: { id: string; name: string; kids: boolean; nemligOn: boolean } | null };
+type Me = { username: string; displayName: string | null; language: Language; kitchen: { id: string; name: string; kids: boolean; nemligOn: boolean } | null };
 type State = { kind: "loading" } | { kind: "logged-out" } | { kind: "logged-in"; me: Me } | { kind: "offline" };
 
 const capitalise = (name: string) => name.charAt(0).toUpperCase() + name.slice(1);
@@ -132,6 +133,7 @@ type Tab = { id: string; label: string; icon: string; colour: string; screen?: (
 
 // Later PRs add a `screen` to a tab; until then it shows the "Coming soon" card.
 const allTabs: Tab[] = [
+  { id: "home", label: "Home", icon: "🏠", colour: "var(--sun-soft)", screen: () => <HomeTab />, soon: "" },
   { id: "recipes", label: "Recipes", icon: "📖", colour: "var(--tomato-soft)", screen: () => <RecipesScreen />, soon: "Flip through your recipe book and add new dishes." },
   { id: "week", label: "Week", icon: "📅", colour: "var(--sun-soft)", screen: () => <WeekScreen />, soon: "Plan dinners for the week and check the rules." },
   { id: "shopping", label: "Shopping", icon: "🛒", colour: "var(--mint-soft)", screen: () => <ShoppingScreen />, soon: "One list with everything the week needs." },
@@ -153,22 +155,22 @@ function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
   };
   // The hash picks the tab, so a reload or a link to #/recipes/... opens that tab.
   const tabOfHash = () => [...tabs, profileTab].find((tab) => window.location.hash.startsWith(`#/${tab.id}`));
-  const [current, setCurrent] = useState(() => tabOfHash() ?? tabs[1]!);
+  const [current, setCurrent] = useState(() => tabOfHash() ?? tabs[0]!);
   useEffect(() => {
     const onChange = () => setCurrent((shown) => tabOfHash() ?? shown);
     window.addEventListener("hashchange", onChange);
     return () => window.removeEventListener("hashchange", onChange);
   }, []);
-  // Back from Profile goes to the tab you came from; Week when Profile was opened directly.
-  const lastTab = useRef(current.id === "profile" ? tabs.find((tab) => tab.id === "week")! : current);
+  // Back from Profile goes to the tab you came from; Home when Profile was opened directly.
+  const lastTab = useRef(current.id === "profile" ? tabs.find((tab) => tab.id === "home")! : current);
   if (current.id !== "profile") lastTab.current = current;
   const logOut = async () => {
     await fetch("/api/logout", { method: "POST" });
-    // The next person to log in starts on Week, not on this person's last page. A link opened while logged out still works.
-    window.history.replaceState(null, "", "#/week");
+    // The next person to log in starts on Home, not on this person's last page. A link opened while logged out still works.
+    window.history.replaceState(null, "", "#/home");
     onLoggedOut();
   };
-  const name = capitalise(me.username);
+  const name = me.displayName ?? capitalise(me.username);
   const onProfile = current.id === "profile";
 
   return (
@@ -176,7 +178,7 @@ function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
       <KidNamesContext.Provider value={kidNames}>
       <main className="app">
         <header className="top">
-          <a className="home" href="#/week">
+          <a className="home" href="#/home">
             <img className="logo" src="/icons/icon-192.png" alt="" width={48} height={48} />
             <h1>{t("Hi {name}", { name })}</h1>
           </a>

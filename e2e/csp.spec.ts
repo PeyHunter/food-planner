@@ -65,7 +65,7 @@ test("no screen breaks the Content-Security-Policy", async ({ page, browser }) =
   const buffer = await sharp({ create: { width: 800, height: 600, channels: 3, background: "#e8a33c" } }).jpeg().toBuffer();
   await page.request.post(`/api/recipes/${id}/photos`, { multipart: { role: "main", photo: { name: "pie.jpg", mimeType: "image/jpeg", buffer } } });
   await open(page, `#/recipes/${id}`);
-  await page.getByRole("button", { name: "Open the photo" }).click();
+  await page.getByRole("region", { name: "Photos" }).getByRole("button", { name: "Open photo 1" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.getByRole("dialog").getByRole("button", { name: "Close" }).click();
   await page.getByRole("button", { name: "Share link" }).click();

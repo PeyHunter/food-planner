@@ -104,9 +104,9 @@ if (!writable) {
 
 const database = connectDatabase(config.databaseUrl);
 await migrate(database);
-for (const { people, starter, ...kitchen } of config.kitchens) {
+for (const { people, starter, extras, ...kitchen } of config.kitchens) {
   const kitchenId = await ensureHousehold(database, people, kitchen);
-  if (starter) await addStarterRecipesOnce(database, kitchenId, kitchen.language);
+  if (starter) await addStarterRecipesOnce(database, kitchenId, kitchen.language, extras);
 }
 await reguessOtherShopSections(database);
 await applyCatalogPacks(database);

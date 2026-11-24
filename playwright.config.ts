@@ -12,6 +12,8 @@ const iPhoneWebKit = { ...devices["iPhone 15"], headless: !process.env.DISPLAY }
 
 export default defineConfig({
   testDir: "e2e",
+  // CI runners are slower and the last Danish test switches language on a server that has every test's recipes in it.
+  timeout: 60_000,
   use: { baseURL: `http://localhost:${port}`, trace: "retain-on-failure" },
   projects: webkit
     ? [{ name: "iphone-webkit", use: iPhoneWebKit, timeout: 60_000, testMatch: ["csp.spec.ts", "kids.spec.ts", "picker.spec.ts", "reach.spec.ts", "sheet.spec.ts", "week.spec.ts"] }]

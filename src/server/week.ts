@@ -1,11 +1,11 @@
-import { and, asc, between, eq, inArray, isNull, TransactionRollbackError } from "drizzle-orm";
+import { and, asc, between, eq, gt, inArray, isNull, TransactionRollbackError } from "drizzle-orm";
 import { Hono } from "hono";
 import { monthsOld } from "../shared/child-age.ts";
 import { translate } from "../shared/i18n.ts";
 import type { Language } from "../shared/profile.ts";
 import { createWeek, type CreateWeekInput } from "../shared/create-week.ts";
 import { reduceWaste, type ReduceWaste } from "../shared/reduce-waste.ts";
-import type { ShopSection } from "../shared/recipes.ts";
+import { mainTypes, sortCategories, type ShopSection } from "../shared/recipes.ts";
 import { isBabyOnly, suggestSwaps } from "../shared/rule-swaps.ts";
 import { checkRules, ruleOps, ruleSentence, type ChildMeal, type PlanDay, type Rule, type RuleOp } from "../shared/rules.ts";
 import {
@@ -23,13 +23,15 @@ import {
   type Child,
   type ChildDayKind,
   type CreatedWeek,
+  type FreezerItem,
   type WeekView,
 } from "../shared/week.ts";
 import type { Unit } from "../shared/units.ts";
 import type { AppDependencies } from "./app.ts";
+import { addChildPortions, takeChildPortion } from "./child-freezer.ts";
 import { addPortions, freezerCounts, takePortion, type Queries } from "./freezer.ts";
 import { kitchenMember, recipeSummaries, type MemberEnv } from "./recipes.ts";
-import { childDays, children, ingredients, planDays, planSides, recipeLines, recipes, rules } from "./schema.ts";
+import { childDays, childFreezerPortions, children, ingredients, planDays, planSides, recipeLines, recipeTypes, recipes, rules } from "./schema.ts";
 import { sameGroceryAs } from "./same-grocery.ts";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -71,7 +73,7 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
   async function loadPlan(kitchenId: string, monday: string) {
     const dates = weekDates(monday);
     const sunday = dates[6]!;
-    const [kids, recipeRows, dayRows, ruleRows, freezerRows, sideRows] = await Promise.all([
+    const [kids, recipeRows, dayRows, ruleRows, freezerRows, sideRows, categoryRows] = await Promise.all([
       db
         .select({ id: children.id, name: children.name, birthday: children.birthday, sameAsDinnerByDefault: children.sameAsDinnerByDefault })
         .from(children)
@@ -95,7 +97,13 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
         .from(planSides)
         .where(and(eq(planSides.kitchenId, kitchenId), between(planSides.date, monday, sunday)))
         .orderBy(asc(planSides.date), asc(planSides.position)),
+      db
+        .select({ type: recipeTypes.type })
+        .from(recipeTypes)
+        .innerJoin(recipes, eq(recipes.id, recipeTypes.recipeId))
+        .where(eq(recipes.kitchenId, kitchenId)),
     ]);
+    const categories = sortCategories([...mainTypes, ...categoryRows.map((row) => row.type)]);
     const childRows = kids.length
       ? await db
           .select()
@@ -107,6 +115,20 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
                 kids.map((kid) => kid.id),
               ),
               between(childDays.date, monday, sunday),
+            ),
+          )
+      : [];
+    const childFreezerRows = kids.length
+      ? await db
+          .select({ childId: childFreezerPortions.childId, recipeId: childFreezerPortions.recipeId, count: childFreezerPortions.count })
+          .from(childFreezerPortions)
+          .where(
+            and(
+              inArray(
+                childFreezerPortions.childId,
+                kids.map((kid) => kid.id),
+              ),
+              gt(childFreezerPortions.count, 0),
             ),
           )
       : [];
@@ -127,7 +149,7 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
         const recipe = (childRow?.recipeId && byId.get(childRow.recipeId)) || null;
         const byDefault = !childRow && kid.sameAsDinnerByDefault && dinner !== null;
         const kind: ChildDayKind = childRow?.kind === "same-as-dinner" || byDefault ? "same-as-dinner" : recipe ? "recipe" : "empty";
-        return { childId: kid.id, kind, recipe };
+        return { childId: kid.id, kind, recipe, fromFreezer: kind === "recipe" && childRow?.fromFreezer === true };
       });
       const away = !dinner && row?.awayKind && (awayKinds as readonly string[]).includes(row.awayKind) ? { kind: row.awayKind as AwayKind, note: row.awayNote } : null;
       return {
@@ -173,17 +195,27 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
         return recipe ? [{ recipe, count: row.count }] : [];
       })
       .sort((a, b) => a.recipe.title.localeCompare(b.recipe.title));
-    return { kids, recipeRows, summaries, forChildren, babyOnly, days, plan, ordered, childNames, freezer };
+    const childFreezer: Record<string, FreezerItem[]> = {};
+    for (const kid of kids)
+      childFreezer[kid.id] = childFreezerRows
+        .filter((row) => row.childId === kid.id)
+        .flatMap((row) => {
+          const recipe = byId.get(row.recipeId);
+          return recipe ? [{ recipe, count: row.count }] : [];
+        })
+        .sort((a, b) => a.recipe.title.localeCompare(b.recipe.title));
+    return { kids, recipeRows, summaries, forChildren, babyOnly, days, plan, ordered, childNames, freezer, childFreezer, categories };
   }
 
   async function loadWeek(kitchenId: string, monday: string, today: string, language: Language = "en"): Promise<WeekView> {
-    const { kids, summaries, forChildren, babyOnly, days, plan, ordered, childNames, freezer } = await loadPlan(kitchenId, monday);
+    const { kids, summaries, forChildren, babyOnly, days, plan, ordered, childNames, freezer, childFreezer, categories } = await loadPlan(kitchenId, monday);
     const statuses = checkRules(ordered, plan);
 
     return {
       monday,
       days,
       children: kids as Child[],
+      categories,
       rules: statuses.map((status) => ({ ...status, sentence: ruleSentence(status, status.childId ? childNames[status.childId]! : translate(language, "Adults"), language) })),
       suggestions: suggestSwaps({
         rules: ordered,
@@ -195,6 +227,7 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
       }),
       childRecipes: summaries.filter((summary) => forChildren.has(summary.id)).sort((a, b) => a.title.localeCompare(b.title)),
       freezer,
+      childFreezer,
     };
   }
 
@@ -247,17 +280,42 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
       .onConflictDoUpdate({ target: [planDays.kitchenId, planDays.date], set: change });
   }
 
-  async function setChildDay(childId: string, date: string, kind: ChildDayKind, recipeId: string | null) {
-    const [kid] = await db.select({ byDefault: children.sameAsDinnerByDefault }).from(children).where(eq(children.id, childId));
-    // A child who eats the dinner by default needs a row saying "nothing" on that day.
-    if (kind === "empty" && !kid?.byDefault) {
-      await db.delete(childDays).where(and(eq(childDays.childId, childId), eq(childDays.date, date)));
-      return;
-    }
-    await db
-      .insert(childDays)
-      .values({ childId, date, kind, recipeId })
-      .onConflictDoUpdate({ target: [childDays.childId, childDays.date], set: { kind, recipeId } });
+  /**
+   * A meal from her freezer takes a portion out; changing or clearing it puts the portion back.
+   * Returns false, changing nothing, when her freezer has none of that dish left.
+   */
+  async function setChildDay(childId: string, date: string, kind: ChildDayKind, recipeId: string | null, fromFreezer: boolean, by: string | null) {
+    const frozen = kind === "recipe" && recipeId !== null && fromFreezer;
+    return db
+      .transaction(async (tx) => {
+        const [old] = await tx
+          .select({ recipeId: childDays.recipeId, fromFreezer: childDays.fromFreezer })
+          .from(childDays)
+          .where(and(eq(childDays.childId, childId), eq(childDays.date, date)))
+          .for("update");
+        const unchanged = old?.fromFreezer === true && frozen && old.recipeId === recipeId;
+        if (!unchanged) {
+          if (old?.fromFreezer && old.recipeId) await addChildPortions(tx, childId, old.recipeId, 1, by);
+          if (frozen && !(await takeChildPortion(tx, childId, recipeId!, by))) {
+            tx.rollback();
+          }
+        }
+        const [kid] = await tx.select({ byDefault: children.sameAsDinnerByDefault }).from(children).where(eq(children.id, childId));
+        // A child who eats the dinner by default needs a row saying "nothing" on that day.
+        if (kind === "empty" && !kid?.byDefault) {
+          await tx.delete(childDays).where(and(eq(childDays.childId, childId), eq(childDays.date, date)));
+        } else {
+          await tx
+            .insert(childDays)
+            .values({ childId, date, kind, recipeId, fromFreezer: frozen })
+            .onConflictDoUpdate({ target: [childDays.childId, childDays.date], set: { kind, recipeId, fromFreezer: frozen } });
+        }
+        return true;
+      })
+      .catch((error: unknown) => {
+        if (error instanceof TransactionRollbackError) return false;
+        throw error;
+      });
   }
 
   routes.get("/api/plan/weeks/:monday", member, async (c) => {
@@ -345,7 +403,8 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
       recipeId = (await ownRecipeId(kitchenId, body.recipeId)) ?? null;
       if (!recipeId) return c.json({ error: "No such recipe." }, 404);
     }
-    await setChildDay(childId, date, kind, recipeId);
+    const fromFreezer = kind === "recipe" && body.fromFreezer === true;
+    if (!(await setChildDay(childId, date, kind, recipeId, fromFreezer, c.get("member").userId))) return c.json({ error: "None of that dish is left in her freezer." }, 409);
     return c.body(null, 204);
   });
 
@@ -358,8 +417,8 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
     const week = await loadWeek(kitchenId, mondayOf(date), todayFrom(body.today));
     const suggestion = week.suggestions.find((candidate) => candidate.id === id);
     if (!suggestion || suggestion.kind === "note") return c.json({ error: "That swap no longer fits the week. Have another look." }, 409);
-    if (suggestion.kind === "same-as-dinner") await setChildDay(suggestion.childId!, suggestion.date, "same-as-dinner", null);
-    else if (suggestion.childId) await setChildDay(suggestion.childId, suggestion.date, "recipe", suggestion.recipeId);
+    if (suggestion.kind === "same-as-dinner") await setChildDay(suggestion.childId!, suggestion.date, "same-as-dinner", null, false, c.get("member").userId);
+    else if (suggestion.childId) await setChildDay(suggestion.childId, suggestion.date, "recipe", suggestion.recipeId, false, c.get("member").userId);
     else await setDinner(kitchenId, suggestion.date, { dinnerRecipeId: suggestion.recipeId }, c.get("member").userId);
     return c.body(null, 204);
   });
@@ -480,7 +539,9 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
       }
       const childId = await ownChildId(kitchenId, fill.childId);
       if (!childId) continue;
-      const what = fill.sameAsDinner ? eq(childDays.kind, "same-as-dinner") : and(eq(childDays.kind, "recipe"), eq(childDays.recipeId, fill.recipeId));
+      const what = fill.sameAsDinner
+        ? eq(childDays.kind, "same-as-dinner")
+        : and(eq(childDays.kind, "recipe"), eq(childDays.recipeId, fill.recipeId), eq(childDays.fromFreezer, false));
       await db.delete(childDays).where(and(eq(childDays.childId, childId), eq(childDays.date, fill.date), what));
     }
     return c.body(null, 204);

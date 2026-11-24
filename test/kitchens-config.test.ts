@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { kitchenConfigs, readKitchens } from "../src/server/kitchens-config.ts";
+import { annaKitchenExtras } from "../src/shared/extra-recipes.ts";
 
 const home = { PEYTON_PASSWORD: "a", RONJA_PASSWORD: "b" };
 
@@ -36,4 +37,30 @@ test("kid-free kitchens stay kid-free and English", () => {
 test("no login is in two kitchens", () => {
   const logins = kitchenConfigs.flatMap((kitchen) => kitchen.logins);
   expect(new Set(logins).size).toBe(logins.length);
+});
+
+test("both Anna kitchens show Anna D and get the five extra recipes", () => {
+  const ready = readKitchens({ ...home, ANNAD_PASSWORD: "c", MATHIAS_PASSWORD: "d", ANNAA_PASSWORD: "e", JACOB_PASSWORD: "f" });
+  expect(ready).toContainEqual(
+    expect.objectContaining({
+      name: "Anna D and Mathias's kitchen",
+      people: [
+        { username: "annad", password: "c", displayName: "Anna D" },
+        { username: "mathias", password: "d" },
+      ],
+      extras: annaKitchenExtras,
+    }),
+  );
+  expect(ready).toContainEqual(
+    expect.objectContaining({
+      name: "Anna D and Jacob's kitchen",
+      people: [
+        { username: "annaa", password: "e", displayName: "Anna D" },
+        { username: "jacob", password: "f" },
+      ],
+      extras: annaKitchenExtras,
+    }),
+  );
+  expect(annaKitchenExtras).toHaveLength(5);
+  expect(annaKitchenExtras.map((recipe) => recipe.title)).toContain("Lytkens lasagne");
 });

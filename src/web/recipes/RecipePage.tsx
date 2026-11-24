@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { currentLanguage, t } from "../i18n.ts";
 import { tagLabel } from "../kids/labels.ts";
 import { useKidNames } from "../kitchen.ts";
@@ -101,6 +101,57 @@ export function Gallery({ photos, onOpen }: { photos: { id: string; url: string 
   );
 }
 
+/** Swipe the main photo and the gallery inline; a tap opens the full-screen viewer at that photo. */
+function PhotoSwipe({ photos, ageLabel, onOpen }: { photos: ViewerPhoto[]; ageLabel?: string; onOpen: (index: number) => void }) {
+  const track = useRef<HTMLDivElement>(null);
+  const [at, setAt] = useState(0);
+  const many = photos.length > 1;
+
+  const onScroll = () => {
+    const element = track.current;
+    if (element) setAt(Math.round(element.scrollLeft / element.clientWidth));
+  };
+
+  const show = (index: number) => {
+    const element = track.current;
+    if (element) element.scrollTo({ left: index * element.clientWidth, behavior: "smooth" });
+  };
+
+  return (
+    <section className="photo-swipe" aria-label={t("Photos")}>
+      <div className="photo-swipe-stage">
+        <div ref={track} className="photo-swipe-track" onScroll={onScroll}>
+          {photos.map((photo, index) => (
+            <button key={index} type="button" className="photo-slide" aria-label={t("Open photo {n}", { n: index + 1 })} onClick={() => onOpen(index)}>
+              <img src={photo.url} alt={photo.alt} loading={index > 0 ? "lazy" : undefined} />
+            </button>
+          ))}
+        </div>
+        {ageLabel && <span className="sticker lilac tilt-r age-sticker">{ageLabel}</span>}
+      </div>
+      {many && (
+        <div className="photo-swipe-foot">
+          <span className="photo-swipe-count" aria-live="polite">
+            {at + 1} / {photos.length}
+          </span>
+          <div className="photo-dots">
+            {photos.map((_, index) => (
+              <button
+                key={index}
+                type="button"
+                className="photo-dot"
+                aria-label={t("Photo {n} of {total}", { n: index + 1, total: photos.length })}
+                aria-current={index === at ? "true" : undefined}
+                onClick={() => show(index)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 /** week: the Monday of the week plan this was opened from, so the back arrow returns there. */
 export function RecipePage({ id, week = null }: { id: string; week?: string | null }) {
   const [recipe, setRecipe] = useState<Recipe>();
@@ -125,6 +176,7 @@ export function RecipePage({ id, week = null }: { id: string; week?: string | nu
   const gallery = recipe.photos.filter((photo) => photo.role === "gallery");
   const viewerPhotos = photosToView(recipe.title, recipe.mainPhoto, gallery);
   const galleryStart = recipe.mainPhoto ? 1 : 0;
+  const ageLabel = ageRangeLabel(recipe, currentLanguage());
 
   const addPhotos = async (files: FileList | null) => {
     if (!files?.length) return;
@@ -151,11 +203,14 @@ export function RecipePage({ id, week = null }: { id: string; week?: string | nu
         <MakeVegetarian recipe={recipe} />
       </nav>
 
-      <div className="hero">
-        {recipe.mainPhoto ? <img src={recipe.mainPhoto.url} alt={recipe.title} /> : <span className="no-photo" aria-hidden="true" />}
-        {recipe.mainPhoto && <button type="button" className="hero-open" aria-label={t("Open the photo")} onClick={() => setViewing(0)} />}
-        {ageRangeLabel(recipe, currentLanguage()) && <span className="sticker lilac tilt-r age-sticker">{ageRangeLabel(recipe, currentLanguage())}</span>}
-      </div>
+      {viewerPhotos.length ? (
+        <PhotoSwipe photos={viewerPhotos} ageLabel={ageLabel ?? undefined} onOpen={setViewing} />
+      ) : (
+        <div className="hero">
+          <span className="no-photo" aria-hidden="true" />
+          {ageLabel && <span className="sticker lilac tilt-r age-sticker">{ageLabel}</span>}
+        </div>
+      )}
       <h1>{recipe.title}</h1>
       <TypeStickers recipe={recipe} />
       {recipe.minutes !== null && <p className="time">{t("Takes {time}", { time: formatMinutes(recipe.minutes) })}</p>}

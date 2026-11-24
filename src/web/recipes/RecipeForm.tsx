@@ -5,7 +5,7 @@ import { isUnit, units } from "../../shared/units.ts";
 import { didYouMean, guessShopSection } from "../../shared/groceries.ts";
 import { tagLabel } from "../kids/labels.ts";
 import { useKidNames, useKids } from "../kitchen.ts";
-import { createRecipe, deleteRecipe, getRecipe, go, suggestIngredients, updateRecipe, uploadPhoto } from "./api.ts";
+import { createRecipe, deleteRecipe, getRecipe, go, listCategories, suggestIngredients, updateRecipe, uploadPhoto } from "./api.ts";
 import { sectionColour } from "./section-colour.ts";
 
 // Form fields hold text while typing; they become numbers on save.
@@ -96,6 +96,8 @@ function photoDraft({ recipe }: FromPhoto): Draft {
 
 export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Prefill; fromPhoto?: FromPhoto }) {
   const [draft, setDraft] = useState<Draft | undefined>(id ? undefined : fromPhoto ? photoDraft(fromPhoto) : start ? startDraft(start) : blank);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [newCategory, setNewCategory] = useState("");
   const kids = useKids();
   const kidNames = useKidNames();
   const [keepPhotos, setKeepPhotos] = useState(true);
@@ -105,6 +107,10 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
   const [problem, setProblem] = useState<string>();
   // What the save button says while it works, e.g. "Uploading photo… 60%".
   const [busy, setBusy] = useState<string>();
+
+  useEffect(() => {
+    listCategories().then(setCategories, () => {});
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -142,6 +148,14 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
   const set = (change: Partial<Draft>) => setDraft({ ...draft, ...change });
   const setLine = (index: number, change: Partial<LineDraft>) => set({ lines: draft.lines.map((line, at) => (at === index ? { ...line, ...change } : line)) });
   const setStep = (index: number, text: string) => set({ steps: draft.steps.map((step, at) => (at === index ? text : step)) });
+  const customCategories = [...new Set([...categories, ...draft.types])].filter((type) => !(mainTypes as readonly string[]).includes(type)).sort((a, b) => a.localeCompare(b));
+  const addCategory = () => {
+    const value = newCategory.trim();
+    if (!value) return;
+    setNewCategory("");
+    setCategories((list) => (list.includes(value) ? list : [...list, value]));
+    set({ types: draft.types.includes(value) ? draft.types : [...draft.types, value] });
+  };
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
@@ -227,13 +241,36 @@ export function RecipeForm({ id, start, fromPhoto }: { id?: string; start?: Pref
       </div>
 
       <fieldset>
-        <legend>{t("Main type")}</legend>
+        <legend>{t("Categories")}</legend>
         <div className="chips">
           {mainTypes.map((type) => (
             <button key={type} type="button" className="chip" aria-pressed={draft.types.includes(type)} onClick={() => set({ types: toggle(draft.types, type) })}>
               {t(type)}
             </button>
           ))}
+          {customCategories.map((type) => (
+            <button key={type} type="button" className="chip" aria-pressed={draft.types.includes(type)} onClick={() => set({ types: toggle(draft.types, type) })}>
+              {t(type)}
+            </button>
+          ))}
+        </div>
+        <div className="row">
+          <input
+            value={newCategory}
+            onChange={(event) => setNewCategory(event.target.value)}
+            placeholder={t("New category")}
+            aria-label={t("New category")}
+            maxLength={40}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                addCategory();
+              }
+            }}
+          />
+          <button type="button" className="ink-button white small" onClick={addCategory} disabled={!newCategory.trim()}>
+            {t("Add")}
+          </button>
         </div>
       </fieldset>
 
