@@ -48,6 +48,8 @@
 .turn .round:active:not(:disabled) { translate: 2px 2px; box-shadow: none; }
 
 .book .add-week { min-block-size: 3.5rem; font-size: 1.15rem; }
+.book .add-week { white-space: nowrap; }
+@media (max-width: 359px) { .book .add-week { font-size: 1rem; padding-inline: .6rem; } }
 
 /* the "Which day?" sheet */
 .book .sheet { inline-size: min(100%, 36rem); max-inline-size: 100%; max-block-size: 85svh; margin: auto auto 0; padding: 1rem var(--gutter) calc(1.25rem + env(safe-area-inset-bottom, 0px));

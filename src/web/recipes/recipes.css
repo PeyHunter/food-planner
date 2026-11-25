@@ -331,13 +331,12 @@
   white-space: nowrap;
 }
 
-/* one line of type stickers; a sticker too long for the card is cut short with "…" */
+/* type stickers wrap onto a second line rather than being cut to "FI…" */
 .recipes .recipe-types {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 0.3rem;
   min-inline-size: 0;
-  overflow: hidden;
 }
 
 .recipes .recipe-types .sticker {

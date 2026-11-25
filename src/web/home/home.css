@@ -18,7 +18,7 @@
 .home-links{display:flex;flex-wrap:nowrap;justify-content:center;gap:.4rem .8rem;font-size:.85rem;font-weight:700;white-space:nowrap}
 .home-links a{color:var(--ink);text-underline-offset:.2em}
 
-.home-h{font-size:var(--step-1)}
+.home-h{font-size:var(--step-1);margin-block-start:1.5rem}
 .home-ideas{display:grid;gap:.6rem}
 .home-rail{display:flex;gap:.8rem;margin:0;padding:.2rem .2rem .8rem;list-style:none;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
 .home-rail li{flex:none;scroll-snap-align:start}
