@@ -117,5 +117,17 @@ test("capture the screens for review", async ({ page }) => {
     }
   });
 
+  // 08 at 320px: one portion put in first, so both the "Put one portion in" row and the − / + row show.
+  await shot("08-kids-320", async () => {
+    await page.goto("/#/kids");
+    const put = page.getByRole("button", { name: "Put one portion in" }).first();
+    if (await put.isVisible().catch(() => false)) {
+      await put.click();
+      await page.getByRole("group", { name: /Portions of/ }).first().waitFor({ timeout: 10_000 }).catch(() => console.log("No − / + row after putting a portion in"));
+    } else {
+      console.log("No Put one portion in button on the Kids tab");
+    }
+  });
+
   expect(taken).toBeGreaterThan(0);
 });
