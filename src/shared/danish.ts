@@ -509,5 +509,8 @@ export const danish: Record<string, string> = {
   "Keep adding": "Bliv ved",
   "Yes, carry on": "Ja, fortsæt",
   "Days before today start off. Tap one to add it.": "Dage før i dag er slået fra. Tryk på en for at tage den med.",
+  "What can I make?": "Hvad kan jeg lave?",
+  Grid: "Gitter",
+  "Recipe view": "Visning af opskrifter",
   ...danishSecurity,
 };

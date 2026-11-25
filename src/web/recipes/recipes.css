@@ -242,41 +242,113 @@
   font-size: 1rem;
 }
 
-.recipes .cards {
+/* the Recipes grid: equal-height cards, a square photo, titles up to two lines */
+.recipes .recipe-grid {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.9rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.recipes .card {
+@media (min-width: 34rem) {
+  .recipes .recipe-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.recipes .recipe-grid > li {
   display: grid;
-  grid-template-columns: 5.5rem 1fr;
-  gap: 0.8rem;
-  align-items: center;
-  padding: 0.55rem;
+  min-inline-size: 0;
+}
+
+.recipes .recipe-card {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 0.5rem;
+  min-inline-size: 0;
+  padding: 0.45rem;
   border: var(--r-line);
   border-radius: 1.2rem;
   background: var(--r-paper);
-  box-shadow: var(--r-pop);
+  box-shadow: 3px 3px 0 var(--r-ink);
   color: inherit;
   text-decoration: none;
 }
 
-.recipes .card img,
-.recipes .card .no-photo {
-  inline-size: 5.5rem;
-  block-size: 5.5rem;
+.recipes .recipe-card:active {
+  translate: 2px 2px;
+  box-shadow: 1px 1px 0 var(--r-ink);
+}
+
+.recipes .recipe-photo {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  overflow: hidden;
   border: var(--r-line);
-  border-radius: 0.8rem;
+  border-radius: 0.85rem;
+  background: var(--mint-soft);
+}
+
+.recipes .recipe-photo img {
+  inline-size: 100%;
+  block-size: 100%;
   object-fit: cover;
 }
 
-.recipes .card-text {
+.recipes .recipe-photo .plate-art {
+  block-size: 62%;
+  inline-size: auto;
+  color: var(--r-ink);
+}
+
+.recipes .recipe-text {
   display: grid;
-  gap: 0.45rem;
-  font-size: 1.05rem;
+  align-content: start;
+  gap: 0.3rem;
+  min-inline-size: 0;
+  padding-inline: 0.15rem;
+}
+
+.recipes .recipe-text strong {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 0.98rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.recipes .recipe-time {
+  overflow: hidden;
+  color: var(--r-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* one line of type stickers; a sticker too long for the card is cut short with "…" */
+.recipes .recipe-types {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.3rem;
+  min-inline-size: 0;
+  overflow: hidden;
+}
+
+.recipes .recipe-types .sticker {
+  display: inline-block;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  overflow: hidden;
+  padding: 0.15em 0.45em;
+  box-shadow: 1px 1px 0 var(--r-ink);
+  font-size: 0.62rem;
+  text-overflow: ellipsis;
 }
 
 .recipes .no-photo {
@@ -440,12 +512,6 @@
 .recipes .time {
   margin: -0.4rem 0 0;
   font-weight: 800;
-}
-
-.recipes .card-time {
-  color: var(--r-muted);
-  font-size: 0.9rem;
-  font-weight: 700;
 }
 
 .recipes .description {
@@ -800,22 +866,6 @@
 }
 
 /* ingredients screen */
-.recipes .bar-buttons {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 0.5rem;
-  min-inline-size: 0;
-  max-inline-size: 100%;
-  overflow-x: auto;
-  scrollbar-width: none;
-  padding-block: 0.2rem;
-}
-
-.recipes .bar-buttons::-webkit-scrollbar {
-  display: none;
-}
-
 .recipes .ingredient-rows {
   display: grid;
   gap: 0.7rem;
@@ -956,39 +1006,6 @@
 
 .save-shared { display: grid; gap: 0.8rem; justify-items: start; }
 .save-shared .save-photo { inline-size: 100%; max-block-size: 16rem; object-fit: cover; border: var(--line) solid var(--ink); border-radius: 1.2rem; }
-
-/* computers (1024 px and up): the list is a wide grid of big cards, photo on top, like a recipe site */
-@media (min-width: 64rem) {
-  .recipes .recipe-list .cards {
-    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
-    gap: 1.4rem;
-    /* a short card keeps its own height instead of growing to the tallest in its row */
-    align-items: start;
-  }
-
-  .recipes .recipe-list .card {
-    grid-template-columns: 1fr;
-    align-items: start;
-    padding: 0;
-    overflow: clip;
-    gap: 0;
-  }
-
-  .recipes .recipe-list .card img,
-  .recipes .recipe-list .card .no-photo {
-    inline-size: 100%;
-    block-size: auto;
-    aspect-ratio: 4 / 3;
-    border: 0;
-    border-block-end: var(--r-line);
-    border-radius: 0;
-  }
-
-  .recipes .recipe-list .card-text {
-    padding: 0.9rem 1rem 1.1rem;
-    font-size: 1.15rem;
-  }
-}
 
 /* What can I make? Type what is at home; the nearest recipes come first. */
 .recipes .can-make-search {
