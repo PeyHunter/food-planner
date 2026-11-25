@@ -104,5 +104,5 @@ test("the logo and the greeting go to the front page", async ({ page }) => {
 
   await page.getByRole("link", { name: "Profile" }).click();
   await page.locator(".top .logo").click();
-  await expect(tabs.getByRole("button", { name: "Home" })).toHaveAttribute("aria-current", "page");
+  await expect(tabs.getByRole("button", { name: "Recipes" })).toHaveAttribute("aria-current", "page");
 });
