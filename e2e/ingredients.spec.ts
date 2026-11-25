@@ -23,7 +23,6 @@ test("set an ingredient's shop section, pack size and always-at-home from the Re
   });
   expect(made.status()).toBe(201);
 
-  await page.getByRole("link", { name: "List and search" }).click();
   await page.getByRole("link", { name: "Ingredients" }).click();
   await expect(page.getByRole("heading", { name: "Ingredients", level: 2 })).toBeVisible();
   await page.getByLabel("Search ingredients").fill(`rice ${tag}`);
@@ -67,5 +66,5 @@ test("set an ingredient's shop section, pack size and always-at-home from the Re
   await expect(page.getByRole("button", { name: /^Edit / })).toHaveText([/Rice /]);
 
   await page.getByRole("link", { name: "Back to recipes" }).click();
-  await expect(page.getByRole("heading", { name: "Recipes", level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "What shall we cook?", level: 2 })).toBeVisible();
 });

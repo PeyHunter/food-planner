@@ -122,3 +122,22 @@ test("Create week leaves a freezer night alone", async () => {
   expect((await weekView()).days.find((one) => one.date === tuesday)).toMatchObject({ fromFreezer: true, dinner: { id: pie } });
   expect(await countOf(pie)).toBe(1);
 });
+
+test("a child's recipe never goes in the kitchen freezer, and the kitchen list leaves out any already there", async () => {
+  const { app, call, create, freezer, weekView } = await loggedIn();
+  const grownUp = await create(recipe("Fish pie"));
+  const forRuni = await create(recipe("Leverpostej", { tags: ["freezable", "for Runi"] }));
+  const aged = await create(recipe("Baby mash", { tags: ["freezable"], ageFromMonths: 6, ageToMonths: 12 }));
+
+  for (const id of [forRuni, aged]) {
+    const response = await call(`/api/freezer/${id}`, "POST", { add: 2 });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "Child recipes go in the child's freezer." });
+  }
+  expect((await call(`/api/freezer/${grownUp}`, "POST", { add: 2 })).status).toBe(200);
+
+  // A row that got in before the rule (say, from an older app version) is hidden from every kitchen list.
+  await app.query("insert into freezer_portions (kitchen_id, recipe_id, count) select kitchen_id, id, 4 from recipes where id = $1", [forRuni]);
+  expect((await freezer()).map((item) => item.recipe.id)).toEqual([grownUp]);
+  expect((await weekView()).freezer.map((item) => item.recipe.id)).toEqual([grownUp]);
+});

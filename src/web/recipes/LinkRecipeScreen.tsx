@@ -1,28 +1,43 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { t } from "../i18n.ts";
 import type { PhotoRecipeDraft } from "../../shared/recipes.ts";
 import { readRecipeLink } from "./api.ts";
 import { RecipeForm } from "./RecipeForm.tsx";
 
+/** The page address from #/recipes/from-link?url=…, when "What can I make?" sends a recipe here. */
+const linkFromHash = () => new URLSearchParams(window.location.hash.split("?")[1] ?? "").get("url")?.trim() ?? "";
+
 /** Recipe from a link: paste a recipe page's address; the server reads the recipe and its dish picture into the edit form to check. */
 export function LinkRecipeScreen() {
-  const [link, setLink] = useState("");
+  const [link, setLink] = useState(linkFromHash);
   const [reading, setReading] = useState(false);
   const [problem, setProblem] = useState<string>();
   const [draft, setDraft] = useState<PhotoRecipeDraft>();
+  const started = useRef(false);
+
+  const readLink = async (address: string) => {
+    setReading(true);
+    setProblem(undefined);
+    try {
+      setDraft(await readRecipeLink(address));
+    } catch (error) {
+      setProblem((error as Error).message);
+      setReading(false);
+    }
+  };
+
+  // A link handed over from "What can I make?" is read at once; the ref keeps a dev-mode double mount from reading twice.
+  useEffect(() => {
+    if (started.current || !link) return;
+    started.current = true;
+    void readLink(link);
+  }, []);
 
   if (draft) return <RecipeForm fromPhoto={{ ...draft, photos: [], intro: t("Read from the link. Check it, fix anything that's wrong, then save.") }} />;
 
   const read = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setReading(true);
-    setProblem(undefined);
-    try {
-      setDraft(await readRecipeLink(link));
-    } catch (error) {
-      setProblem((error as Error).message);
-      setReading(false);
-    }
+    await readLink(link);
   };
 
   return (

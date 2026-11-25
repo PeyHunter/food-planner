@@ -3,7 +3,7 @@ import type { Database } from "./db.ts";
 import type { PhotoRecipeClient } from "./photo-recipe.ts";
 import { aiCalls } from "./schema.ts";
 
-export type AiFeature = "photo" | "link" | "vegetarian";
+export type AiFeature = "photo" | "link" | "vegetarian" | "ideas";
 
 /** US dollars per million tokens, from Anthropic's price list (2026-11). Cache writes are the 5-minute kind (1.25 × input). */
 export const modelPrices: Record<string, { input: number; output: number; cacheWrite: number; cacheRead: number }> = {

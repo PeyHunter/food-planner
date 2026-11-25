@@ -90,6 +90,12 @@ From the user after seeing the designs. Full notes in `docs/design-feedback-2026
 - **Two more kitchens without kids**: Anna D + Mathias and Anna A + Jacob, two logins each, made at startup when their passwords are set.
 - **Breakfast and lunch** are planned, not built. `docs/plans/meal-types.md` has the data, API, UI, shopping and rules path.
 
+## Notes 2026-11-25 (overrides anything above that disagrees)
+
+- **One Recipes tab replaces Home.** It opens on a grid of every recipe, then the "Ideas" rail. A Grid/Book switch flips to the book view; the choice is remembered, and `#/recipes/list` always opens the grid.
+- **What can I make?** now searches the web for dinners from the ingredients typed in (Valdemarsro first, then a short list of trusted recipe sites). It no longer ranks the kitchen's own recipes.
+- **Child recipes live in the child's freezer, not the kitchen freezer.** In a kitchen with one child, portions of child recipes (age range or tagged `for Runi`) go in her freezer, and her freezer shows first when picking her dinner on the Week screen.
+
 ## Design
 
 Before building screens: at least 5 competing designs (arena), each using the good-css skill (copy `~/lp-collection/.claude/skills/good-css` into this repo). Style: light, modern, slightly playful. Each design covers Browse, Recipe and Week. Put screenshots of all of them side by side in one Artifact page. The manager picks the winner (the user delegated this) and records why in `docs/adr/`. The user may ask for a swap later.

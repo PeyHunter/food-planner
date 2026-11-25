@@ -22,7 +22,7 @@ export const kitchenConfigs: readonly KitchenConfig[] = [
   { logins: ["isabel", "christopher"], kids: [], language: "en" },
   { logins: ["magnus", "mads"], kids: [], language: "en" },
   { logins: ["annad", "mathias"], displayNames: { annad: "Anna D" }, kids: [], language: "en", extras: annaKitchenExtras },
-  { logins: ["annaa", "jacob"], displayNames: { annaa: "Anna D" }, kids: [], language: "en", extras: annaKitchenExtras },
+  { logins: ["annaa", "jacob"], displayNames: { annaa: "Anna A" }, kids: [], language: "en", extras: annaKitchenExtras },
   { logins: ["marieke"], kids: [], language: "en" },
   { logins: ["valdemar", "anna"], kids: ["Vilje", "Konrad"], language: "da" },
 ];

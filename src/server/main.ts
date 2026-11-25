@@ -13,6 +13,7 @@ import { photoStore, shrinkOldPhotos } from "./photos.ts";
 import { applyCatalogPacks, reguessOtherShopSections } from "./recipes.ts";
 import { readSecretKey, secretStore } from "./secrets.ts";
 import { fakeClient, type PhotoRecipeClient } from "./photo-recipe.ts";
+import { fakeIdeasClient } from "./web-ideas.ts";
 import { addStarterRecipesOnce } from "./starter-recipes.ts";
 
 type Config = {
@@ -62,7 +63,11 @@ function readPublicUrl(env: NodeJS.ProcessEnv, port: number): URL | { error: str
 /** The real API client when the key is set; PHOTO_RECIPE_FAKE (browser tests, never in production) gives a fake that always reads the same recipe. */
 function photoRecipeClient(env: NodeJS.ProcessEnv): PhotoRecipeClient | undefined {
   if (env.PHOTO_RECIPE_FAKE === "1" && env.NODE_ENV !== "production") {
-    return fakeClient({
+    const ideas = fakeIdeasClient([
+      { title: "Kartoffelpandekager", url: "https://valdemarsro.dk/kartoffelpandekager/", site: "Valdemarsro", why: "Uses the potatoes and onions you listed.", missing: ["Eggs"] },
+      { title: "Ovnbagte kartofler med løg", url: "https://valdemarsro.dk/ovnbagte-kartofler/", site: "Valdemarsro", why: "Uses the potatoes and onions you listed.", missing: [] },
+    ]);
+    const recipe = fakeClient({
       title: "Granny's pancakes",
       description: "Thin pancakes like Granny made on Sundays.",
       feeds: 4,
@@ -78,6 +83,14 @@ function photoRecipeClient(env: NodeJS.ProcessEnv): PhotoRecipeClient | undefine
       steps: ["Whisk everything together.", "Fry thin pancakes in butter."],
       dishPhoto: { photo: 1, left: 0.1, top: 0.05, right: 0.9, bottom: 0.45 },
     });
+    // The search asks with the suggest_dishes tool; anything else is a recipe read.
+    return {
+      beta: {
+        messages: {
+          create: (params, options) => (params.tools?.some((tool) => "name" in tool && tool.name === "suggest_dishes") ? ideas : recipe).beta.messages.create(params, options),
+        },
+      },
+    };
   }
   if (!env.ANTHROPIC_API_KEY) return undefined;
   return new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });

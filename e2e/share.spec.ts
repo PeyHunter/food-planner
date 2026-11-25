@@ -8,7 +8,7 @@ async function logIn(page: Page) {
   await page.getByLabel("Password").fill(e2ePasswords.peyton);
   await page.getByRole("button", { name: "Log in" }).click();
   await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Recipes" }).click();
-  await expect(page.getByRole("heading", { name: "Flip through the book", level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "What shall we cook?", level: 2 })).toBeVisible();
 }
 
 async function addRecipe(page: Page, title: string) {

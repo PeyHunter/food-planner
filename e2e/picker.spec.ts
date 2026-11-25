@@ -99,10 +99,10 @@ test("the logo and the greeting go to the front page", async ({ page }) => {
   await tabs.getByRole("button", { name: "Shopping" }).click();
   await expect(tabs.getByRole("button", { name: "Shopping" })).toHaveAttribute("aria-current", "page");
   await page.getByRole("heading", { name: "Hi Peyton" }).click();
-  await expect(tabs.getByRole("button", { name: "Home" })).toHaveAttribute("aria-current", "page");
+  await expect(tabs.getByRole("button", { name: "Recipes" })).toHaveAttribute("aria-current", "page");
   await expect(page).toHaveURL(/#\/home$/);
 
   await page.getByRole("link", { name: "Profile" }).click();
   await page.locator(".top .logo").click();
-  await expect(tabs.getByRole("button", { name: "Home" })).toHaveAttribute("aria-current", "page");
+  await expect(tabs.getByRole("button", { name: "Recipes" })).toHaveAttribute("aria-current", "page");
 });
