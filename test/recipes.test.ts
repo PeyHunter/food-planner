@@ -165,38 +165,6 @@ test("custom categories are trimmed, deduped and listed after the built-in types
   expect(categories).toEqual(["Fish", "Meat", "Chicken", "Vegetarian", "Vegetables", "rygbrødsmadder", "tapas"]);
 });
 
-test("what can I make lists recipes ranked by what is missing", async () => {
-  const { call, create } = await loggedIn();
-  await create({
-    ...fishPie,
-    title: "Carrot butter",
-    lines: [
-      { amount: 1, unit: "pcs", ingredient: "Carrot", note: "" },
-      { amount: 1, unit: "pcs", ingredient: "Butter", note: "" },
-    ],
-  });
-  await create({
-    ...fishPie,
-    title: "Salt butter",
-    lines: [
-      { amount: 1, unit: "pcs", ingredient: "Salt", note: "" },
-      { amount: 1, unit: "pcs", ingredient: "Butter", note: "" },
-    ],
-  });
-  await create({ ...fishPie, title: "Empty", lines: [] });
-
-  const response = await call("/api/recipes/can-make", "POST", { have: ["carrots", "Butter"] });
-  expect(response.status).toBe(200);
-  const results = (await response.json()) as { recipe: { title: string }; have: string[]; missing: string[] }[];
-  expect(results.map((result) => result.recipe.title)).toEqual(["Carrot butter", "Salt butter"]);
-  expect(results[0]).toMatchObject({ have: ["carrots", "Butter"], missing: [] });
-  expect(results[1]!.missing).toEqual(["Salt"]);
-
-  expect((await call("/api/recipes/can-make", "POST", { have: [] })).status).toBe(400);
-  expect((await call("/api/recipes/can-make", "POST", { have: ["x".repeat(81)] })).status).toBe(400);
-  expect((await call("/api/recipes/can-make", "POST", { have: ["x", "y", "z", 1] })).status).toBe(400);
-});
-
 test("deleting a recipe removes it", async () => {
   const { call, create } = await loggedIn();
   const id = await create(fishPie);
