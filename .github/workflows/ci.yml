@@ -34,6 +34,13 @@ jobs:
       - run: npm test
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+      # Upload traces before the screens step: its own Playwright run empties test-results/.
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
       - if: always()
         run: SHOTS_DIR=$PWD/shots npx playwright test e2e/screens.spec.ts --project=iphone
       - if: always()
@@ -42,12 +49,6 @@ jobs:
         with:
           name: screens
           path: shots/
-          retention-days: 7
-      - if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-traces
-          path: test-results/
           retention-days: 7
 
   image:

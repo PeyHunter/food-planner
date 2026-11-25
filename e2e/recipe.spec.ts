@@ -161,6 +161,8 @@ test("a link to a recipe opened while logged out lands on that recipe after logg
   // Logged out on a page that is already open, then the link, then logging in.
   await fresh.getByRole("link", { name: "Profile" }).click();
   await fresh.getByRole("button", { name: "Log out", exact: true }).click();
+  // Wait for the login screen: logging out resets the address to #/home once the server answers, and that must not land after the link below.
+  await expect(fresh.getByLabel("Name")).toBeVisible();
   await fresh.goto("/#/week");
   await fresh.goto(`/#/recipes/${id}`);
   await fresh.getByLabel("Name").fill("peyton");
