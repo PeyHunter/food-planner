@@ -1,31 +1,23 @@
-/* Home tab: the grown-ups' recipes in a grid, then photo ideas for the grown-ups. Scoped to .home-tab. */
+/* The Recipes tab: one header row, a Grid | Book switch, then the grid or the book, then the footer links. Scoped to .home-tab. */
 .home-tab{display:grid;gap:1rem;padding-block-end:2rem}
-.home-head{display:grid;justify-items:start;gap:.5rem;inline-size:100%}
-.home-head .kicker{font-size:.8rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:color-mix(in oklch,var(--tomato) 70%,var(--ink))}
+
+/* One row that never wraps: the three buttons shrink a little rather than move to a second line. */
+.home-actions{display:flex;flex-wrap:nowrap;justify-content:space-between;align-items:center;gap:.4rem;inline-size:100%;min-inline-size:0}
+.home-actions .btn.small{flex:0 0 auto;white-space:nowrap;min-block-size:2.5rem;padding-inline:.6rem;font-size:.85rem}
+
+.home-head{display:grid;justify-items:start;gap:.6rem;inline-size:100%}
 .home-head h2{font-size:var(--step-2)}
-.home-head .btn{margin-block-start:.25rem}
-.home-actions{display:flex;flex-wrap:nowrap;gap:.4rem;inline-size:100%;min-inline-size:0;max-inline-size:100%;overflow-x:auto;scrollbar-width:none;padding-block:.2rem}
-.home-actions::-webkit-scrollbar{display:none}
-.home-actions .btn{flex:none;white-space:nowrap}
-.view-toggle{display:inline-flex;flex-wrap:nowrap;gap:.4rem;max-inline-size:100%;overflow-x:auto;scrollbar-width:none;padding-block:.2rem}
-.view-toggle::-webkit-scrollbar{display:none}
-.view-toggle .chip{flex:none;white-space:nowrap}
+.home-head em{font-style:normal;background:var(--sun);padding-inline:.15em;border:var(--line) solid var(--ink);border-radius:.4em;box-shadow:var(--pop-sm);display:inline-block;rotate:-2deg}
+.view-toggle{display:flex;flex-wrap:nowrap;gap:.4rem;max-inline-size:100%}
+.view-toggle .chip{flex:none}
+
+/* the less-used pages, as plain links in one line under the grid or the book */
+.home-links{display:flex;flex-wrap:nowrap;justify-content:center;gap:.4rem .8rem;font-size:.85rem;font-weight:700;white-space:nowrap}
+.home-links a{color:var(--ink);text-underline-offset:.2em}
+
 .home-h{font-size:var(--step-1)}
-
-.home-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.9rem;margin:0;padding:0;list-style:none}
-@media (min-width:34rem){.home-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
-.home-card{display:grid;gap:.45rem;padding:.45rem;border:var(--line) solid var(--ink);border-radius:1.2rem;background:var(--paper);box-shadow:var(--pop-sm);color:inherit;text-decoration:none}
-.home-card img,.home-photo{inline-size:100%;aspect-ratio:4/3;block-size:auto;border:var(--line) solid var(--ink);border-radius:.85rem;object-fit:cover}
-.home-plate{display:grid;place-items:center;background:radial-gradient(circle,var(--paper) 0 32%,var(--sun) 33% 62%,var(--mint) 63%)}
-.home-plate::after{content:"🍽";font-size:1.6rem}
-.home-card-text{display:grid;gap:.35rem;font-size:1rem}
-.home-types{display:flex;flex-wrap:wrap;gap:.3rem}
-.home-types .sticker{font-size:.62rem;letter-spacing:.02em;padding:.15em .5em}
-
 .home-ideas{display:grid;gap:.6rem}
 .home-rail{display:flex;gap:.8rem;margin:0;padding:.2rem .2rem .8rem;list-style:none;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
 .home-rail li{flex:none;scroll-snap-align:start}
 .home-idea{display:grid;gap:.4rem;inline-size:min(72vw,18rem);color:inherit;text-decoration:none;font-weight:800}
 .home-idea img{inline-size:100%;aspect-ratio:4/3;block-size:auto;border:var(--line) solid var(--ink);border-radius:1.2rem;box-shadow:var(--pop);object-fit:cover}
-
-.home-empty{justify-items:start}

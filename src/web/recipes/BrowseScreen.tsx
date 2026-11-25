@@ -35,10 +35,10 @@ function rememberFirst(id: string) {
 }
 
 /**
- * The book view of the home surface: one page at a time. Swiping left or right moves through the
+ * The book view of the Recipes tab: one page at a time. Swiping left or right moves through the
  * pages like LP-Collection's record crate; the chips at the top narrow the book to a main type or tag.
  */
-export function BrowseScreen({ onGrid }: { onGrid?: () => void }) {
+export function BrowseScreen() {
   const [recipes, setRecipes] = useState<RecipeSummary[]>();
   const [problem, setProblem] = useState<string>();
   const [chosen, setChosen] = useState(place.chosen);
@@ -97,29 +97,6 @@ export function BrowseScreen({ onGrid }: { onGrid?: () => void }) {
 
   return (
     <section className="book">
-      <div className="book-head">
-        <p className="kicker">{t("What's for dinner?")}</p>
-        <div className="book-actions">
-          <a className="btn small sun" href="#/recipes/new" aria-label={t("+ Add recipe")}>
-            {t("+ Add")}
-          </a>
-          <a className="btn small white" href="#/recipes/can-make">
-            {t("What can I make?")}
-          </a>
-          {onGrid && (
-            <button type="button" className="btn small white" onClick={onGrid} aria-label={t("List and search")}>
-              {t("☰ List")}
-            </button>
-          )}
-          <a className="btn small white" href="#/recipes/freezer">
-            {t("❄ Freezer")}
-          </a>
-        </div>
-        <h2>
-          {t("Flip through")} <em>{t("the book")}</em>
-        </h2>
-      </div>
-
       {problem && <p role="alert">{problem}</p>}
 
       {recipes && recipes.length > 0 && (
@@ -215,7 +192,7 @@ function BookPage({ recipe, number, total, showPhoto }: { recipe: RecipeSummary;
 }
 
 /** Stands in for a dish photo: a plate with a fork and knife. */
-function Plate() {
+export function Plate() {
   return (
     <svg className="plate-art" viewBox="0 0 300 220" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M40 40v40q0 12 10 14v96M30 40v34M50 40v34" />

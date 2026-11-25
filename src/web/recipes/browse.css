@@ -1,19 +1,6 @@
-/* "Flip through the book": design 3's stacked pages drawn in Sticker pop. Scoped to .book inside .recipes. */
-.recipes .bar h2 { margin-inline-end: auto; }
-
+/* The book view: design 3's stacked pages drawn in Sticker pop. Scoped to .book inside .recipes. */
 .book { display: grid; gap: 1rem; }
 .book .sr { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-
-/* The kicker never wraps; when the buttons don't fit beside it they move to their own row. */
-.book-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4rem .5rem; }
-.book-head h2 { flex-basis: 100%; }
-.book-head .kicker { white-space: nowrap; font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: color-mix(in oklch, var(--tomato) 70%, var(--ink)); }
-.book-head h2 { font-size: var(--step-2); }
-.book-head h2 em { font-style: normal; background: var(--sun); padding-inline: .15em; border: var(--line) solid var(--ink); border-radius: .4em; box-shadow: var(--pop-sm); display: inline-block; rotate: -2deg; }
-.book-actions { display: flex; flex-wrap: nowrap; gap: .4rem; inline-size: 100%; min-inline-size: 0; overflow-x: auto; scrollbar-width: none; padding-block: .2rem; }
-.book-actions::-webkit-scrollbar { display: none; }
-.book-actions .btn { flex: none; white-space: nowrap; }
-.book-actions .btn.small { min-block-size: 2.5rem; padding-inline: .75rem; }
 
 /* recipes.css wraps chips for the form; here they scroll sideways, edge to edge */
 /* scroll-padding: chips snap to the page edge, not the screen edge, so the first one isn't cut off. */
