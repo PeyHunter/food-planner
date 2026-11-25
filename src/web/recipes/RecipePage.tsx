@@ -3,8 +3,11 @@ import { currentLanguage, t } from "../i18n.ts";
 import { tagLabel } from "../kids/labels.ts";
 import { useKidNames } from "../kitchen.ts";
 import { formatMinutes, type Recipe, type RecipeLine, type RecipeSummary } from "../../shared/recipes.ts";
+import { isChildRecipe } from "../../shared/week.ts";
 import { ageRangeLabel } from "../../shared/child-age.ts";
 import { formatAmount, scale } from "../../shared/units.ts";
+import { getChildren, addChildFreezerPortion } from "../kids/api.ts";
+import type { ChildView } from "../../shared/children.ts";
 import { addToFreezer, getRecipe, logCook, showDate, today, uploadPhoto } from "./api.ts";
 import { SharePanel } from "./SharePanel.tsx";
 import { MakeVegetarian } from "./VegetarianSheet.tsx";
@@ -254,7 +257,7 @@ export function RecipePage({ id, week = null }: { id: string; week?: string | nu
           onCancel={() => setLogging(false)}
         />
       ) : offerFreezer ? (
-        <FreezerOffer recipeId={id} feeds={recipe.feeds} onDone={() => setOfferFreezer(false)} />
+        <FreezerOffer recipeId={id} feeds={recipe.feeds} childRecipe={isChildRecipe(recipe)} onDone={() => setOfferFreezer(false)} />
       ) : (
         <button type="button" className="ink-button big" onClick={() => setLogging(true)}>
           {t("I made this")}
@@ -279,11 +282,24 @@ export function RecipePage({ id, week = null }: { id: string; week?: string | nu
   );
 }
 
-/** After cooking a freezable dish: how many spare portions go in the freezer. */
-function FreezerOffer({ recipeId, feeds, onDone }: { recipeId: string; feeds: number; onDone: () => void }) {
+/** After cooking a freezable dish: how many spare portions go in the freezer. A child's recipe goes in her freezer, which child first. */
+function FreezerOffer({ recipeId, feeds, childRecipe, onDone }: { recipeId: string; feeds: number; childRecipe: boolean; onDone: () => void }) {
   const [problem, setProblem] = useState<string>();
   const [busy, setBusy] = useState(false);
-  const [saved, setSaved] = useState<number>();
+  const [saved, setSaved] = useState<{ portions: number; child?: ChildView }>();
+  const [kids, setKids] = useState<ChildView[]>();
+  const [picked, setPicked] = useState<ChildView>();
+
+  useEffect(() => {
+    if (!childRecipe) return;
+    getChildren().then(setKids, (error: Error) => {
+      setProblem(error.message);
+      setKids([]);
+    });
+  }, [childRecipe]);
+
+  // One child in the kitchen is the one; with several, the user picks first.
+  const child = childRecipe ? (kids?.length === 1 ? kids[0] : picked) : undefined;
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -291,22 +307,25 @@ function FreezerOffer({ recipeId, feeds, onDone }: { recipeId: string; feeds: nu
     setBusy(true);
     setProblem(undefined);
     try {
-      await addToFreezer(recipeId, portions);
-      setSaved(portions);
+      if (child) await addChildFreezerPortion(child.id, recipeId, portions);
+      else await addToFreezer(recipeId, portions);
+      setSaved({ portions, child });
     } catch (error) {
       setProblem((error as Error).message);
     }
     setBusy(false);
   };
 
-  if (saved !== undefined)
+  if (childRecipe && !kids) return null;
+
+  if (saved)
     return (
       <section className="panel freezer-offer" role="status">
         <p>
-          <span className="sticker sky tilt-l">❄ {t("{n} in the freezer", { n: saved })}</span>
+          <span className="sticker sky tilt-l">❄ {saved.child ? t("{n} in {name}'s freezer", { n: saved.portions, name: saved.child.name }) : t("{n} in the freezer", { n: saved.portions })}</span>
         </p>
         <div className="pair">
-          <a className="ink-button white small" href="#/recipes/freezer">
+          <a className="ink-button white small" href={saved.child ? "#/kids" : "#/recipes/freezer"}>
             {t("See the freezer")}
           </a>
           <button type="button" className="ink-button small" onClick={onDone}>
@@ -316,9 +335,37 @@ function FreezerOffer({ recipeId, feeds, onDone }: { recipeId: string; feeds: nu
       </section>
     );
 
+  if (childRecipe && kids!.length === 0)
+    return (
+      <section className="panel freezer-offer">
+        <h2>{t("Put portions in the freezer?")}</h2>
+        <p className="hint">{t("Add a child first, then the portions can go in their freezer.")}</p>
+        <button type="button" className="ink-button white" onClick={onDone}>
+          {t("No thanks")}
+        </button>
+      </section>
+    );
+
+  if (childRecipe && !child)
+    return (
+      <section className="panel freezer-offer" aria-labelledby="freezer-offer-title">
+        <h2 id="freezer-offer-title">{t("Whose freezer?")}</h2>
+        <div className="chips" role="group" aria-label={t("Whose freezer?")}>
+          {kids!.map((kid) => (
+            <button key={kid.id} type="button" className="chip" onClick={() => setPicked(kid)}>
+              {kid.name}
+            </button>
+          ))}
+        </div>
+        <button type="button" className="ink-button white" onClick={onDone}>
+          {t("No thanks")}
+        </button>
+      </section>
+    );
+
   return (
     <form className="panel freezer-offer" aria-labelledby="freezer-offer-title" onSubmit={submit}>
-      <h2 id="freezer-offer-title">{t("Put portions in the freezer?")}</h2>
+      <h2 id="freezer-offer-title">{child ? t("Put portions in {name}'s freezer?", { name: child.name }) : t("Put portions in the freezer?")}</h2>
       <label>
         {t("Portions")}
         <input type="number" name="portions" min={1} max={50} step={1} defaultValue={feeds} required />
@@ -339,6 +386,7 @@ function FreezerOffer({ recipeId, feeds, onDone }: { recipeId: string; feeds: nu
 function MadeThisForm({ recipeId, onDone, onCancel }: { recipeId: string; onDone: () => Promise<void>; onCancel: () => void }) {
   const [problem, setProblem] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const [photoCount, setPhotoCount] = useState(0);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -362,9 +410,12 @@ function MadeThisForm({ recipeId, onDone, onCancel }: { recipeId: string; onDone
         {t("When")}
         <input type="date" name="madeOn" defaultValue={today()} max={today()} required />
       </label>
-      <label>
-        {t("Photos from this time (if you like)")}
-        <input type="file" name="photos" accept="image/*" multiple />
+      <label className="made-this-photos">
+        <span>{t("Photos from this time (if you like)")}</span>
+        <span className="ink-button white small file-button">
+          {photoCount === 0 ? t("Pick photos") : t(photoCount === 1 ? "1 photo chosen" : "{n} photos chosen", { n: photoCount })}
+          <input type="file" name="photos" accept="image/*" multiple onChange={(event) => setPhotoCount(event.target.files?.length ?? 0)} />
+        </span>
       </label>
       {problem && <p role="alert">{problem}</p>}
       <div className="bar">

@@ -39,7 +39,7 @@ test("no login is in two kitchens", () => {
   expect(new Set(logins).size).toBe(logins.length);
 });
 
-test("both Anna kitchens show Anna D and get the five extra recipes", () => {
+test("both Anna kitchens get the five extra recipes", () => {
   const ready = readKitchens({ ...home, ANNAD_PASSWORD: "c", MATHIAS_PASSWORD: "d", ANNAA_PASSWORD: "e", JACOB_PASSWORD: "f" });
   expect(ready).toContainEqual(
     expect.objectContaining({
@@ -53,9 +53,9 @@ test("both Anna kitchens show Anna D and get the five extra recipes", () => {
   );
   expect(ready).toContainEqual(
     expect.objectContaining({
-      name: "Anna D and Jacob's kitchen",
+      name: "Anna A and Jacob's kitchen",
       people: [
-        { username: "annaa", password: "e", displayName: "Anna D" },
+        { username: "annaa", password: "e", displayName: "Anna A" },
         { username: "jacob", password: "f" },
       ],
       extras: annaKitchenExtras,

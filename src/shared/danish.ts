@@ -512,5 +512,12 @@ export const danish: Record<string, string> = {
   "What can I make?": "Hvad kan jeg lave?",
   Grid: "Gitter",
   "Recipe view": "Visning af opskrifter",
+  "1 photo chosen": "1 billede valgt",
+  "{n} photos chosen": "{n} billeder valgt",
+  "Put portions in {name}'s freezer?": "Læg portioner i {name}s fryser?",
+  "{n} in {name}'s freezer": "{n} i {name}s fryser",
+  "Whose freezer?": "Hvis fryser?",
+  "Add a child first, then the portions can go in their freezer.": "Tilføj først et barn, så kan portionerne komme i barnets fryser.",
+  "Child recipes go in the child's freezer.": "Opskrifter til børn går i barnets fryser.",
   ...danishSecurity,
 };

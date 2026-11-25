@@ -47,6 +47,9 @@ export type FreezerItem = { recipe: RecipeSummary; count: number };
 export type CreatedWeek = { fills: { date: string; childId: string | null; recipeId: string; sameAsDinner?: true }[]; note: string };
 
 export const childRecipeTag = "for Runi";
+/** A child's recipe: tagged "for Runi" or with an age range. Only the child's own freezer and lists take these. */
+export const isChildRecipe = (recipe: { tags: string[]; ageFromMonths: number | null; ageToMonths: number | null }) =>
+  recipe.tags.includes(childRecipeTag) || recipe.ageFromMonths !== null || recipe.ageToMonths !== null;
 export const defaultPeople = 2;
 export const maxPeople = 50;
 export const maxSides = 4;
