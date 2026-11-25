@@ -3,7 +3,10 @@
 
 /* One row that never wraps: the three buttons shrink a little rather than move to a second line. */
 .home-actions{display:flex;flex-wrap:nowrap;justify-content:space-between;align-items:center;gap:.4rem;inline-size:100%;min-inline-size:0}
-.home-actions .btn.small{flex:0 0 auto;white-space:nowrap;min-block-size:2.5rem;padding-inline:.6rem;font-size:.85rem}
+.home-actions .btn.small{flex:0 1 auto;min-inline-size:0;white-space:nowrap;min-block-size:2.5rem;padding-inline:.6rem;font-size:.85rem}
+@media (max-width:359px){
+  .home-actions .btn.small{font-size:.78rem;padding-inline:.45rem}
+}
 
 .home-head{display:grid;justify-items:start;gap:.6rem;inline-size:100%}
 .home-head h2{font-size:var(--step-2)}

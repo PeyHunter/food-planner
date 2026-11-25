@@ -23,7 +23,6 @@ test("set an ingredient's shop section, pack size and always-at-home from the Re
   });
   expect(made.status()).toBe(201);
 
-  await page.getByRole("link", { name: "List and search" }).click();
   await page.getByRole("link", { name: "Ingredients" }).click();
   await expect(page.getByRole("heading", { name: "Ingredients", level: 2 })).toBeVisible();
   await page.getByLabel("Search ingredients").fill(`rice ${tag}`);
