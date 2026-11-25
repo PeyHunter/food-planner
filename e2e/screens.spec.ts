@@ -104,7 +104,8 @@ test("capture the screens for review", async ({ page }) => {
   // Same two screens again at 320px wide, to check nothing overflows.
   await page.setViewportSize({ width: 320, height: 640 });
   await shot("01-recipes-grid-320", async () => {
-    await page.goto("/#/recipes");
+    // #/recipes/list always opens the grid; #/recipes would reopen the book saved by shot 02.
+    await page.goto("/#/recipes/list");
     await page.getByText(grownUp).first().waitFor({ timeout: 10_000 }).catch(() => console.log("Grid recipe title not found"));
   });
   await shot("02-recipes-book-320", async () => {
