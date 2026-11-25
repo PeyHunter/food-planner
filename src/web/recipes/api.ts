@@ -1,5 +1,5 @@
 import type { Ingredient, IngredientRow, IngredientSettings, IngredientSuggestion, PhotoRecipeDraft, Recipe, RecipeInput, RecipeSummary, ShareLink, SharedRecipe } from "../../shared/recipes.ts";
-import type { CanMake } from "../../shared/can-make.ts";
+import type { Idea } from "../../shared/can-make.ts";
 import { childRecipeTag, type FreezerItem } from "../../shared/week.ts";
 import { locale, t } from "../i18n.ts";
 
@@ -38,7 +38,8 @@ export const addToFreezer = (recipeId: string, add: number) => call<{ count: num
 export const suggestIngredients = (q: string) => call<IngredientSuggestion[]>(`/api/ingredients?q=${encodeURIComponent(q)}`);
 /** Every built-in type first, then custom categories used in this kitchen. */
 export const listCategories = () => call<string[]>("/api/categories");
-export const findMakeable = (have: string[]) => call<CanMake[]>("/api/recipes/can-make", json("POST", { have }));
+/** Recipes found on the web that use the ingredients the cook has; the server searches, so this can take about 20 seconds. */
+export const findIdeas = (have: string[]) => call<{ ideas: Idea[] }>("/api/recipes/ideas-from-web", json("POST", { have }));
 
 export const turnShareOn = (id: string) => call<ShareLink>(`/api/recipes/${id}/share`, { method: "POST" });
 export const turnShareOff = (id: string) => call<ShareLink>(`/api/recipes/${id}/share`, { method: "DELETE" });

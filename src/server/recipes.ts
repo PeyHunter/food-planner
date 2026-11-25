@@ -8,7 +8,6 @@ import { bodyLimit } from "hono/body-limit";
 import { createMiddleware } from "hono/factory";
 import { kidTags, mainTypes, shopSections, sortCategories, type Cook, type Ingredient, type IngredientRow, type IngredientSettings, type Photo, type Recipe, type RecipeInput, type RecipeSummary, type ShareLink, type SharedRecipe, type ShopSection, sharePhotoMedia } from "../shared/recipes.ts";
 import { isUnit } from "../shared/units.ts";
-import { canMake } from "../shared/can-make.ts";
 import { childRecipeTag } from "../shared/week.ts";
 import { currentSession, type Session } from "./access.ts";
 import type { AppDependencies } from "./app.ts";
@@ -100,24 +99,6 @@ export function createRecipeRoutes({ database, now, photosDir, publicUrl, webDir
       .innerJoin(recipes, eq(recipes.id, recipeTypes.recipeId))
       .where(eq(recipes.kitchenId, c.get("member").kitchenId));
     return c.json(sortCategories([...mainTypes, ...rows.map((row) => row.type)]));
-  });
-
-  routes.post("/api/recipes/can-make", member, async (c) => {
-    const have = parseHave(await c.req.json().catch(() => undefined));
-    if ("error" in have) return c.json(have, 400);
-    const { kitchenId } = c.get("member");
-    const rows = await db.select({ id: recipes.id, title: recipes.title, feeds: recipes.feeds }).from(recipes).where(eq(recipes.kitchenId, kitchenId));
-    const [summaries, lineRows] = await Promise.all([
-      recipeSummaries(database, rows),
-      db
-        .select({ recipeId: recipeLines.recipeId, name: ingredients.name })
-        .from(recipeLines)
-        .innerJoin(ingredients, eq(ingredients.id, recipeLines.ingredientId))
-        .innerJoin(recipes, eq(recipes.id, recipeLines.recipeId))
-        .where(eq(recipes.kitchenId, kitchenId)),
-    ]);
-    const byRecipe = Map.groupBy(lineRows, (line) => line.recipeId);
-    return c.json(canMake(summaries.map((recipe) => ({ recipe, ingredients: (byRecipe.get(recipe.id) ?? []).map((line) => line.name) })), have));
   });
 
   routes.get("/api/recipes/:id", member, async (c) => {
@@ -644,16 +625,6 @@ export const maxMinutes = 7 * 24 * 60;
 function months(value: unknown): number | null | undefined {
   if (value === null || value === undefined || value === "") return null;
   return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 240 ? (value as number) : undefined;
-}
-
-/** The 1 to 50 ingredient names sent to "What can I make?", trimmed. */
-export function parseHave(body: unknown): string[] | { error: string } {
-  const rawHave = body && typeof body === "object" ? (body as Record<string, unknown>).have : undefined;
-  if (!Array.isArray(rawHave) || rawHave.length < 1 || rawHave.length > 50) return { error: "List 1 to 50 ingredients you have." };
-  const have = rawHave.map(text);
-  if (have.some((name) => !name)) return { error: "Every ingredient needs a name." };
-  if (have.some((name) => name.length > 80)) return { error: "Keep each ingredient name short." };
-  return have;
 }
 
 export function parseInput(body: unknown): RecipeInput | { error: string } {

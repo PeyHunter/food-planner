@@ -1,16 +1,16 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { t } from "../i18n.ts";
-import type { CanMake } from "../../shared/can-make.ts";
+import type { Idea } from "../../shared/can-make.ts";
 import type { IngredientSuggestion } from "../../shared/recipes.ts";
-import { findMakeable, suggestIngredients } from "./api.ts";
+import { findIdeas, suggestIngredients } from "./api.ts";
 
-/** Type what is in the kitchen and see every recipe, nearest to cookable first. */
+/** Type what is in the kitchen and get recipes from the web that use it. */
 export function CanMakeScreen() {
   const [have, setHave] = useState<string[]>([]);
   const [typed, setTyped] = useState("");
   const [suggestions, setSuggestions] = useState<IngredientSuggestion[]>([]);
   const [focused, setFocused] = useState(false);
-  const [results, setResults] = useState<CanMake[]>();
+  const [results, setResults] = useState<Idea[]>();
   const [problem, setProblem] = useState<string>();
   const [busy, setBusy] = useState(false);
 
@@ -56,8 +56,9 @@ export function CanMakeScreen() {
     }
     setBusy(true);
     setProblem(undefined);
+    setResults(undefined);
     try {
-      setResults(await findMakeable(list));
+      setResults((await findIdeas(list)).ideas);
     } catch (error) {
       setProblem((error as Error).message);
     } finally {
@@ -74,7 +75,7 @@ export function CanMakeScreen() {
         <h2>{t("What can I make?")}</h2>
         <span />
       </nav>
-      <p className="hint">{t("Type the ingredients you have. Recipes with the least missing come first.")}</p>
+      <p className="hint">{t("Type the ingredients you have. We search the web for dinners that use them.")}</p>
 
       <form className="can-make-search" onSubmit={find}>
         <div className="suggest-wrap">
@@ -105,7 +106,7 @@ export function CanMakeScreen() {
           {t("Add")}
         </button>
         <button type="submit" className="ink-button" disabled={busy || (!have.length && !typed.trim())}>
-          {busy ? t("Looking…") : t("Find recipes")}
+          {t("Find recipes online")}
         </button>
       </form>
 
@@ -119,33 +120,35 @@ export function CanMakeScreen() {
         </div>
       )}
 
+      {busy && (
+        <div className="can-make-wait" role="status">
+          <span className="can-make-spinner" aria-hidden="true" />
+          <p>
+            <strong>{t("Searching Valdemarsro and friends…")}</strong>
+            <br />
+            {t("This can take about 20 seconds.")}
+          </p>
+        </div>
+      )}
       {problem && <p role="alert">{problem}</p>}
-      {results && results.length === 0 && <p className="hint">{t("No recipes yet. Add one and its ingredients first.")}</p>}
+      {results && results.length === 0 && <p className="hint">{t("Nothing found. Try fewer or different ingredients.")}</p>}
       {results && results.length > 0 && (
         <ul className="can-make-results">
-          {results.map(({ recipe, missing }) => (
-            <li key={recipe.id}>
-              <a className="can-make-photo" href={`#/recipes/${recipe.id}`} tabIndex={-1} aria-hidden="true">
-                {recipe.mainPhoto ? <img src={recipe.mainPhoto.url} alt="" loading="lazy" /> : <span className="no-photo" />}
-              </a>
+          {results.map((idea) => (
+            <li key={idea.url} className="can-make-idea">
               <div className="can-make-text">
-                <a href={`#/recipes/${recipe.id}`}>
-                  <strong>{recipe.title}</strong>
-                </a>
-                {recipe.types.length > 0 && (
-                  <span className="stickers">
-                    {recipe.types.map((type) => (
-                      <span key={type} className="sticker sun">
-                        {t(type)}
-                      </span>
-                    ))}
-                  </span>
-                )}
-                {missing.length === 0 ? (
-                  <p className="can-make-now">{t("You can make this now")}</p>
-                ) : (
-                  <p className="can-make-missing">{t("You need: {list}", { list: missing.join(", ") })}</p>
-                )}
+                <strong>{idea.title}</strong>
+                <span className="sticker sun">{idea.site}</span>
+                <p>{idea.why}</p>
+                {idea.missing.length > 0 && <p className="can-make-missing">{t("Missing: {list}", { list: idea.missing.join(", ") })}</p>}
+                <span className="can-make-actions">
+                  <a className="btn small white" href={idea.url} target="_blank" rel="noopener">
+                    {t("Open")}
+                  </a>
+                  <a className="btn small" href={`#/recipes/from-link?url=${encodeURIComponent(idea.url)}`}>
+                    {t("Save to my recipes")}
+                  </a>
+                </span>
               </div>
             </li>
           ))}

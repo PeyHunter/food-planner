@@ -14,6 +14,7 @@ import { createSecurityRoutes, isAllowedOrigin } from "./security.ts";
 import { createShoppingRoutes } from "./shopping.ts";
 import { createStarterRoutes } from "./starter-recipes.ts";
 import { createVeggieRecipeRoutes } from "./veggie-recipe.ts";
+import { createIdeasRoutes } from "./web-ideas.ts";
 import type { OpenUrl } from "./link-recipe.ts";
 import { createWeekRoutes } from "./week.ts";
 
@@ -81,6 +82,7 @@ export function createApp(dependencies: AppDependencies) {
   app.route("/", createStarterRoutes(dependencies));
   app.route("/", createRecipeRoutes(dependencies));
   app.route("/", createPhotoRecipeRoutes(dependencies));
+  app.route("/", createIdeasRoutes(dependencies));
   app.route("/", createVeggieRecipeRoutes(dependencies));
   app.route("/", createWeekRoutes(dependencies));
   app.route("/", createChildRoutes(dependencies));
