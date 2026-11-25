@@ -951,7 +951,17 @@
 }
 
 .recipes .freezer-offer input {
-  inline-size: 5rem;
+  inline-size: 100%;
+  min-inline-size: 0;
+  box-sizing: border-box;
+}
+
+.recipes .made-this {
+  display: grid;
+  gap: 0.9rem;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  box-sizing: border-box;
 }
 
 .save-shared { display: grid; gap: 0.8rem; justify-items: start; }
@@ -1067,4 +1077,33 @@
 
 .recipes .can-make-missing {
   color: color-mix(in oklch, var(--r-tomato) 60%, var(--r-ink));
+}
+
+/* "I made this" and the freezer offer: inputs fill the panel at 320 to 430px. iOS date and file inputs have a wide minimum width, so they are sized here. */
+.recipes .made-this label,
+.recipes .freezer-offer label {
+  display: grid;
+  gap: 0.35rem;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+.recipes .made-this input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  inline-size: 100%;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  box-sizing: border-box;
+}
+
+.recipes .made-this .made-this-photos .file-button {
+  justify-self: stretch;
+  inline-size: 100%;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  box-sizing: border-box;
+  white-space: normal;
+  text-align: center;
 }

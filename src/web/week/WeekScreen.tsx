@@ -588,6 +588,34 @@ function Picker({ picking, view, who, onClose, onChoose }: PickerProps) {
           />
         </section>
       )}
+      {childId !== null && !side && (view.childFreezer[childId]?.length ?? 0) > 0 && (
+        <section className="freezer-pick kid-freezer-pick" aria-label={t("From {name}'s freezer", { name: who })}>
+          <h3>{t("❄ From {name}'s freezer", { name: who })}</h3>
+          <p className="hint">{t("Takes one portion out. Nothing goes on the shopping list.")}</p>
+          <ul className="pick-list">
+            {view.childFreezer[childId]!.map(({ recipe, count }) => {
+              const chosen = meal?.fromFreezer === true && meal.recipe?.id === recipe.id;
+              return (
+                <li key={recipe.id}>
+                  <button
+                    type="button"
+                    aria-label={t("From {name}'s freezer: {title}", { name: who, title: recipe.title })}
+                    aria-pressed={chosen}
+                    onClick={() => onChoose(() => (chosen ? setChildDay(date, childId, "empty") : setChildDay(date, childId, "recipe", recipe.id, true)))}
+                  >
+                    <Plate recipe={recipe} />
+                    <span className="dish-text">
+                      <strong>{recipe.title}</strong>
+                      <span className="sticker sky">{t("{n} left", { n: count })}</span>
+                    </span>
+                    <Tick />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
       <input type="search" className="search" placeholder={t("Search recipes")} aria-label="Search recipes" value={q} onChange={(event) => setQ(event.target.value)} />
       <div className="chips" role="group" aria-label="Filter by type">
         {[undefined, ...mainTypes].map((option) => (
@@ -639,34 +667,6 @@ function Picker({ picking, view, who, onClose, onChoose }: PickerProps) {
                     aria-label={`From the freezer: ${recipe.title}`}
                     aria-pressed={chosen}
                     onClick={() => onChoose(() => (chosen ? setDinner(date, null) : setDinner(date, recipe.id, true)))}
-                  >
-                    <Plate recipe={recipe} />
-                    <span className="dish-text">
-                      <strong>{recipe.title}</strong>
-                      <span className="sticker sky">{t("{n} left", { n: count })}</span>
-                    </span>
-                    <Tick />
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
-      {childId !== null && !side && (view.childFreezer[childId]?.length ?? 0) > 0 && (
-        <section className="freezer-pick kid-freezer-pick" aria-label={t("From {name}'s freezer", { name: who })}>
-          <h3>{t("❄ From {name}'s freezer", { name: who })}</h3>
-          <p className="hint">{t("Takes one portion out. Nothing goes on the shopping list.")}</p>
-          <ul className="pick-list">
-            {view.childFreezer[childId]!.map(({ recipe, count }) => {
-              const chosen = meal?.fromFreezer === true && meal.recipe?.id === recipe.id;
-              return (
-                <li key={recipe.id}>
-                  <button
-                    type="button"
-                    aria-label={t("From {name}'s freezer: {title}", { name: who, title: recipe.title })}
-                    aria-pressed={chosen}
-                    onClick={() => onChoose(() => (chosen ? setChildDay(date, childId, "empty") : setChildDay(date, childId, "recipe", recipe.id, true)))}
                   >
                     <Plate recipe={recipe} />
                     <span className="dish-text">

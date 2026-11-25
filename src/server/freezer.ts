@@ -1,6 +1,6 @@
 import { and, asc, eq, gt, sql } from "drizzle-orm";
 import { Hono } from "hono";
-import type { FreezerItem } from "../shared/week.ts";
+import { isChildRecipe, type FreezerItem } from "../shared/week.ts";
 import type { AppDependencies } from "./app.ts";
 import type { Database } from "./db.ts";
 import { kitchenMember, recipeSummaries, type MemberEnv } from "./recipes.ts";
@@ -59,7 +59,8 @@ export function createFreezerRoutes({ database, now }: AppDependencies) {
       database,
       rows.map(({ id, title, feeds }) => ({ id, title, feeds })),
     );
-    const items: FreezerItem[] = summaries.map((recipe) => ({ recipe, count: counts.get(recipe.id)! }));
+    // A child's recipe lives in that child's freezer, not the kitchen's.
+    const items: FreezerItem[] = summaries.filter((recipe) => !isChildRecipe(recipe)).map((recipe) => ({ recipe, count: counts.get(recipe.id)! }));
     return c.json(items);
   });
 
@@ -72,10 +73,12 @@ export function createFreezerRoutes({ database, now }: AppDependencies) {
     if (typeof add !== "number" || !Number.isInteger(add) || add === 0 || Math.abs(add) > maxStep) return c.json({ error: `Send a whole number of portions, up to ${maxStep}.` }, 400);
     if (!uuidPattern.test(recipeId)) return c.json({ error: "No such recipe." }, 404);
     const [own] = await db
-      .select({ id: recipes.id })
+      .select({ id: recipes.id, title: recipes.title, feeds: recipes.feeds })
       .from(recipes)
       .where(and(eq(recipes.id, recipeId), eq(recipes.kitchenId, kitchenId)));
     if (!own) return c.json({ error: "No such recipe." }, 404);
+    const [summary] = await recipeSummaries(database, [own]);
+    if (isChildRecipe(summary!)) return c.json({ error: "Child recipes go in the child's freezer." }, 400);
     return c.json({ count: await addPortions(db, kitchenId, recipeId, add, userId) });
   });
 

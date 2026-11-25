@@ -12,6 +12,7 @@ import {
   awayKinds,
   childRecipeTag,
   defaultPeople,
+  isChildRecipe,
   isDate,
   maxAwayNote,
   maxPeople,
@@ -189,10 +190,11 @@ export function createWeekRoutes({ database, now }: AppDependencies) {
       )
       .map(({ id, childId, op, n, what }) => ({ id, childId, op: op as RuleOp, n, what }));
     const childNames = Object.fromEntries(kids.map((kid) => [kid.id, kid.name]));
+    // A child's recipe waits in that child's freezer, so it is not offered from the kitchen's.
     const freezer = freezerRows
       .flatMap((row) => {
         const recipe = byId.get(row.recipeId);
-        return recipe ? [{ recipe, count: row.count }] : [];
+        return recipe && !isChildRecipe(recipe) ? [{ recipe, count: row.count }] : [];
       })
       .sort((a, b) => a.recipe.title.localeCompare(b.recipe.title));
     const childFreezer: Record<string, FreezerItem[]> = {};
