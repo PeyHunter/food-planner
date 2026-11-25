@@ -121,7 +121,7 @@ test("capture the screens for review", async ({ page }) => {
   await shot("08-kids-320", async () => {
     await page.goto("/#/kids");
     const put = page.getByRole("button", { name: "Put one portion in" }).first();
-    if (await put.isVisible().catch(() => false)) {
+    if (await put.waitFor({ timeout: 10_000 }).then(() => true, () => false)) {
       await put.click();
       await page.getByRole("group", { name: /Portions of/ }).first().waitFor({ timeout: 10_000 }).catch(() => console.log("No − / + row after putting a portion in"));
     } else {
