@@ -181,12 +181,15 @@ test("the header row stays on one line at iPhone SE width, in both views", async
 
 test("recipe cards keep their text and stickers inside the card at 320 and 430 px", async ({ page }) => {
   const stamp = Date.now();
-  await page.request.post("/api/recipes", { data: recipe(`An extremely long recipe name that wraps over and over ${stamp} with no spaces Lasagnaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`, ["Vegetables", "Chicken"], []) });
-  await page.request.post("/api/recipes", { data: recipe(`Short ${stamp}`, ["Fish"], []) });
   await page.goto("/");
   await page.getByLabel("Name").fill("peyton");
   await page.getByLabel("Password").fill(e2ePasswords.peyton);
   await page.getByRole("button", { name: "Log in" }).click();
+  await expect(page.getByRole("navigation", { name: "Main" })).toBeVisible();
+  expect((await page.request.post("/api/recipes", { data: recipe(`An extremely long recipe name that wraps over and over ${stamp} with no spaces Lasagnaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`, ["Vegetables", "Chicken"], []) })).ok()).toBe(true);
+  expect((await page.request.post("/api/recipes", { data: recipe(`Short ${stamp}`, ["Fish"], []) })).ok()).toBe(true);
+  // The grid loaded before the recipes were added; reload so it lists them.
+  await page.reload();
   await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Recipes" }).click();
   await expect(page.getByRole("link", { name: new RegExp(`Short ${stamp}`) })).toBeVisible();
 
