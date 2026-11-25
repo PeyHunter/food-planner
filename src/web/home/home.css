@@ -1,9 +1,15 @@
-/* Home tab: every recipe in a grid, then photo ideas for the grown-ups. Scoped to .home-tab. */
+/* Home tab: the grown-ups' recipes in a grid, then photo ideas for the grown-ups. Scoped to .home-tab. */
 .home-tab{display:grid;gap:1rem;padding-block-end:2rem}
-.home-head{display:grid;justify-items:start;gap:.5rem}
+.home-head{display:grid;justify-items:start;gap:.5rem;inline-size:100%}
 .home-head .kicker{font-size:.8rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:color-mix(in oklch,var(--tomato) 70%,var(--ink))}
 .home-head h2{font-size:var(--step-2)}
 .home-head .btn{margin-block-start:.25rem}
+.home-actions{display:flex;flex-wrap:nowrap;gap:.4rem;inline-size:100%;min-inline-size:0;max-inline-size:100%;overflow-x:auto;scrollbar-width:none;padding-block:.2rem}
+.home-actions::-webkit-scrollbar{display:none}
+.home-actions .btn{flex:none;white-space:nowrap}
+.view-toggle{display:inline-flex;flex-wrap:nowrap;gap:.4rem;max-inline-size:100%;overflow-x:auto;scrollbar-width:none;padding-block:.2rem}
+.view-toggle::-webkit-scrollbar{display:none}
+.view-toggle .chip{flex:none;white-space:nowrap}
 .home-h{font-size:var(--step-1)}
 
 .home-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.9rem;margin:0;padding:0;list-style:none}

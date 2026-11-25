@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
+import { HomeTab } from "../home/HomeTab.tsx";
 import { LinkRecipeScreen } from "./LinkRecipeScreen.tsx";
 import { SaveShared } from "./SaveShared.tsx";
-import { BrowseScreen } from "./BrowseScreen.tsx";
 import { CanMakeScreen } from "./CanMakeScreen.tsx";
 import { FreezerScreen } from "./FreezerScreen.tsx";
 import { IngredientsScreen } from "./IngredientsScreen.tsx";
@@ -26,7 +26,7 @@ type Route =
   | { screen: "vegetarian"; id: string }
   | { screen: "save"; token: string };
 
-// #/recipes (the book), #/recipes/list, #/recipes/new[?tag=for Runi&from=7], #/recipes/ingredients, #/recipes/from-photo, #/recipes/from-link, #/recipes/freezer, #/recipes/can-make, #/recipes/<id>, #/recipes/<id>/edit, #/recipes/<id>/vegetarian, #/recipes/save/<share token>
+// #/recipes (the unified home surface), #/recipes/list, #/recipes/new[?tag=for Runi&from=7], #/recipes/ingredients, #/recipes/from-photo, #/recipes/from-link, #/recipes/freezer, #/recipes/can-make, #/recipes/<id>, #/recipes/<id>/edit, #/recipes/<id>/vegetarian, #/recipes/save/<share token>
 function readRoute(hash: string): Route {
   const [path = "", query = ""] = hash.replace(/^#/, "").split("?");
   const [, section, id, action] = path.split("/");
@@ -41,7 +41,7 @@ function readRoute(hash: string): Route {
   return { screen: "recipe", id, week: new URLSearchParams(query).get("week") };
 }
 
-/** The Recipes tab: the book, list, recipe page and edit form, picked by the URL hash so reload and back work. */
+/** Recipe routes: the home surface, list, recipe page and edit form, picked by the URL hash so reload and back work. */
 export function RecipesScreen() {
   const [route, setRoute] = useState(() => readRoute(window.location.hash));
 
@@ -54,9 +54,10 @@ export function RecipesScreen() {
     return () => window.removeEventListener("hashchange", onChange);
   }, []);
 
+  if (route.screen === "book") return <HomeTab />;
+
   return (
     <div className="recipes">
-      {route.screen === "book" && <BrowseScreen />}
       {route.screen === "list" && <RecipeList />}
       {route.screen === "new" && <RecipeForm start={route.start} />}
       {route.screen === "ingredients" && <IngredientsScreen />}

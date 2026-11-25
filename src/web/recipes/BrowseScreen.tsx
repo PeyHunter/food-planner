@@ -35,16 +35,15 @@ function rememberFirst(id: string) {
 }
 
 /**
- * The Recipes tab's first screen: the recipe book, one page at a time. Swiping left or right moves through the
+ * The book view of the home surface: one page at a time. Swiping left or right moves through the
  * pages like LP-Collection's record crate; the chips at the top narrow the book to a main type or tag.
  */
-export function BrowseScreen() {
+export function BrowseScreen({ onGrid }: { onGrid?: () => void }) {
   const [recipes, setRecipes] = useState<RecipeSummary[]>();
   const [problem, setProblem] = useState<string>();
   const [chosen, setChosen] = useState(place.chosen);
   const [at, setAt] = useState(place.at);
   const [adding, setAdding] = useState<RecipeSummary>();
-  const [added, setAdded] = useState<string>();
   const crate = useRef<HTMLOListElement>(null);
   const restored = useRef(false);
 
@@ -101,17 +100,19 @@ export function BrowseScreen() {
       <div className="book-head">
         <p className="kicker">{t("What's for dinner?")}</p>
         <div className="book-actions">
+          <a className="btn small sun" href="#/recipes/new" aria-label={t("+ Add recipe")}>
+            {t("+ Add")}
+          </a>
           <a className="btn small white" href="#/recipes/can-make">
             {t("What can I make?")}
           </a>
-          <a className="btn small white" href="#/recipes/list" aria-label={t("List and search")}>
-            {t("☰ List")}
-          </a>
+          {onGrid && (
+            <button type="button" className="btn small white" onClick={onGrid} aria-label={t("List and search")}>
+              {t("☰ List")}
+            </button>
+          )}
           <a className="btn small white" href="#/recipes/freezer">
             {t("❄ Freezer")}
-          </a>
-          <a className="btn small sun" href="#/recipes/new" aria-label={t("+ Add recipe")}>
-            {t("+ Add")}
           </a>
         </div>
         <h2>
@@ -183,21 +184,7 @@ export function BrowseScreen() {
         </>
       )}
 
-      {added && (
-        <p className="added" role="status">
-          {added}
-        </p>
-      )}
-      {adding && (
-        <DayPicker
-          recipe={adding}
-          onClose={() => setAdding(undefined)}
-          onAdded={(message) => {
-            setAdding(undefined);
-            setAdded(message);
-          }}
-        />
-      )}
+      {adding && <DayPicker recipe={adding} onClose={() => setAdding(undefined)} />}
     </section>
   );
 }
@@ -242,7 +229,7 @@ function Plate() {
 
 type Weeks = { thisWeek: WeekView; nextWeek: WeekView };
 
-function DayPicker({ recipe, onClose, onAdded }: { recipe: RecipeSummary; onClose: () => void; onAdded: (message: string) => void }) {
+function DayPicker({ recipe, onClose }: { recipe: RecipeSummary; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
   const [days] = useState(() => daysToPick(today()));
   const [weeks, setWeeks] = useState<Weeks>();
@@ -257,19 +244,19 @@ function DayPicker({ recipe, onClose, onAdded }: { recipe: RecipeSummary; onClos
     );
   }, [days]);
 
-  async function choose(date: string, nextWeek: boolean) {
+  async function choose(date: string) {
     setBusy(true);
     setProblem(undefined);
     try {
       await setDinner(date, recipe.id);
-      onAdded(t(nextWeek ? "Added to {day} next week" : "Added to {day}", { day: weekdayName(date, locale()) }));
+      onClose();
     } catch (error) {
       setProblem((error as Error).message);
       setBusy(false);
     }
   }
 
-  const group = (title: string, dates: string[], view: WeekView | undefined, nextWeek: boolean): ReactNode =>
+  const group = (title: string, dates: string[], view: WeekView | undefined): ReactNode =>
     dates.length > 0 && (
       <section aria-label={title}>
         <h3>{title}</h3>
@@ -278,7 +265,7 @@ function DayPicker({ recipe, onClose, onAdded }: { recipe: RecipeSummary; onClos
             const dinner = view?.days.find((day) => day.date === date)?.dinner;
             return (
               <li key={date}>
-                <button type="button" disabled={busy || !view} onClick={() => choose(date, nextWeek)}>
+                <button type="button" disabled={busy || !view} onClick={() => choose(date)}>
                   <span className="when">
                     <b>{weekdayName(date, locale())}</b>
                     <span className="date">{showDate(date).replace(/^\S+ /, "")}</span>
@@ -308,8 +295,8 @@ function DayPicker({ recipe, onClose, onAdded }: { recipe: RecipeSummary; onClos
       </div>
       <p className="hint">{t("{title} becomes that day's dinner.", { title: recipe.title })}</p>
       {problem && <p role="alert">{problem}</p>}
-      {group(t("This week"), days.thisWeek.dates, weeks?.thisWeek, false)}
-      {group(t("Next week"), days.nextWeek.dates, weeks?.nextWeek, true)}
+      {group(t("This week"), days.thisWeek.dates, weeks?.thisWeek)}
+      {group(t("Next week"), days.nextWeek.dates, weeks?.nextWeek)}
     </dialog>
   );
 }

@@ -73,9 +73,11 @@
 /* buttons */
 .recipes .ink-button {
   display: inline-flex;
+  flex: none;
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
+  white-space: nowrap;
   min-block-size: 2.9rem;
   padding: 0 1.1rem;
   border: var(--r-line);
@@ -800,9 +802,18 @@
 /* ingredients screen */
 .recipes .bar-buttons {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0.5rem;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-block: 0.2rem;
+}
+
+.recipes .bar-buttons::-webkit-scrollbar {
+  display: none;
 }
 
 .recipes .ingredient-rows {

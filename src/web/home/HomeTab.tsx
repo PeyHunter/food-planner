@@ -1,95 +1,72 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { t } from "../i18n.ts";
-import type { RecipeSummary } from "../../shared/recipes.ts";
-import { childRecipeTag } from "../../shared/week.ts";
-import { listRecipes } from "../recipes/api.ts";
-import { typeColour } from "../recipes/RecipePage.tsx";
+import { BrowseScreen } from "../recipes/BrowseScreen.tsx";
+import { RecipeList } from "../recipes/RecipeList.tsx";
+import "../recipes/recipes.css";
 import "./home.css";
 
-/** Never made comes first, then the oldest cook, then the title. */
-const byLeastRecent = (a: RecipeSummary, b: RecipeSummary) => (a.lastMadeOn ?? "").localeCompare(b.lastMadeOn ?? "") || a.title.localeCompare(b.title);
+type View = "grid" | "book";
+
+const viewKey = "home-recipe-view";
+
+function savedView(): View {
+  try {
+    return localStorage.getItem(viewKey) === "book" ? "book" : "grid";
+  } catch {
+    return "grid";
+  }
+}
 
 export function HomeTab() {
-  const [recipes, setRecipes] = useState<RecipeSummary[]>();
-  const [ideas, setIdeas] = useState<RecipeSummary[]>([]);
-  const [problem, setProblem] = useState<string>();
+  const [view, setView] = useState<View>(savedView);
 
-  useEffect(() => {
-    let current = true;
-    listRecipes("").then(
-      (found) => {
-        if (!current) return;
-        setRecipes(found);
-        setIdeas(
-          found
-            .filter((recipe) => recipe.mainPhoto && recipe.ageFromMonths === null && recipe.ageToMonths === null && !recipe.tags.includes(childRecipeTag))
-            .sort(byLeastRecent)
-            .slice(0, 8),
-        );
-      },
-      (error: Error) => current && setProblem(error.message),
-    );
-    return () => {
-      current = false;
-    };
-  }, []);
+  const show = (next: View) => {
+    setView(next);
+    try {
+      localStorage.setItem(viewKey, next);
+    } catch {}
+  };
 
   return (
-    <section className="home-tab">
-      <div className="home-head">
-        <p className="kicker">{t("Your kitchen")}</p>
-        <h2>{t("What shall we cook?")}</h2>
-        <a className="btn sun" href="#/week">
-          {t("Plan the week")}
-        </a>
-      </div>
-      {problem && <p role="alert">{problem}</p>}
-      <h2 className="home-h">{t("All recipes")}</h2>
-      {recipes?.length === 0 ? (
-        <div className="card home-empty">
-          <p className="big">{t("Your recipe book is empty.")}</p>
-          <a className="btn small sun" href="#/recipes/new">
-            {t("Add your first recipe.")}
-          </a>
+    <div className="recipes home-surface">
+      <section className="home-tab">
+        <div className="home-head">
+          <p className="kicker">{t("Your kitchen")}</p>
+          <h2>{t("What shall we cook?")}</h2>
+          <div className="home-actions">
+            <a className="btn small sun" href="#/recipes/new" aria-label={t("+ Add recipe")}>
+              {t("+ Add")}
+            </a>
+            <a className="btn small white" href="#/week">
+              {t("Plan the week")}
+            </a>
+            <a className="btn small white" href="#/recipes/can-make">
+              {t("What can I make?")}
+            </a>
+            <a className="btn small white" href="#/recipes/freezer">
+              {t("❄ Freezer")}
+            </a>
+            <a className="btn small white" href="#/recipes/ingredients">
+              {t("Ingredients")}
+            </a>
+            <a className="btn small white" href="#/recipes/from-link">
+              {t("From a link")}
+            </a>
+            <a className="btn small white" href="#/recipes/from-photo">
+              {t("Photo to recipe")}
+            </a>
+          </div>
+          <div className="view-toggle" role="group" aria-label={t("Recipe view")}>
+            <button type="button" className="chip" aria-pressed={view === "grid"} onClick={() => show("grid")}>
+              {t("Grid")}
+            </button>
+            <button type="button" className="chip" aria-pressed={view === "book"} onClick={() => show("book")}>
+              {t("Flip through the book")}
+            </button>
+          </div>
         </div>
-      ) : (
-        <ul className="home-grid">
-          {recipes?.map((recipe) => (
-            <li key={recipe.id}>
-              <a className="home-card" href={`#/recipes/${recipe.id}`}>
-                {recipe.mainPhoto ? <img src={recipe.mainPhoto.url} alt="" loading="lazy" /> : <span className="home-photo home-plate" aria-hidden="true" />}
-                <span className="home-card-text">
-                  <strong>{recipe.title}</strong>
-                  {recipe.types.length > 0 && (
-                    <span className="home-types">
-                      {recipe.types.map((type) => (
-                        <span key={type} className={`sticker ${typeColour[type] ?? "sun"}`}>
-                          {t(type)}
-                        </span>
-                      ))}
-                    </span>
-                  )}
-                </span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
-      {ideas.length > 0 && (
-        <section className="home-ideas">
-          <h2 className="home-h">{t("Ideas")}</h2>
-          <ul className="home-rail">
-            {ideas.map((recipe) => (
-              <li key={recipe.id}>
-                <a className="home-idea" href={`#/recipes/${recipe.id}`}>
-                  <img src={recipe.mainPhoto!.url} alt="" loading="lazy" />
-                  <span>{recipe.title}</span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-    </section>
+        {view === "grid" ? <RecipeList home /> : <BrowseScreen onGrid={() => show("grid")} />}
+      </section>
+    </div>
   );
 }

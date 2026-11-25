@@ -133,8 +133,7 @@ type Tab = { id: string; label: string; icon: string; colour: string; screen?: (
 
 // Later PRs add a `screen` to a tab; until then it shows the "Coming soon" card.
 const allTabs: Tab[] = [
-  { id: "home", label: "Home", icon: "🏠", colour: "var(--sun-soft)", screen: () => <HomeTab />, soon: "" },
-  { id: "recipes", label: "Recipes", icon: "📖", colour: "var(--tomato-soft)", screen: () => <RecipesScreen />, soon: "Flip through your recipe book and add new dishes." },
+  { id: "home", label: "Recipes", icon: "📖", colour: "var(--sun-soft)", screen: () => <HomeTab />, soon: "" },
   { id: "week", label: "Week", icon: "📅", colour: "var(--sun-soft)", screen: () => <WeekScreen />, soon: "Plan dinners for the week and check the rules." },
   { id: "shopping", label: "Shopping", icon: "🛒", colour: "var(--mint-soft)", screen: () => <ShoppingScreen />, soon: "One list with everything the week needs." },
   { id: "kids", label: "Kids", icon: "🧒", colour: "var(--lilac-soft)", screen: () => <KidsScreen />, soon: "Each child's own recipes and rules, by age." },
@@ -154,10 +153,18 @@ function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
     soon: "",
   };
   // The hash picks the tab, so a reload or a link to #/recipes/... opens that tab.
-  const tabOfHash = () => [...tabs, profileTab].find((tab) => window.location.hash.startsWith(`#/${tab.id}`));
-  const [current, setCurrent] = useState(() => tabOfHash() ?? tabs[0]!);
+  const tabOfHash = (hash: string) => {
+    if (hash.startsWith("#/recipes")) return tabs.find((tab) => tab.id === "home")!;
+    return [...tabs, profileTab].find((tab) => hash.startsWith(`#/${tab.id}`));
+  };
+  const [hash, setHash] = useState(() => window.location.hash);
+  const [current, setCurrent] = useState(() => tabOfHash(window.location.hash) ?? tabs[0]!);
   useEffect(() => {
-    const onChange = () => setCurrent((shown) => tabOfHash() ?? shown);
+    const onChange = () => {
+      const next = window.location.hash;
+      setHash(next);
+      setCurrent((shown) => tabOfHash(next) ?? shown);
+    };
     window.addEventListener("hashchange", onChange);
     return () => window.removeEventListener("hashchange", onChange);
   }, []);
@@ -191,7 +198,7 @@ function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
             </span>
           </a>
         </header>
-        {current.screen ? current.screen() : <ComingSoon tab={current} />}
+        {hash.startsWith("#/recipes") ? <RecipesScreen /> : current.screen ? current.screen() : <ComingSoon tab={current} />}
       </main>
       <nav className="tabbar" aria-label="Main">
         {tabs.map((tab) => (
@@ -201,8 +208,10 @@ function HomeScreen({ me, onLoggedOut }: { me: Me; onLoggedOut: () => void }) {
             className="tab"
             aria-current={tab.id === current.id ? "page" : undefined}
             onClick={() => {
+              const next = `#/${tab.id}`;
               setCurrent(tab);
-              window.location.hash = `#/${tab.id}`;
+              setHash(next);
+              window.location.hash = next;
             }}
           >
             <span className="ic" aria-hidden="true">
