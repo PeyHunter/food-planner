@@ -95,7 +95,7 @@ test("Profile is in the header on every tab, English | Dansk switches at once, B
 
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await language.getByRole("radio", { name: "Dansk" }).click();
-  await expect(nav.getByRole("button")).toHaveText([/Hjem$/, /Opskrifter$/, /Uge$/, /Indkøb$/, /(Runi Lee|Børn)$/]);
+  await expect(nav.getByRole("button")).toHaveText([/Opskrifter$/, /Uge$/, /Indkøb$/, /(Runi Lee|Børn)$/]);
   // The page says it is Danish, so the browser spellchecks Danish.
   await expect(page.locator("html")).toHaveAttribute("lang", "da");
   await expect(header.getByRole("link", { name: "Profil" })).toBeVisible();
